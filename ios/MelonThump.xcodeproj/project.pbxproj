@@ -1,0 +1,242 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+/* Begin PBXBuildFile section */
+		94130E9D7104EB3084098C6C /* MelonThumpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1267D2A9CEDB9F16081F491 /* MelonThumpApp.swift */; };
+		E1E2302D178B7CB8523A468D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1649041C5383C7632D4FF3CA /* Models.swift */; };
+		2783732EB54EB47109332D8D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE6E46B048B79FF978A9B54 /* APIClient.swift */; };
+		083B7937E567D384E2EFB70C /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3629116A12258F16CB26325E /* AudioRecorder.swift */; };
+		5EE21F928B21E44075A47AF4 /* TapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9077BEDCA037F80987B9F4 /* TapView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1267D2A9CEDB9F16081F491 /* MelonThumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonThumpApp.swift; sourceTree = "<group>"; };
+		1649041C5383C7632D4FF3CA /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		1EE6E46B048B79FF978A9B54 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		3629116A12258F16CB26325E /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		9A9077BEDCA037F80987B9F4 /* TapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapView.swift; sourceTree = "<group>"; };
+		160D6C68E63C8CBB4308E791 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CCF8E1D5283EAD3E97B95DAF /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2DBE4A205C9EA0AA00B9E73C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		73F630D8B9EBE05A377FC1BE = {
+			isa = PBXGroup;
+			children = (
+				4DA9CB18AD9A10A2E8C6EBE9 /* MelonThump */,
+				63A7C1D250F13F6121E1BBCF /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		63A7C1D250F13F6121E1BBCF /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CCF8E1D5283EAD3E97B95DAF /* MelonThump.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4DA9CB18AD9A10A2E8C6EBE9 /* MelonThump */ = {
+			isa = PBXGroup;
+			children = (
+				A1267D2A9CEDB9F16081F491 /* MelonThumpApp.swift */,
+				1649041C5383C7632D4FF3CA /* Models.swift */,
+				1EE6E46B048B79FF978A9B54 /* APIClient.swift */,
+				3629116A12258F16CB26325E /* AudioRecorder.swift */,
+				9A9077BEDCA037F80987B9F4 /* TapView.swift */,
+				160D6C68E63C8CBB4308E791 /* Info.plist */,
+			);
+			path = MelonThump;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		218642EB03A9FCD57A47A973 /* MelonThump */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7DC6C9D45C083D9A85BB1538 /* Build configuration list for PBXNativeTarget "MelonThump" */;
+			buildPhases = (
+				5ACC7627580EE1FAD8083980 /* Sources */,
+				2DBE4A205C9EA0AA00B9E73C /* Frameworks */,
+				14463C6C74D5E4DF5368010F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MelonThump;
+			packageProductDependencies = (
+			);
+			productName = MelonThump;
+			productReference = CCF8E1D5283EAD3E97B95DAF /* MelonThump.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		55B71700B3917003D1DB44D9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 646DC77D071F3B7123490307 /* Build configuration list for PBXProject "MelonThump" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 73F630D8B9EBE05A377FC1BE;
+			productRefGroup = 63A7C1D250F13F6121E1BBCF /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				218642EB03A9FCD57A47A973 /* MelonThump */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		14463C6C74D5E4DF5368010F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5ACC7627580EE1FAD8083980 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				94130E9D7104EB3084098C6C /* MelonThumpApp.swift in Sources */,
+				E1E2302D178B7CB8523A468D /* Models.swift in Sources */,
+				2783732EB54EB47109332D8D /* APIClient.swift in Sources */,
+				083B7937E567D384E2EFB70C /* AudioRecorder.swift in Sources */,
+				5EE21F928B21E44075A47AF4 /* TapView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		660B3D188FDFD5C5309F8243 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		9B7FD21481E3621393ECB502 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		9B206CB60B650C1C38DD1FCA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = MelonThump/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7E4872843EBFDA3FAB2815BD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = MelonThump/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		646DC77D071F3B7123490307 /* Build configuration list for PBXProject "MelonThump" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				660B3D188FDFD5C5309F8243 /* Debug */,
+				9B7FD21481E3621393ECB502 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7DC6C9D45C083D9A85BB1538 /* Build configuration list for PBXNativeTarget "MelonThump" */ = {
+				isa = XCConfigurationList;
+				buildConfigurations = (
+				9B206CB60B650C1C38DD1FCA /* Debug */,
+				7E4872843EBFDA3FAB2815BD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = 55B71700B3917003D1DB44D9 /* Project object */;
+}
