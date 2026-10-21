@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
-    @State private var serverURL = "http://localhost:8080"
+    @State private var serverURL = "https://melonthump.stephaniegao.me"
     @State private var result: TapResult?
     @State private var errorMessage: String?
     @State private var isAnalyzing = false
@@ -16,6 +16,14 @@ struct TapView: View {
         ZStack {
             backgroundColor.ignoresSafeArea()
             content
+        }
+        .alert("Something went wrong", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
