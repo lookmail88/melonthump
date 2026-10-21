@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/lookmail88/melonthump/compare/v1.0.0...v1.1.0) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ios:** default to prod server URL and show analyze errors as alert ([894a901](https://github.com/lookmail88/melonthump/commit/894a901e410d7e74962efb1a226dcde40507fdc3))
+
+
+### Features
+
+* **server:** add client version policy endpoint ([cfb5796](https://github.com/lookmail88/melonthump/commit/cfb5796277635b135d85dd145e98d6197523b828))
+
 # 1.0.0 (2026-10-21)
 
 
