@@ -39,10 +39,10 @@ final class APIClient: Sendable {
             throw APIError.badResponse(status: -1)
         }
         var request = URLRequest(url: url)
-        // Bounded by the 3-second launch splash: the version
-        // interaction must conclude inside that window (a timeout
-        // resolves as fail-open at the gate).
-        request.timeoutInterval = 3
+        // The launch splash waits for this check to conclude (it
+        // shows at least 3 seconds); the request gets up to 10
+        // seconds before the gate resolves it as fail-open.
+        request.timeoutInterval = 10
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.badResponse(status: -1)

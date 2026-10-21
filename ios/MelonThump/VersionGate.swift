@@ -1,15 +1,16 @@
 import SwiftUI
 
-/// Launch-time version gate. The 3-second splash doubles as the
+/// Launch-time version gate. The splash doubles as the
 /// server-interaction window: on appear it asks the selected server
-/// for the client version policy (the request itself is capped at
-/// 3s — see APIClient), and the splash lifts only when BOTH the
-/// 3 seconds have elapsed AND the check has concluded. So the user
-/// never sees the home screen flash before an update prompt: if this
-/// build is not the latest version, the blocking update screen is
-/// what appears when the splash ends. If the policy cannot be
-/// fetched (offline, server down, timeout), the app proceeds —
-/// fail-open, per the design.
+/// for the client version policy, and the splash lifts only when
+/// BOTH at least 3 seconds have elapsed AND the check has concluded
+/// (the request itself is capped at 10s — see APIClient; a slow
+/// network therefore stretches the splash, up to that cap). So the
+/// user never sees the home screen flash before an update prompt:
+/// if this build is not the latest version, the blocking update
+/// screen is what appears when the splash ends. If the policy
+/// cannot be fetched (offline, server down, timeout), the app
+/// proceeds — fail-open, per the design.
 struct VersionGateView: View {
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var requiredPolicy: ClientVersion?
