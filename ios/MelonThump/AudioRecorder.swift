@@ -1,8 +1,19 @@
 import AVFoundation
 import Foundation
 
-/// Records tap audio as 16-bit PCM WAV via AVAudioRecorder.
-/// @MainActor: AVAudioRecorder is not Sendable; all use stays on the main actor.
+/// Records tap audio to a WAV file with AVAudioEngine.
+///
+/// AVAudioRecorder was replaced on purpose: its record() synchronously
+/// re-activates the AVAudioSession on the main thread every time, which
+/// makes AVAudioSession log a "UI unresponsiveness" warning that
+/// pre-activating the session does not silence. The engine never does
+/// that — the session is activated once, off the main thread
+/// (see prepareSession()).
+///
+/// Live levels for the recording screen's waveform are computed from
+/// the tapped buffers (RMS), so no meter polling is needed either.
+/// @MainActor: all engine/file state is only touched on the main actor;
+/// the realtime tap block only writes the file and forwards levels.
 @MainActor
 final class AudioRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
@@ -11,12 +22,11 @@ final class AudioRecorder: NSObject, ObservableObject {
     /// real-time waveform on the recording screen).
     @Published var audioLevel: Double = 0
 
-    private var recorder: AVAudioRecorder?
-    private var meterTimer: Timer?
+    private var engine: AVAudioEngine?
+    private var outputFile: AVAudioFile?
 
     /// Activates the audio session on a background thread, once, before
-    /// any recording. If this is left to AVAudioRecorder.record() on the
-    /// main thread, AVAudioSession logs a "UI unresponsiveness" warning.
+    /// any recording.
     func prepareSession() async {
         await Task.detached(priority: .userInitiated) {
             let session = AVAudioSession.sharedInstance()
@@ -36,41 +46,56 @@ final class AudioRecorder: NSObject, ObservableObject {
     func startRecording() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("tap-\(UUID().uuidString).wav")
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: 44100.0,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsFloatKey: false,
-        ]
-        let recorder = try AVAudioRecorder(url: url, settings: settings)
-        recorder.isMeteringEnabled = true
-        recorder.record()
-        self.recorder = recorder
-        self.lastRecordingURL = url
-        self.isRecording = true
-        meterTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.pollLevel()
+
+        let engine = AVAudioEngine()
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+
+        // Write the input format as-is (Float32 PCM WAV). LocalAnalyzer
+        // decodes with AVAudioFile, which handles it natively.
+        let file = try AVAudioFile(forWriting: url, settings: format.settings)
+        self.outputFile = file
+
+        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
+            try? file.write(from: buffer)
+            let level = Self.rmsLevel(of: buffer)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                MainActor.assumeIsolated {
+                    self.audioLevel = level
+                }
             }
         }
+
+        engine.prepare()
+        try engine.start()
+        self.engine = engine
+        self.lastRecordingURL = url
+        self.isRecording = true
     }
 
     func stopRecording() {
-        meterTimer?.invalidate()
-        meterTimer = nil
-        recorder?.stop()
-        recorder = nil
+        engine?.inputNode.removeTap(onBus: 0)
+        engine?.stop()
+        engine = nil
+        outputFile = nil
         isRecording = false
         audioLevel = 0
     }
 
-    private func pollLevel() {
-        guard let recorder else { return }
-        recorder.updateMeters()
-        let db = Double(recorder.averagePower(forChannel: 0))
-        // averagePower is in dB, roughly -50 (quiet room) to 0 (loudest).
-        audioLevel = min(1, max(0, (db + 50) / 45))
+    /// RMS of the first channel mapped to 0...1 (roughly -50 dB…0 dB).
+    private nonisolated static func rmsLevel(of buffer: AVAudioPCMBuffer) -> Double {
+        guard let data = buffer.floatChannelData else { return 0 }
+        let frames = Int(buffer.frameLength)
+        guard frames > 0 else { return 0 }
+        let channel = data[0]
+        var sum: Float = 0
+        for i in 0..<frames {
+            sum += channel[i] * channel[i]
+        }
+        let rms = sqrt(sum / Float(frames))
+        guard rms > 0 else { return 0 }
+        let db = 20 * log10(Double(rms))
+        return min(1, max(0, (db + 50) / 45))
     }
 }
