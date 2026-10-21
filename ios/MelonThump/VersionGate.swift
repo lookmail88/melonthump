@@ -65,12 +65,22 @@ struct SplashView: View {
     var body: some View {
         ZStack {
             MelonTheme.background.ignoresSafeArea()
-            Image("SplashIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 190, height: 190)
-                .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
-                .shadow(color: MelonTheme.ink.opacity(0.18), radius: 16, y: 8)
+            VStack(spacing: 0) {
+                Image("SplashIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 190, height: 190)
+                    .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
+                    .shadow(color: MelonTheme.ink.opacity(0.18), radius: 16, y: 8)
+                Text("MelonThump")
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundColor(MelonTheme.ink)
+                    .padding(.top, 22)
+                Text("powered by xgao&sgao")
+                    .font(.footnote)
+                    .foregroundColor(MelonTheme.inkSoft)
+                    .padding(.top, 6)
+            }
         }
     }
 }
