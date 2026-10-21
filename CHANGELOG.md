@@ -1,3 +1,19 @@
+# [1.3.0](https://github.com/lookmail88/melonthump/compare/v1.2.0...v1.3.0) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ios:** decode recordings with AVAudioFile instead of a hand-rolled WAV parser ([e0fa59f](https://github.com/lookmail88/melonthump/commit/e0fa59f1df3c43dded59d529bf0e3a2b8f80a309))
+* **ios:** pre-activate the audio session off the main thread ([df6044a](https://github.com/lookmail88/melonthump/commit/df6044a6f30b0956a754af39a638b61a91332865))
+* **ios:** record with AVAudioEngine instead of AVAudioRecorder ([21d7396](https://github.com/lookmail88/melonthump/commit/21d739651b8e90174ccc146d7c3d238704c763fb))
+* **ios:** ZoneBar marker follows the high-to-low frequency axis ([0d4fa53](https://github.com/lookmail88/melonthump/commit/0d4fa53d45f86380829ccb845a13cdf5c76c8822)), closes [hi#to-low](https://github.com/hi/issues/to-low)
+
+
+### Features
+
+* **ci:** stamp iOS version into server version policy on every build ([a979618](https://github.com/lookmail88/melonthump/commit/a979618930c6e414117648fcf1b357de8c3dcf64))
+* **ios:** denoise tap analysis — high-pass, spectral subtraction, SNR gate ([32fd6b0](https://github.com/lookmail88/melonthump/commit/32fd6b05d60900339e1180b4ac8e74e53e45d8e9)), closes [hi#pass](https://github.com/hi/issues/pass) [hi#passes](https://github.com/hi/issues/passes)
+
 # [1.2.0](https://github.com/lookmail88/melonthump/compare/v1.1.0...v1.2.0) (2026-10-21)
 
 
