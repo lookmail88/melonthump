@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
-    @State private var serverURL = "https://melonthump.stephaniegao.me"
+    @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
     @State private var isAnalyzing = false
@@ -122,11 +122,13 @@ struct TapView: View {
             }
 
             DisclosureGroup("Server") {
-                TextField("Server URL", text: $serverURL)
-                    .textFieldStyle(.roundedBorder)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.footnote)
+                Picker("Server", selection: $serverEnvironment) {
+                    ForEach(ServerEnvironment.allCases) { env in
+                        Text(env.displayName).tag(env)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
             .font(.footnote)
             .foregroundColor(MelonTheme.inkSoft)
@@ -167,11 +169,7 @@ struct TapView: View {
             errorMessage = "No recording found."
             return
         }
-        guard let baseURL = URL(string: serverURL.trimmingCharacters(in: .whitespaces)),
-              baseURL.scheme != nil else {
-            errorMessage = "Invalid server URL."
-            return
-        }
+        let baseURL = serverEnvironment.baseURL
         isAnalyzing = true
         errorMessage = nil
         Task {

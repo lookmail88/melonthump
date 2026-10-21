@@ -1,6 +1,29 @@
 import Foundation
 import SwiftUI
 
+/// Backend environments the app can talk to. The UI shows only the
+/// display name ("Prod Server" / "Dev Server"), never the raw domain.
+enum ServerEnvironment: String, CaseIterable, Identifiable {
+    case prod
+    case dev
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .prod: return "Prod Server"
+        case .dev: return "Dev Server"
+        }
+    }
+
+    var baseURL: URL {
+        switch self {
+        case .prod: return URL(string: "https://melonthump.stephaniegao.me")!
+        case .dev: return URL(string: "https://melonthump-dev.stephaniegao.me")!
+        }
+    }
+}
+
 /// Response from POST /api/v1/tap/analyze
 struct TapResult: Decodable {
     let dominantFrequencyHz: Double
