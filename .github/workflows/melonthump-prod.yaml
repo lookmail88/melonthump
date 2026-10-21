@@ -3,7 +3,7 @@ name: Build Push and Auto Release to GHCR (Prod)
 on:
   push:
     branches: [ "main" ]
-    paths: [ 'server/**' ]
+    paths: [ 'server/**', 'ios/MelonThump.xcodeproj/**' ]
   workflow_dispatch:
 
 env:
@@ -65,11 +65,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Get iOS app version
+        id: appversion
+        run: |
+          VERSION=$(grep -m1 'MARKETING_VERSION =' ios/MelonThump.xcodeproj/project.pbxproj | sed 's/.*= *//; s/;//; s/ *$//')
+          echo "APP_VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "iOS app version: $VERSION"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: server
           push: true
+          build-args: |
+            CLIENT_LATEST_VERSION=${{ steps.appversion.outputs.APP_VERSION }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ steps.version.outputs.APP_VERSION }}
