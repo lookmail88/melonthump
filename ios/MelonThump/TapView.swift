@@ -200,8 +200,8 @@ struct RecordingView: View {
 
     /// Recording is capped at 5 seconds, counted down on screen.
     private var secondsLeft: Int { max(0, Int(ceil(5 - elapsed))) }
-    /// The user may stop manually once past the first second.
-    private var canStop: Bool { elapsed > 1 }
+    /// The user may stop manually once past the third second.
+    private var canStop: Bool { elapsed > 3 }
 
     private let barCount = 36
 
@@ -287,7 +287,7 @@ struct RecordingView: View {
             }
             .disabled(!canStop)
             .opacity(canStop ? 1 : 0.55)
-            Text(canStop ? "Auto-stops when the countdown ends" : "You can stop after the first second")
+            Text(canStop ? "Auto-stops when the countdown ends" : "You can stop after 3 seconds")
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
@@ -296,7 +296,7 @@ struct RecordingView: View {
         .padding(.bottom, 12)
         .task {
             // 5-second countdown: tick the elapsed clock, unlock the
-            // stop button after 1s (canStop), and stop & analyze
+            // stop button after 3s (canStop), and stop & analyze
             // automatically when the countdown runs out.
             while !Task.isCancelled {
                 elapsed = max(0, Date().timeIntervalSince(startedAt))
