@@ -67,6 +67,8 @@ enum LocalAnalyzer {
         var bitsPerSample = -1
         var dataStart = -1
         var dataLen = -1
+        var fmtStart = -1
+        var fmtSize = 0
 
         var pos = 12
         while pos + 8 <= bytes.count {
@@ -76,12 +78,23 @@ enum LocalAnalyzer {
                 channels = u16(pos + 10)
                 sampleRate = u32(pos + 12)
                 bitsPerSample = u16(pos + 22)
+                fmtStart = pos + 8
+                fmtSize = size
             } else if chunkId(pos) == "data" {
                 dataStart = pos + 8
                 dataLen = size
                 break
             }
             pos += 8 + size + (size % 2)
+        }
+
+        // AVAudioRecorder writes WAVE_FORMAT_EXTENSIBLE (0xFFFE) headers:
+        // the real format tag is the first uint16 of the SubFormat GUID,
+        // 24 bytes into the fmt chunk. (The old server parser rejected
+        // these with HTTP 415 — a real-device recording is not a plain
+        // textbook WAV.)
+        if audioFormat == 0xFFFE, fmtStart >= 0, fmtSize >= 40 {
+            audioFormat = u16(fmtStart + 24)
         }
 
         guard audioFormat == 1, bitsPerSample == 16,
