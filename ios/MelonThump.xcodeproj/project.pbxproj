@@ -5,26 +5,29 @@
 	};
 	objectVersion = 56;
 	objects = {
+
 /* Begin PBXBuildFile section */
-		94130E9D7104EB3084098C6C /* MelonThumpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1267D2A9CEDB9F16081F491 /* MelonThumpApp.swift */; };
-		E1E2302D178B7CB8523A468D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1649041C5383C7632D4FF3CA /* Models.swift */; };
-		2783732EB54EB47109332D8D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE6E46B048B79FF978A9B54 /* APIClient.swift */; };
-		083B7937E567D384E2EFB70C /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3629116A12258F16CB26325E /* AudioRecorder.swift */; };
-		5EE21F928B21E44075A47AF4 /* TapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9077BEDCA037F80987B9F4 /* TapView.swift */; };
+		165880FFD76974C2053F21DF /* MelonThumpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */; };
+		2E421CDB6A52FD5565548A9C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC5D729A34425268DB38B91 /* Models.swift */; };
+		4E7356890EE1B32CB2F8ABF3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5D54A61DDCC862BDB9951073 /* Assets.xcassets */; };
+		64663CE240C602EFF6C997AE /* TapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626E54FE85BB1B0327F46F94 /* TapView.swift */; };
+		8853339FA7DBB2137361FE66 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B418DFA2F9336186E772101F /* AudioRecorder.swift */; };
+		CB97A70F0F385EE701AD74CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B83D4865FD0ACC461F77CD92 /* APIClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1267D2A9CEDB9F16081F491 /* MelonThumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonThumpApp.swift; sourceTree = "<group>"; };
-		1649041C5383C7632D4FF3CA /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		1EE6E46B048B79FF978A9B54 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		3629116A12258F16CB26325E /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
-		9A9077BEDCA037F80987B9F4 /* TapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapView.swift; sourceTree = "<group>"; };
-		160D6C68E63C8CBB4308E791 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		CCF8E1D5283EAD3E97B95DAF /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonThumpApp.swift; sourceTree = "<group>"; };
+		5D54A61DDCC862BDB9951073 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5DC5D729A34425268DB38B91 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		626E54FE85BB1B0327F46F94 /* TapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapView.swift; sourceTree = "<group>"; };
+		658704F015387A0D3FB86881 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B418DFA2F9336186E772101F /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		B83D4865FD0ACC461F77CD92 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		D8620F32F2EB853B0DE3C574 /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		2DBE4A205C9EA0AA00B9E73C /* Frameworks */ = {
+		561AB776C01ABDA8652185CC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -34,31 +37,32 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		73F630D8B9EBE05A377FC1BE = {
+		020BCA3B1A548471D1889780 = {
 			isa = PBXGroup;
 			children = (
-				4DA9CB18AD9A10A2E8C6EBE9 /* MelonThump */,
-				63A7C1D250F13F6121E1BBCF /* Products */,
+				F719AC56FD4A8F8E4EFCCB9A /* MelonThump */,
+				D05FF8C9DEDA4909A32BBBBD /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		63A7C1D250F13F6121E1BBCF /* Products */ = {
+		D05FF8C9DEDA4909A32BBBBD /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CCF8E1D5283EAD3E97B95DAF /* MelonThump.app */,
+				D8620F32F2EB853B0DE3C574 /* MelonThump.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		4DA9CB18AD9A10A2E8C6EBE9 /* MelonThump */ = {
+		F719AC56FD4A8F8E4EFCCB9A /* MelonThump */ = {
 			isa = PBXGroup;
 			children = (
-				A1267D2A9CEDB9F16081F491 /* MelonThumpApp.swift */,
-				1649041C5383C7632D4FF3CA /* Models.swift */,
-				1EE6E46B048B79FF978A9B54 /* APIClient.swift */,
-				3629116A12258F16CB26325E /* AudioRecorder.swift */,
-				9A9077BEDCA037F80987B9F4 /* TapView.swift */,
-				160D6C68E63C8CBB4308E791 /* Info.plist */,
+				40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */,
+				5DC5D729A34425268DB38B91 /* Models.swift */,
+				B83D4865FD0ACC461F77CD92 /* APIClient.swift */,
+				B418DFA2F9336186E772101F /* AudioRecorder.swift */,
+				626E54FE85BB1B0327F46F94 /* TapView.swift */,
+				5D54A61DDCC862BDB9951073 /* Assets.xcassets */,
+				658704F015387A0D3FB86881 /* Info.plist */,
 			);
 			path = MelonThump;
 			sourceTree = "<group>";
@@ -66,13 +70,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		218642EB03A9FCD57A47A973 /* MelonThump */ = {
+		FE08EB23385151FC9BB1FFAD /* MelonThump */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7DC6C9D45C083D9A85BB1538 /* Build configuration list for PBXNativeTarget "MelonThump" */;
+			buildConfigurationList = B9B20D2C0DC3F1F0B85BD7DB /* Build configuration list for PBXNativeTarget "MelonThump" */;
 			buildPhases = (
-				5ACC7627580EE1FAD8083980 /* Sources */,
-				2DBE4A205C9EA0AA00B9E73C /* Frameworks */,
-				14463C6C74D5E4DF5368010F /* Resources */,
+				254C7D41E2B33915173DD287 /* Sources */,
+				561AB776C01ABDA8652185CC /* Frameworks */,
+				332B85617785FACA60DE074A /* Resources */,
 			);
 			buildRules = (
 			);
@@ -82,20 +86,20 @@
 			packageProductDependencies = (
 			);
 			productName = MelonThump;
-			productReference = CCF8E1D5283EAD3E97B95DAF /* MelonThump.app */;
+			productReference = D8620F32F2EB853B0DE3C574 /* MelonThump.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		55B71700B3917003D1DB44D9 /* Project object */ = {
+		FB7FBECE26EB97930E147EFD /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 			};
-			buildConfigurationList = 646DC77D071F3B7123490307 /* Build configuration list for PBXProject "MelonThump" */;
+			buildConfigurationList = 981F242D150C604640BE5A1C /* Build configuration list for PBXProject "MelonThump" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -103,61 +107,69 @@
 				en,
 				Base,
 			);
-			mainGroup = 73F630D8B9EBE05A377FC1BE;
-			productRefGroup = 63A7C1D250F13F6121E1BBCF /* Products */;
+			mainGroup = 020BCA3B1A548471D1889780;
+			productRefGroup = D05FF8C9DEDA4909A32BBBBD /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				218642EB03A9FCD57A47A973 /* MelonThump */,
+				FE08EB23385151FC9BB1FFAD /* MelonThump */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		14463C6C74D5E4DF5368010F /* Resources */ = {
+		332B85617785FACA60DE074A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4E7356890EE1B32CB2F8ABF3 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		5ACC7627580EE1FAD8083980 /* Sources */ = {
+		254C7D41E2B33915173DD287 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				94130E9D7104EB3084098C6C /* MelonThumpApp.swift in Sources */,
-				E1E2302D178B7CB8523A468D /* Models.swift in Sources */,
-				2783732EB54EB47109332D8D /* APIClient.swift in Sources */,
-				083B7937E567D384E2EFB70C /* AudioRecorder.swift in Sources */,
-				5EE21F928B21E44075A47AF4 /* TapView.swift in Sources */,
+				165880FFD76974C2053F21DF /* MelonThumpApp.swift in Sources */,
+				2E421CDB6A52FD5565548A9C /* Models.swift in Sources */,
+				CB97A70F0F385EE701AD74CA /* APIClient.swift in Sources */,
+				8853339FA7DBB2137361FE66 /* AudioRecorder.swift in Sources */,
+				64663CE240C602EFF6C997AE /* TapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		660B3D188FDFD5C5309F8243 /* Debug */ = {
+		1AA5C887076CA57666AA5638 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_TESTABILITY = YES;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
-				ONLY_ACTIVE_ARCH = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TM68JW5KDR;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = MelonThump/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		9B7FD21481E3621393ECB502 /* Release */ = {
+		390E278C441285121787DCC5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -172,38 +184,21 @@
 			};
 			name = Release;
 		};
-		9B206CB60B650C1C38DD1FCA /* Debug */ = {
+		565E62BF67D137DE1A962746 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-			ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = TM68JW5KDR;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = MelonThump/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		7E4872843EBFDA3FAB2815BD /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-			ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = MelonThump/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -214,29 +209,49 @@
 			};
 			name = Release;
 		};
+		67908A6485C3A73129978EB2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		646DC77D071F3B7123490307 /* Build configuration list for PBXProject "MelonThump" */ = {
+		981F242D150C604640BE5A1C /* Build configuration list for PBXProject "MelonThump" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				660B3D188FDFD5C5309F8243 /* Debug */,
-				9B7FD21481E3621393ECB502 /* Release */,
+				67908A6485C3A73129978EB2 /* Debug */,
+				390E278C441285121787DCC5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7DC6C9D45C083D9A85BB1538 /* Build configuration list for PBXNativeTarget "MelonThump" */ = {
-				isa = XCConfigurationList;
-				buildConfigurations = (
-				9B206CB60B650C1C38DD1FCA /* Debug */,
-				7E4872843EBFDA3FAB2815BD /* Release */,
+		B9B20D2C0DC3F1F0B85BD7DB /* Build configuration list for PBXNativeTarget "MelonThump" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1AA5C887076CA57666AA5638 /* Debug */,
+				565E62BF67D137DE1A962746 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
-	rootObject = 55B71700B3917003D1DB44D9 /* Project object */;
+	rootObject = FB7FBECE26EB97930E147EFD /* Project object */;
 }

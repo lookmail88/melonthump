@@ -21,6 +21,7 @@ SWIFT_FILES = [
     "TapView.swift",
 ]
 PLIST_FILE = "Info.plist"
+ASSETS_FILE = "Assets.xcassets"
 
 
 def uid() -> str:
@@ -33,6 +34,8 @@ def main() -> None:
 
     ids = {name: uid() for name in SWIFT_FILES}
     plist_id = uid()
+    assets_id = uid()
+    assets_build_id = uid()
     app_ref = uid()
     build_ids = {name: uid() for name in SWIFT_FILES}
     main_group, products_group, app_group = uid(), uid(), uid()
@@ -61,7 +64,7 @@ def main() -> None:
     )
 
     def target_settings(name: str) -> str:
-        return f"""\t\t\tASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+        return f"""\t\t\tASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;\n\t\t\tASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 \t\t\t\tCODE_SIGN_STYLE = Automatic;
 \t\t\t\tCURRENT_PROJECT_VERSION = 1;
 \t\t\t\tDEVELOPMENT_TEAM = "";
@@ -86,11 +89,13 @@ def main() -> None:
 \tobjects = {{
 /* Begin PBXBuildFile section */
 {build_files}
+\t\t{assets_build_id} /* {ASSETS_FILE} in Resources */ = {{isa = PBXBuildFile; fileRef = {assets_id} /* {ASSETS_FILE} */; }};
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 {file_refs}
 \t\t{plist_id} /* {PLIST_FILE} */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = {PLIST_FILE}; sourceTree = "<group>"; }};
+\t\t{assets_id} /* {ASSETS_FILE} */ = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = {ASSETS_FILE}; sourceTree = "<group>"; }};
 \t\t{app_ref} /* {APP_NAME}.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = {APP_NAME}.app; sourceTree = BUILT_PRODUCTS_DIR; }};
 /* End PBXFileReference section */
 
@@ -125,6 +130,7 @@ def main() -> None:
 \t\t\tisa = PBXGroup;
 \t\t\tchildren = (
 {group_children}
+\t\t\t\t{assets_id} /* {ASSETS_FILE} */,
 \t\t\t\t{plist_id} /* {PLIST_FILE} */,
 \t\t\t);
 \t\t\tpath = {GROUP_PATH};
@@ -185,6 +191,7 @@ def main() -> None:
 \t\t\tisa = PBXResourcesBuildPhase;
 \t\t\tbuildActionMask = 2147483647;
 \t\t\tfiles = (
+\t\t\t\t{assets_build_id} /* {ASSETS_FILE} in Resources */,
 \t\t\t);
 \t\t\trunOnlyForDeploymentPostprocessing = 0;
 \t\t}};
