@@ -11,6 +11,13 @@ import Foundation
 /// header parser kept rejecting real-device recordings.
 /// The server no longer analyzes audio; it only serves the client
 /// version policy.
+///
+/// Denoising (layered on top of the v1 port): a single-pole high-pass
+/// removes hum/rumble, the room tone recorded right before the thump is
+/// spectrally subtracted from the thump's spectrum, the peak/centroid
+/// search is limited to the 60–600 Hz thump band, and a recording whose
+/// thump sits less than 6 dB above the room noise returns UNKNOWN
+/// instead of a guess.
 enum LocalAnalyzer {
 
     enum AnalyzerError: Error, LocalizedError {
@@ -28,14 +35,18 @@ enum LocalAnalyzer {
     static func analyze(audioURL: URL) throws -> TapResult {
         let (samples, sampleRate) = try loadSamples(url: audioURL)
         let features = try extractFeatures(samples: samples, sampleRate: sampleRate)
-        let verdict = classify(dominantHz: features.dominantHz)
+        // SNR gate: a thump barely above the room noise is not measurable.
+        let verdict: (verdict: String, confidence: Double) =
+            features.snrDb < minSnrDb
+                ? ("UNKNOWN", 0.30)
+                : classify(dominantHz: features.dominantHz)
         return TapResult(
             dominantFrequencyHz: round2(features.dominantHz),
             spectralCentroidHz: round2(features.centroidHz),
             decayTimeMs: round2(features.decayMs),
             verdict: verdict.verdict,
             confidence: round2(verdict.confidence),
-            modelVersion: "heuristic-v1")
+            modelVersion: "heuristic-v1.1")
     }
 
     // MARK: - Recording decoding (AVAudioFile; channels mixed to mono)
@@ -76,17 +87,44 @@ enum LocalAnalyzer {
 
     // MARK: - Feature extraction
 
+    /// Thump-to-room-noise ratio below which a recording is not trusted.
+    private static let minSnrDb = 6.0
+
     private struct Features {
         let dominantHz: Double
         let centroidHz: Double
         let decayMs: Double
+        /// Peak-thump RMS over pre-thump room-noise RMS, in dB.
+        let snrDb: Double
     }
 
     private static func extractFeatures(samples: [Double], sampleRate: Int) throws -> Features {
-        let minFreqHz = 50.0
-        let maxFreqHz = 4000.0
+        // Thump band: below 60 Hz is rumble and hum, above 600 Hz is
+        // knocks, voices and handling noise — neither carries the thump's
+        // fundamental, so the search never leaves this band.
+        let minFreqHz = 60.0
+        let maxFreqHz = 600.0
         let n = min(samples.count, 2 * sampleRate)
         guard n >= 256 else { throw AnalyzerError.tooShort }
+        let raw = Array(samples[0..<n])
+
+        // Stage 1 — locate the thump and profile the room noise before it
+        // (20 ms RMS windows, the same envelope the decay metric uses).
+        let envWindow = max(16, sampleRate / 50)
+        let (peakWindow, peakRms, noiseRms) = envelopeProfile(samples: raw, window: envWindow)
+        let noiseEnd = max(0, (peakWindow - 1) * envWindow)
+        let snrDb: Double
+        if peakRms < 1e-4 {
+            snrDb = 0  // silence: nothing measurable, the SNR gate will say so
+        } else if noiseRms > 0 {
+            snrDb = min(60, 20 * log10(peakRms / noiseRms))
+        } else {
+            snrDb = 60  // thump starts the recording; no noise to measure against
+        }
+
+        // Stage 2 — high-pass: mains hum, HVAC rumble and handling thumps
+        // live under the band and would otherwise swamp the FFT.
+        let filtered = highPassed(raw, sampleRate: sampleRate)
 
         var size = 1
         while size < n { size <<= 1 }
@@ -94,10 +132,29 @@ enum LocalAnalyzer {
         var windowed = [Double](repeating: 0, count: size)
         for i in 0..<n {
             let hann = 0.5 * (1 - cos(2 * Double.pi * Double(i) / Double(n - 1)))
-            windowed[i] = samples[i] * hann
+            windowed[i] = filtered[i] * hann
         }
 
-        let spectrum = fftMagnitudes(windowed)
+        var spectrum = fftMagnitudes(windowed)
+
+        // Stage 3 — spectral subtraction: estimate the room tone's spectrum
+        // from the stretch right before the thump and subtract it bin by
+        // bin, keeping a 15% floor so the thump's own partials survive.
+        if noiseEnd >= 512 {
+            let m = min(noiseEnd, size)
+            var noiseWindowed = [Double](repeating: 0, count: size)
+            for i in 0..<m {
+                let hann = 0.5 * (1 - cos(2 * Double.pi * Double(i) / Double(m - 1)))
+                noiseWindowed[i] = filtered[noiseEnd - m + i] * hann
+            }
+            let noiseSpectrum = fftMagnitudes(noiseWindowed)
+            // A shorter Hann window yields proportionally smaller magnitudes.
+            let scale = Double(n) / Double(m)
+            for k in 0..<spectrum.count {
+                spectrum[k] = max(spectrum[k] - noiseSpectrum[k] * scale, 0.15 * spectrum[k])
+            }
+        }
+
         let bins = size / 2
         let binHz = Double(sampleRate) / Double(size)
 
@@ -120,7 +177,56 @@ enum LocalAnalyzer {
         return Features(
             dominantHz: Double(maxBin) * binHz,
             centroidHz: magSum > 0 ? weightedSum / magSum : 0,
-            decayMs: decayTimeMs(samples: samples, sampleRate: sampleRate))
+            decayMs: decayTimeMs(samples: filtered, sampleRate: sampleRate),
+            snrDb: snrDb)
+    }
+
+    /// Peak 20 ms-window RMS, its window index, and the RMS of everything
+    /// recorded before the window leading into the peak (the room tone).
+    private static func envelopeProfile(samples: [Double], window: Int)
+        -> (peakWindow: Int, peakRms: Double, noiseRms: Double)
+    {
+        let windows = samples.count / window
+        guard windows >= 1 else { return (0, 0, 0) }
+        var env = [Double](repeating: 0, count: windows)
+        var peakWindow = 0
+        var peakRms = 0.0
+        for w in 0..<windows {
+            var sum = 0.0
+            for i in 0..<window {
+                let s = samples[w * window + i]
+                sum += s * s
+            }
+            env[w] = (sum / Double(window)).squareRoot()
+            if env[w] > peakRms {
+                peakRms = env[w]
+                peakWindow = w
+            }
+        }
+        guard peakWindow > 0 else { return (peakWindow, peakRms, 0) }
+        var noiseSum = 0.0
+        for w in 0..<peakWindow {
+            noiseSum += env[w] * env[w]
+        }
+        return (peakWindow, peakRms, (noiseSum / Double(peakWindow)).squareRoot())
+    }
+
+    /// Single-pole high-pass, fc ≈ 55 Hz: kills hum and rumble while
+    /// leaving the 60–600 Hz thump band essentially untouched.
+    private static func highPassed(_ samples: [Double], sampleRate: Int) -> [Double] {
+        let rc = 1.0 / (2 * Double.pi * 55.0)
+        let dt = 1.0 / Double(sampleRate)
+        let alpha = rc / (rc + dt)
+        var out = [Double](repeating: 0, count: samples.count)
+        var prevIn = 0.0
+        var prevOut = 0.0
+        for i in samples.indices {
+            let y = alpha * (prevOut + samples[i] - prevIn)
+            out[i] = y
+            prevIn = samples[i]
+            prevOut = y
+        }
+        return out
     }
 
     /// Time from the envelope peak until it first drops to 1/e of the peak.
