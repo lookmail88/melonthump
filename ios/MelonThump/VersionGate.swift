@@ -76,10 +76,14 @@ struct SplashView: View {
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundColor(MelonTheme.ink)
                     .padding(.top, 22)
-                Text("powered by xgao&sgao")
+                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-")")
                     .font(.footnote)
                     .foregroundColor(MelonTheme.inkSoft)
                     .padding(.top, 6)
+                Text("powered by xgao&sgao")
+                    .font(.footnote)
+                    .foregroundColor(MelonTheme.inkSoft)
+                    .padding(.top, 2)
             }
         }
     }
