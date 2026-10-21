@@ -59,11 +59,13 @@ final class AudioRecorder: NSObject, ObservableObject {
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
             try? file.write(from: buffer)
             let level = Self.rmsLevel(of: buffer)
-            DispatchQueue.main.async {
-                guard let self else { return }
-                MainActor.assumeIsolated {
-                    self.audioLevel = level
-                }
+            // Hop to the main actor with a Task. (An earlier version used
+            // DispatchQueue.main.async + MainActor.assumeIsolated here;
+            // on device that tripped libdispatch's queue assertion —
+            // dispatch_assert_queue_fail, EXC_BREAKPOINT — from the
+            // audio render thread.)
+            Task { @MainActor [weak self] in
+                self?.audioLevel = level
             }
         }
 
