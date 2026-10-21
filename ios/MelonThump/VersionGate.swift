@@ -1,28 +1,49 @@
 import SwiftUI
 
-/// Launch-time version gate. On appear it asks the selected server for
-/// the client version policy; if this build is not the latest version,
-/// a blocking update screen replaces the app and sends the user to the
-/// App Store. If the policy cannot be fetched (offline, server down),
-/// the app proceeds — fail-open, per the design.
+/// Launch-time version gate. The 3-second splash doubles as the
+/// server-interaction window: on appear it asks the selected server
+/// for the client version policy (the request itself is capped at
+/// 3s — see APIClient), and the splash lifts only when BOTH the
+/// 3 seconds have elapsed AND the check has concluded. So the user
+/// never sees the home screen flash before an update prompt: if this
+/// build is not the latest version, the blocking update screen is
+/// what appears when the splash ends. If the policy cannot be
+/// fetched (offline, server down, timeout), the app proceeds —
+/// fail-open, per the design.
 struct VersionGateView: View {
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var requiredPolicy: ClientVersion?
+    @State private var checkFinished = false
+    @State private var splashElapsed = false
+
+    private var stillLaunching: Bool { !(checkFinished && splashElapsed) }
 
     var body: some View {
-        Group {
+        ZStack {
             if let policy = requiredPolicy {
                 UpdateRequiredView(policy: policy)
             } else {
                 TapView()
             }
+            if stillLaunching {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
         }
         .task {
             await checkVersion()
         }
+        .task {
+            try? await Task.sleep(for: .seconds(3))
+            withAnimation(.easeOut(duration: 0.35)) {
+                splashElapsed = true
+            }
+        }
     }
 
     private func checkVersion() async {
+        defer { checkFinished = true }
         let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         let client = APIClient(environment: serverEnvironment)
         do {
@@ -32,6 +53,23 @@ struct VersionGateView: View {
             }
         } catch {
             // Fail-open: no policy, no block.
+        }
+    }
+}
+
+/// Full-screen launch image: the app icon artwork (SplashIcon,
+/// copied from the AppIcon set) centered and enlarged on the
+/// theme background. Shown while the version gate resolves.
+struct SplashView: View {
+    var body: some View {
+        ZStack {
+            MelonTheme.background.ignoresSafeArea()
+            Image("SplashIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 190, height: 190)
+                .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
+                .shadow(color: MelonTheme.ink.opacity(0.18), radius: 16, y: 8)
         }
     }
 }
