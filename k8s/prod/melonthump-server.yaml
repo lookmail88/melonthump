@@ -1,1 +1,62 @@
-YXBpVmVyc2lvbjogdjEKa2luZDogTmFtZXNwYWNlCm1ldGFkYXRhOgogIG5hbWU6IG1lbG9udGh1bXAtcHJvZAotLS0KYXBpVmVyc2lvbjogYXBwcy92MQpraW5kOiBEZXBsb3ltZW50Cm1ldGFkYXRhOgogIG5hbWU6IG1lbG9udGh1bXAtc2VydmVyCiAgbmFtZXNwYWNlOiBtZWxvbnRodW1wLXByb2QKICBsYWJlbHM6CiAgICBhcHA6IG1lbG9udGh1bXAtc2VydmVyCnNwZWM6CiAgcmVwbGljYXM6IDEKICBzZWxlY3RvcjoKICAgIG1hdGNoTGFiZWxzOgogICAgICBhcHA6IG1lbG9udGh1bXAtc2VydmVyCiAgdGVtcGxhdGU6CiAgICBtZXRhZGF0YToKICAgICAgbGFiZWxzOgogICAgICAgIGFwcDogbWVsb250aHVtcC1zZXJ2ZXIKICAgIHNwZWM6CiAgICAgIGNvbnRhaW5lcnM6CiAgICAgICAgLSBuYW1lOiBzZXJ2ZXIKICAgICAgICAgIGltYWdlOiBnaGNyLmlvL2xvb2ttYWlsODgvbWVsb250aHVtcC1zZXJ2ZXI6bGF0ZXN0CiAgICAgICAgICBpbWFnZVB1bGxQb2xpY3k6IEFsd2F5cwogICAgICAgICAgcG9ydHM6CiAgICAgICAgICAgIC0gY29udGFpbmVyUG9ydDogODA4MAogICAgICAgICAgcmVhZGluZXNzUHJvYmU6CiAgICAgICAgICAgIGh0dHBHZXQ6CiAgICAgICAgICAgICAgcGF0aDogL2FwaS9oZWFsdGgKICAgICAgICAgICAgICBwb3J0OiA4MDgwCiAgICAgICAgICAgIGluaXRpYWxEZWxheVNlY29uZHM6IDEwCiAgICAgICAgICAgIHBlcmlvZFNlY29uZHM6IDUKICAgICAgICAgIGxpdmVuZXNzUHJvYmU6CiAgICAgICAgICAgIGh0dHBHZXQ6CiAgICAgICAgICAgICAgcGF0aDogL2FwaS9oZWFsdGgKICAgICAgICAgICAgICBwb3J0OiA4MDgwCiAgICAgICAgICAgIGluaXRpYWxEZWxheVNlY29uZHM6IDMwCiAgICAgICAgICAgIHBlcmlvZFNlY29uZHM6IDIwCiAgICAgICAgICByZXNvdXJjZXM6CiAgICAgICAgICAgIHJlcXVlc3RzOgogICAgICAgICAgICAgIGNwdTogMTAwbQogICAgICAgICAgICAgIG1lbW9yeTogMjU2TWkKICAgICAgICAgICAgbGltaXRzOgogICAgICAgICAgICAgIGNwdTogIjEiCiAgICAgICAgICAgICAgbWVtb3J5OiA1MTJNaQotLS0KYXBpVmVyc2lvbjogdjEKa2luZDogU2VydmljZQptZXRhZGF0YToKICBuYW1lOiBtZWxvbnRodW1wLXNlcnZlcgogIG5hbWVzcGFjZTogbWVsb250aHVtcC1wcm9kCiAgbGFiZWxzOgogICAgYXBwOiBtZWxvbnRodW1wLXNlcnZlcgpzcGVjOgogIHNlbGVjdG9yOgogICAgYXBwOiBtZWxvbnRodW1wLXNlcnZlcgogIHBvcnRzOgogICAgLSBuYW1lOiBodHRwCiAgICAgIHBvcnQ6IDgwODAKICAgICAgdGFyZ2V0UG9ydDogODA4MAo=
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: melonthump-prod
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: melonthump-server
+  namespace: melonthump-prod
+  labels:
+    app: melonthump-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: melonthump-server
+  template:
+    metadata:
+      labels:
+        app: melonthump-server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/lookmail88/melonthump-server:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: melonthump-server
+  namespace: melonthump-prod
+  labels:
+    app: melonthump-server
+spec:
+  selector:
+    app: melonthump-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
