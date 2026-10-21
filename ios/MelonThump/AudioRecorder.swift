@@ -7,8 +7,12 @@ import Foundation
 final class AudioRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var lastRecordingURL: URL?
+    /// Normalized live input level 0...1 while recording (drives the
+    /// real-time waveform on the recording screen).
+    @Published var audioLevel: Double = 0
 
     private var recorder: AVAudioRecorder?
+    private var meterTimer: Timer?
 
     func requestPermission() async -> Bool {
         await withCheckedContinuation { continuation in
@@ -30,15 +34,32 @@ final class AudioRecorder: NSObject, ObservableObject {
             AVLinearPCMIsFloatKey: false,
         ]
         let recorder = try AVAudioRecorder(url: url, settings: settings)
+        recorder.isMeteringEnabled = true
         recorder.record()
         self.recorder = recorder
         self.lastRecordingURL = url
         self.isRecording = true
+        meterTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.pollLevel()
+            }
+        }
     }
 
     func stopRecording() {
+        meterTimer?.invalidate()
+        meterTimer = nil
         recorder?.stop()
         recorder = nil
         isRecording = false
+        audioLevel = 0
+    }
+
+    private func pollLevel() {
+        guard let recorder else { return }
+        recorder.updateMeters()
+        let db = Double(recorder.averagePower(forChannel: 0))
+        // averagePower is in dB, roughly -50 (quiet room) to 0 (loudest).
+        audioLevel = min(1, max(0, (db + 50) / 45))
     }
 }

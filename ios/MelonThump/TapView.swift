@@ -39,7 +39,7 @@ struct TapView: View {
         if isAnalyzing {
             AnalyzingView()
         } else if recorder.isRecording {
-            RecordingView(startedAt: recordingStartedAt ?? Date(), onStop: toggleRecording)
+            RecordingView(recorder: recorder, startedAt: recordingStartedAt ?? Date(), onStop: toggleRecording)
         } else if let result {
             ResultView(result: result, errorMessage: errorMessage) {
                 self.result = nil
@@ -186,9 +186,19 @@ struct TapView: View {
 // MARK: - Recording
 
 struct RecordingView: View {
+    @ObservedObject var recorder: AudioRecorder
     let startedAt: Date
     let onStop: () -> Void
     @State private var pulsing = false
+    /// Rolling history of live mic levels, oldest → newest (real waveform).
+    @State private var levels: [Double] = []
+
+    private let barCount = 36
+
+    private func barHeight(at index: Int) -> CGFloat {
+        let level = index < levels.count ? levels[index] : 0
+        return 6 + CGFloat(level) * 56
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -221,18 +231,21 @@ struct RecordingView: View {
                 }
             }
 
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-                let t = context.date.timeIntervalSinceReferenceDate
-                HStack(alignment: .center, spacing: 5) {
-                    ForEach(0..<11, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(MelonTheme.deepGreen)
-                            .frame(width: 7, height: 30 + 22 * (0.5 + 0.5 * sin(t * 6 + Double(i) * 0.9)))
-                    }
+            HStack(alignment: .center, spacing: 3) {
+                ForEach(0..<barCount, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(MelonTheme.deepGreen)
+                        .frame(width: 6, height: barHeight(at: i))
                 }
-                .frame(height: 64)
             }
+            .frame(height: 64)
             .padding(.top, 18)
+            .onChange(of: recorder.audioLevel) { _, newLevel in
+                levels.append(newLevel)
+                if levels.count > barCount {
+                    levels.removeFirst(levels.count - barCount)
+                }
+            }
 
             TimelineView(.periodic(from: startedAt, by: 0.1)) { context in
                 let elapsed = max(0, context.date.timeIntervalSince(startedAt))
