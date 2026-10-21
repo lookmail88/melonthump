@@ -24,6 +24,17 @@ enum ServerEnvironment: String, CaseIterable, Identifiable {
     }
 }
 
+/// Response from GET /api/v1/version/getclientversion — the only API the
+/// app still calls; audio analysis runs fully on-device.
+struct ClientVersion: Decodable {
+    let platform: String
+    let latestVersion: String
+    let minSupportedVersion: String
+    let updateAvailable: Bool
+    let forceUpdate: Bool
+    let updateUrl: String
+}
+
 /// Response from POST /api/v1/tap/analyze
 struct TapResult: Decodable {
     let dominantFrequencyHz: Double

@@ -169,14 +169,13 @@ struct TapView: View {
             errorMessage = "No recording found."
             return
         }
-        let baseURL = serverEnvironment.baseURL
         isAnalyzing = true
         errorMessage = nil
         Task {
             defer { isAnalyzing = false }
             do {
-                let client = APIClient(baseURL: baseURL)
-                result = try await client.analyzeTap(audioURL: audioURL)
+                // Analysis runs fully on-device; nothing is uploaded.
+                result = try LocalAnalyzer.analyze(audioURL: audioURL)
             } catch {
                 errorMessage = error.localizedDescription
             }

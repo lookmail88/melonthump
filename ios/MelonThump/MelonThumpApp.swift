@@ -4,7 +4,7 @@ import SwiftUI
 struct MelonThumpApp: App {
     var body: some Scene {
         WindowGroup {
-            TapView()
+            VersionGateView()
         }
     }
 }
