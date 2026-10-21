@@ -41,9 +41,13 @@ final class AudioRecorder: NSObject, ObservableObject, @unchecked Sendable {
     /// Activates the audio session on a background thread, once, before
     /// any recording.
     func prepareSession() async {
+        // .measurement mode: disables the system's voice processing
+        // and automatic gain control, which otherwise pump the noise
+        // floor up during quiet stretches and destabilize the
+        // analyzer's level-based thump gates.
         await Task.detached(priority: .userInitiated) {
             let session = AVAudioSession.sharedInstance()
-            try? session.setCategory(.playAndRecord, mode: .default)
+            try? session.setCategory(.playAndRecord, mode: .measurement)
             try? session.setActive(true)
         }.value
     }
