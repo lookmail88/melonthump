@@ -441,12 +441,15 @@ struct ResultView: View {
 
 /// Gradient scale from unripe (yellow) through ripe (green) to overripe
 /// (brown), with a marker at the measured dominant frequency.
+/// The axis runs high → low frequency, matching the labels and the
+/// physics: a high "ping" is unripe (left), a low thud is overripe
+/// (right). Green spans the ripe band, 160–280 Hz.
 struct ZoneBar: View {
     let hz: Double
     let accent: Color
 
     private var position: Double {
-        min(0.98, max(0.02, (hz - 100) / (350 - 100)))
+        min(0.98, max(0.02, (350 - hz) / (350 - 100)))
     }
 
     var body: some View {
@@ -462,10 +465,12 @@ struct ZoneBar: View {
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 5)
                         .fill(LinearGradient(
-                            colors: [Color(red: 0.91, green: 0.83, blue: 0.30),
-                                     Color(red: 0.56, green: 0.80, blue: 0.42),
-                                     Color(red: 0.56, green: 0.80, blue: 0.42),
-                                     Color(red: 0.75, green: 0.52, blue: 0.32)],
+                            stops: [
+                                .init(color: Color(red: 0.91, green: 0.83, blue: 0.30), location: 0),
+                                .init(color: Color(red: 0.56, green: 0.80, blue: 0.42), location: 0.28),
+                                .init(color: Color(red: 0.56, green: 0.80, blue: 0.42), location: 0.76),
+                                .init(color: Color(red: 0.75, green: 0.52, blue: 0.32), location: 1),
+                            ],
                             startPoint: .leading, endPoint: .trailing))
                         .frame(height: 10)
                     Circle()
