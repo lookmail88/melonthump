@@ -12,10 +12,22 @@ import Foundation
 ///
 /// Live levels for the recording screen's waveform are computed from
 /// the tapped buffers (RMS), so no meter polling is needed either.
-/// @MainActor: all engine/file state is only touched on the main actor;
-/// the realtime tap block only writes the file and forwards levels.
-@MainActor
-final class AudioRecorder: NSObject, ObservableObject {
+///
+/// Deliberately NOT @MainActor: Swift 6 inserts isolation-entry
+/// checks into escaping closures formed inside @MainActor methods,
+/// and AVFoundation invokes those closures (the tap block, the
+/// record-permission handler) on its own queues, where the check
+/// always traps (swift_task_checkIsolated → dispatch_assert_queue_
+/// fail, EXC_BREAKPOINT). Keeping this class nonisolated removes the
+/// whole family; @Published writes happen on the main queue via
+/// explicit dispatch instead.
+///
+/// @unchecked Sendable: in practice all state is touched from the
+/// UI thread — the only background work is the tap's writes to its
+/// captured AVAudioFile and AVAudioSession activation — and the
+/// conformance lets SwiftUI call sites pass the recorder into tasks
+/// without region-isolation errors.
+final class AudioRecorder: NSObject, ObservableObject, @unchecked Sendable {
     @Published var isRecording = false
     @Published var lastRecordingURL: URL?
     /// Normalized live input level 0...1 while recording (drives the
@@ -24,6 +36,7 @@ final class AudioRecorder: NSObject, ObservableObject {
 
     private var engine: AVAudioEngine?
     private var outputFile: AVAudioFile?
+    private let levelBox = LevelBox()
 
     /// Activates the audio session on a background thread, once, before
     /// any recording.
@@ -56,11 +69,8 @@ final class AudioRecorder: NSObject, ObservableObject {
         let file = try AVAudioFile(forWriting: url, settings: format.settings)
         self.outputFile = file
 
-        Self.installTap(on: input, format: format, file: file) { [weak self] level in
-            Task { @MainActor in
-                self?.audioLevel = level
-            }
-        }
+        levelBox.target = self
+        Self.installTap(on: input, format: format, file: file, levelBox: levelBox)
 
         engine.prepare()
         try engine.start()
@@ -90,11 +100,11 @@ final class AudioRecorder: NSObject, ObservableObject {
         on input: AVAudioNode,
         format: AVAudioFormat,
         file: AVAudioFile,
-        onLevel: @escaping @Sendable (Double) -> Void
+        levelBox: LevelBox
     ) {
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             try? file.write(from: buffer)
-            onLevel(rmsLevel(of: buffer))
+            levelBox.update(rmsLevel(of: buffer))
         }
     }
 
@@ -112,5 +122,21 @@ final class AudioRecorder: NSObject, ObservableObject {
         guard rms > 0 else { return 0 }
         let db = 20 * log10(Double(rms))
         return min(1, max(0, (db + 50) / 45))
+    }
+}
+
+/// Thread-safe level forwarder between the audio tap and the UI.
+/// The tap block captures only this box (never the recorder itself):
+/// passing a self-capturing closure into the nonisolated tap setup is
+/// a Swift 6 region-isolation error, and an isolation-inheriting
+/// closure would trap on the audio queue. The box republishes each
+/// level on the main queue with plain GCD — no actor machinery.
+final class LevelBox: @unchecked Sendable {
+    weak var target: AudioRecorder?
+
+    func update(_ level: Double) {
+        DispatchQueue.main.async { [weak target] in
+            target?.audioLevel = level
+        }
     }
 }

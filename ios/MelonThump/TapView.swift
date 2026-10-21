@@ -111,7 +111,7 @@ struct TapView: View {
                 .shadow(color: MelonTheme.buttonGreen.opacity(0.35), radius: 10, y: 5)
             }
 
-            Text("Tap, thump, done — about 3 seconds")
+            Text("One good thump — it stops itself at 5 seconds")
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
@@ -195,6 +195,13 @@ struct RecordingView: View {
     @State private var pulsing = false
     /// Rolling history of live mic levels, oldest → newest (real waveform).
     @State private var levels: [Double] = []
+    /// Seconds since recording started, ticked by the countdown task.
+    @State private var elapsed: Double = 0
+
+    /// Recording is capped at 5 seconds, counted down on screen.
+    private var secondsLeft: Int { max(0, Int(ceil(5 - elapsed))) }
+    /// The user may stop manually once past the first second.
+    private var canStop: Bool { elapsed > 1 }
 
     private let barCount = 36
 
@@ -250,13 +257,15 @@ struct RecordingView: View {
                 }
             }
 
-            TimelineView(.periodic(from: startedAt, by: 0.1)) { context in
-                let elapsed = max(0, context.date.timeIntervalSince(startedAt))
-                Text(String(format: "%d:%02d", Int(elapsed) / 60, Int(elapsed) % 60))
-                    .font(.title3.weight(.bold))
+            VStack(spacing: 0) {
+                Text("\(secondsLeft)")
+                    .font(.system(size: 46, weight: .bold, design: .rounded))
                     .foregroundColor(MelonTheme.ink)
+                Text(secondsLeft == 1 ? "second left" : "seconds left")
+                    .font(.caption)
+                    .foregroundColor(MelonTheme.inkSoft)
             }
-            .padding(.top, 6)
+            .padding(.top, 10)
 
             Text("Thump the melon now —\none good knock is enough")
                 .font(.subheadline)
@@ -276,13 +285,28 @@ struct RecordingView: View {
                     .cornerRadius(999)
                     .shadow(color: MelonTheme.recordRed.opacity(0.35), radius: 10, y: 5)
             }
-            Text("Recording… keep the phone close")
+            .disabled(!canStop)
+            .opacity(canStop ? 1 : 0.55)
+            Text(canStop ? "Auto-stops when the countdown ends" : "You can stop after the first second")
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
         }
         .padding(.horizontal, 22)
         .padding(.bottom, 12)
+        .task {
+            // 5-second countdown: tick the elapsed clock, unlock the
+            // stop button after 1s (canStop), and stop & analyze
+            // automatically when the countdown runs out.
+            while !Task.isCancelled {
+                elapsed = max(0, Date().timeIntervalSince(startedAt))
+                if elapsed >= 5 {
+                    onStop()
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
     }
 }
 
