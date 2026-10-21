@@ -1,32 +1,33 @@
+import AVFoundation
 import Foundation
 
-/// On-device tap analysis — a faithful Swift port of the server's v1
-/// pipeline (WavReader + AudioFeatureExtractor + HeuristicRipenessModel):
-/// up to the first 2 s → Hann window → FFT → dominant frequency
-/// (50–4000 Hz band), spectral centroid, RMS-envelope decay → fixed
-/// thresholds (<160 overripe / 160–280 ripe / >280 unripe).
+/// On-device tap analysis — the feature extraction and classifier are a
+/// faithful Swift port of the server's v1 pipeline (AudioFeatureExtractor
+/// + HeuristicRipenessModel): up to the first 2 s → Hann window → FFT →
+/// dominant frequency (50–4000 Hz band), spectral centroid, RMS-envelope
+/// decay → fixed thresholds (<160 overripe / 160–280 ripe / >280 unripe).
+/// The recording itself is decoded with AVAudioFile, which natively
+/// handles every WAV variant AVAudioRecorder produces — a hand-rolled
+/// header parser kept rejecting real-device recordings.
 /// The server no longer analyzes audio; it only serves the client
 /// version policy.
 enum LocalAnalyzer {
 
     enum AnalyzerError: Error, LocalizedError {
-        case notWav
-        case unsupportedFormat
+        case unreadableRecording
         case tooShort
 
         var errorDescription: String? {
             switch self {
-            case .notWav: return "Recording is not a WAV file."
-            case .unsupportedFormat: return "Only 16-bit PCM WAV recordings are supported."
+            case .unreadableRecording: return "Could not read the recording."
             case .tooShort: return "Recording is too short — thump once more."
             }
         }
     }
 
     static func analyze(audioURL: URL) throws -> TapResult {
-        let data = try Data(contentsOf: audioURL)
-        let wav = try readWav(data)
-        let features = try extractFeatures(samples: wav.samples, sampleRate: wav.sampleRateHz)
+        let (samples, sampleRate) = try loadSamples(url: audioURL)
+        let features = try extractFeatures(samples: samples, sampleRate: sampleRate)
         let verdict = classify(dominantHz: features.dominantHz)
         return TapResult(
             dominantFrequencyHz: round2(features.dominantHz),
@@ -37,84 +38,40 @@ enum LocalAnalyzer {
             modelVersion: "heuristic-v1")
     }
 
-    // MARK: - WAV reading (16-bit PCM, mono or stereo mixed to mono)
+    // MARK: - Recording decoding (AVAudioFile; channels mixed to mono)
 
-    private struct WavData {
-        let samples: [Double]
-        let sampleRateHz: Int
-    }
-
-    private static func readWav(_ bytes: Data) throws -> WavData {
-        func u16(_ offset: Int) -> Int {
-            Int(bytes[offset]) | (Int(bytes[offset + 1]) << 8)
+    private static func loadSamples(url: URL) throws -> (samples: [Double], sampleRateHz: Int) {
+        let file: AVAudioFile
+        do {
+            file = try AVAudioFile(forReading: url)
+        } catch {
+            throw AnalyzerError.unreadableRecording
         }
-        func u32(_ offset: Int) -> Int {
-            Int(bytes[offset]) | (Int(bytes[offset + 1]) << 8)
-                | (Int(bytes[offset + 2]) << 16) | (Int(bytes[offset + 3]) << 24)
+        let format = file.processingFormat
+        let capacity = AVAudioFrameCount(file.length)
+        guard capacity > 0,
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else {
+            throw AnalyzerError.tooShort
         }
-        func chunkId(_ offset: Int) -> String {
-            String(bytes: bytes.subdata(in: offset..<(offset + 4)), encoding: .ascii) ?? ""
+        do {
+            try file.read(into: buffer)
+        } catch {
+            throw AnalyzerError.unreadableRecording
         }
-
-        guard bytes.count >= 44,
-              chunkId(0) == "RIFF", chunkId(8) == "WAVE" else {
-            throw AnalyzerError.notWav
+        guard let channelData = buffer.floatChannelData else {
+            throw AnalyzerError.unreadableRecording
         }
-
-        var audioFormat = -1
-        var channels = -1
-        var sampleRate = -1
-        var bitsPerSample = -1
-        var dataStart = -1
-        var dataLen = -1
-        var fmtStart = -1
-        var fmtSize = 0
-
-        var pos = 12
-        while pos + 8 <= bytes.count {
-            let size = u32(pos + 4)
-            if chunkId(pos) == "fmt " {
-                audioFormat = u16(pos + 8)
-                channels = u16(pos + 10)
-                sampleRate = u32(pos + 12)
-                bitsPerSample = u16(pos + 22)
-                fmtStart = pos + 8
-                fmtSize = size
-            } else if chunkId(pos) == "data" {
-                dataStart = pos + 8
-                dataLen = size
-                break
-            }
-            pos += 8 + size + (size % 2)
-        }
-
-        // AVAudioRecorder writes WAVE_FORMAT_EXTENSIBLE (0xFFFE) headers:
-        // the real format tag is the first uint16 of the SubFormat GUID,
-        // 24 bytes into the fmt chunk. (The old server parser rejected
-        // these with HTTP 415 — a real-device recording is not a plain
-        // textbook WAV.)
-        if audioFormat == 0xFFFE, fmtStart >= 0, fmtSize >= 40 {
-            audioFormat = u16(fmtStart + 24)
-        }
-
-        guard audioFormat == 1, bitsPerSample == 16,
-              channels >= 1, channels <= 2, dataStart >= 0, dataLen > 0 else {
-            throw AnalyzerError.unsupportedFormat
-        }
-
-        let frames = min(dataLen, bytes.count - dataStart) / (2 * channels)
+        let frames = Int(buffer.frameLength)
+        let channels = Int(format.channelCount)
         var samples = [Double](repeating: 0, count: frames)
-        var offset = dataStart
         for i in 0..<frames {
             var acc = 0.0
-            for _ in 0..<channels {
-                let raw = Int16(bitPattern: UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8))
-                acc += Double(raw) / 32768.0
-                offset += 2
+            for c in 0..<channels {
+                acc += Double(channelData[c][i])
             }
             samples[i] = acc / Double(channels)
         }
-        return WavData(samples: samples, sampleRateHz: sampleRate)
+        return (samples, Int(format.sampleRate))
     }
 
     // MARK: - Feature extraction
