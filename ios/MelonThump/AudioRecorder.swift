@@ -56,15 +56,8 @@ final class AudioRecorder: NSObject, ObservableObject {
         let file = try AVAudioFile(forWriting: url, settings: format.settings)
         self.outputFile = file
 
-        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
-            try? file.write(from: buffer)
-            let level = Self.rmsLevel(of: buffer)
-            // Hop to the main actor with a Task. (An earlier version used
-            // DispatchQueue.main.async + MainActor.assumeIsolated here;
-            // on device that tripped libdispatch's queue assertion —
-            // dispatch_assert_queue_fail, EXC_BREAKPOINT — from the
-            // audio render thread.)
-            Task { @MainActor [weak self] in
+        Self.installTap(on: input, format: format, file: file) { [weak self] level in
+            Task { @MainActor in
                 self?.audioLevel = level
             }
         }
@@ -83,6 +76,26 @@ final class AudioRecorder: NSObject, ObservableObject {
         outputFile = nil
         isRecording = false
         audioLevel = 0
+    }
+
+    /// Installs the recording tap. This MUST stay nonisolated and create
+    /// the tap block here: a block literal formed inside the @MainActor
+    /// startRecording() inherits MainActor isolation, so Swift inserts
+    /// a swift_task_checkIsolated assertion at the block's entry — and
+    /// AVFAudio invokes the block on its RealtimeMessenger queue, where
+    /// that assertion always fails (dispatch_assert_queue_fail,
+    /// EXC_BREAKPOINT on device). Formed in a nonisolated context and
+    /// capturing only nonisolated values, the block carries no check.
+    private nonisolated static func installTap(
+        on input: AVAudioNode,
+        format: AVAudioFormat,
+        file: AVAudioFile,
+        onLevel: @escaping @Sendable (Double) -> Void
+    ) {
+        input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
+            try? file.write(from: buffer)
+            onLevel(rmsLevel(of: buffer))
+        }
     }
 
     /// RMS of the first channel mapped to 0...1 (roughly -50 dB…0 dB).
