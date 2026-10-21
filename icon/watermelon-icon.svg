@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- MelonThump app icon: cartoon watermelon + slice, flat vector -->
+  <rect width="1024" height="1024" fill="#BEE0A7"/>
+
+  <!-- stem + leaf -->
+  <g transform="translate(-6,52)">
+    <path d="M512 168 C 500 118, 540 84, 596 78 C 566 108, 556 128, 560 162 C 544 176, 524 178, 512 168 Z" fill="#7A4E21"/>
+    <path d="M528 150 C 580 96, 664 92, 706 122 C 664 168, 580 178, 528 150 Z" fill="#3E7C2B"/>
+  </g>
+
+  <!-- melon body -->
+  <circle cx="482" cy="566" r="338" fill="#57A639"/>
+  <clipPath id="melonClip"><circle cx="482" cy="566" r="338"/></clipPath>
+  <g clip-path="url(#melonClip)" fill="#3E7C2B">
+    <path d="M196 200 C 150 420, 150 720, 196 950 L 268 950 C 226 720, 226 420, 268 200 Z"/>
+    <path d="M356 190 C 330 420, 330 730, 356 960 L 414 960 C 392 730, 392 420, 414 190 Z"/>
+    <path d="M620 190 C 646 420, 646 730, 620 960 L 562 960 C 584 730, 584 420, 562 190 Z"/>
+    <path d="M756 210 C 806 430, 806 710, 756 940 L 690 940 C 730 710, 730 430, 690 210 Z"/>
+  </g>
+  <!-- soft highlight -->
+  <ellipse cx="330" cy="392" rx="86" ry="130" fill="#FFFFFF" opacity="0.14" transform="rotate(-18 330 392)"/>
+
+  <!-- face -->
+  <ellipse cx="382" cy="548" rx="27" ry="40" fill="#26331C"/>
+  <ellipse cx="582" cy="548" rx="27" ry="40" fill="#26331C"/>
+  <circle cx="392" cy="532" r="9" fill="#FFFFFF"/>
+  <circle cx="592" cy="532" r="9" fill="#FFFFFF"/>
+  <path d="M438 622 Q 482 668 526 622" fill="none" stroke="#26331C" stroke-width="17" stroke-linecap="round"/>
+  <ellipse cx="316" cy="616" rx="36" ry="21" fill="#F6A6A6" opacity="0.6"/>
+  <ellipse cx="648" cy="616" rx="36" ry="21" fill="#F6A6A6" opacity="0.6"/>
+
+  <!-- slice (front, lower right) -->
+  <g>
+    <path d="M566 690 A 218 218 0 0 0 1002 690 Z" fill="#35702A"/>
+    <path d="M590 690 A 194 194 0 0 0 978 690 Z" fill="#F4EFE2"/>
+    <path d="M622 690 A 162 162 0 0 0 946 690 Z" fill="#FF5964"/>
+    <g fill="#26331C">
+      <ellipse cx="700" cy="742" rx="11" ry="17" transform="rotate(-18 700 742)"/>
+      <ellipse cx="784" cy="772" rx="11" ry="17"/>
+      <ellipse cx="868" cy="742" rx="11" ry="17" transform="rotate(18 868 742)"/>
+      <ellipse cx="742" cy="812" rx="11" ry="17" transform="rotate(-8 742 812)"/>
+      <ellipse cx="826" cy="812" rx="11" ry="17" transform="rotate(8 826 812)"/>
+    </g>
+  </g>
+</svg>
