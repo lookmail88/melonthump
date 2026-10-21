@@ -25,6 +25,9 @@ struct TapView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .task {
+            await recorder.prepareSession()
+        }
     }
 
     private var backgroundColor: Color {

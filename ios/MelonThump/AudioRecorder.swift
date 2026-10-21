@@ -14,6 +14,17 @@ final class AudioRecorder: NSObject, ObservableObject {
     private var recorder: AVAudioRecorder?
     private var meterTimer: Timer?
 
+    /// Activates the audio session on a background thread, once, before
+    /// any recording. If this is left to AVAudioRecorder.record() on the
+    /// main thread, AVAudioSession logs a "UI unresponsiveness" warning.
+    func prepareSession() async {
+        await Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.playAndRecord, mode: .default)
+            try? session.setActive(true)
+        }.value
+    }
+
     func requestPermission() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { granted in
