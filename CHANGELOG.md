@@ -1,3 +1,24 @@
+# [1.4.0](https://github.com/lookmail88/melonthump/compare/v1.3.0...v1.4.0) (2026-10-22)
+
+
+### Bug Fixes
+
+* **ios:** create the audio tap block in a nonisolated context ([d63c597](https://github.com/lookmail88/melonthump/commit/d63c5972b05535446e493d186783477ef68ba82b))
+* **ios:** hop to main actor with Task in the audio tap (assumeIsolated tripped dispatch_assert_queue_fail) ([206b614](https://github.com/lookmail88/melonthump/commit/206b6146bfc7102a6e99fdf1d9752f590407e2af))
+* **ios:** keep the launch version-check timeout at 10s ([f84c0fe](https://github.com/lookmail88/melonthump/commit/f84c0fe06ee88d88155eeae2152d24e8e4964115))
+
+
+### Features
+
+* **ios:** 3-second launch splash with enlarged app icon ([f3c10ee](https://github.com/lookmail88/melonthump/commit/f3c10eeec26f19dc5e63515629d3f9510cfa2290))
+* **ios:** 5-second recording countdown with auto-stop; stop unlocks after 1s ([88ddaa8](https://github.com/lookmail88/melonthump/commit/88ddaa8421ad9e391b9adf545f7c92d1f36c2d3d))
+* **ios:** app name and powered-by line on the splash ([315e737](https://github.com/lookmail88/melonthump/commit/315e7379964eb5d24c3e280b9f22099f56ba4804))
+* **ios:** conclude the version check inside the 3-second splash window ([1f054b9](https://github.com/lookmail88/melonthump/commit/1f054b93cab1d5e919183544372b2940ff94dbac))
+* **ios:** heuristic-v2 thump gates — silence/noise now returns UNKNOWN ([d8b8083](https://github.com/lookmail88/melonthump/commit/d8b8083226be6fbd216f0353c6f130689ab29a6d))
+* **ios:** heuristic-v2.2 — trim window, peak width, absolute floor, gate debug line ([3487528](https://github.com/lookmail88/melonthump/commit/3487528f0f10f5aa9ff9aec0b28bc5b360858848))
+* **ios:** unlock Stop & Analyze after 3s instead of 1s ([24694c4](https://github.com/lookmail88/melonthump/commit/24694c4700d9e3a226e52ecc6a370fa031ea7a82))
+* **ios:** version line on the splash, above the powered-by line ([da33bdb](https://github.com/lookmail88/melonthump/commit/da33bdb9bba3a081ec1dcba48b9ffdfe254c39bb))
+
 # [1.3.0](https://github.com/lookmail88/melonthump/compare/v1.2.0...v1.3.0) (2026-10-21)
 
 
