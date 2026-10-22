@@ -27,7 +27,8 @@ class VersionControllerTest {
                 .andExpect(jsonPath("$.latestVersion").value("1.0.0"))
                 .andExpect(jsonPath("$.minSupportedVersion").value("1.0.0"))
                 .andExpect(jsonPath("$.updateAvailable").value(false))
-                .andExpect(jsonPath("$.forceUpdate").value(false));
+                .andExpect(jsonPath("$.forceUpdate").value(false))
+                .andExpect(jsonPath("$.creditPerAd").value(1));
     }
 
     @Test
