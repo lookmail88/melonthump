@@ -1,3 +1,11 @@
+# [1.5.0](https://github.com/lookmail88/melonthump/compare/v1.4.0...v1.5.0) (2026-10-22)
+
+
+### Features
+
+* **ios:** decode creditPerAd from the version policy ([22fe11e](https://github.com/lookmail88/melonthump/commit/22fe11e7918c0f857aa8ebd2811484f25f44f436))
+* **server:** add creditPerAd to the client version policy ([2232a30](https://github.com/lookmail88/melonthump/commit/2232a30706f47a14a1902280a5e8b2f77a4df5ca))
+
 # [1.4.0](https://github.com/lookmail88/melonthump/compare/v1.3.0...v1.4.0) (2026-10-22)
 
 
