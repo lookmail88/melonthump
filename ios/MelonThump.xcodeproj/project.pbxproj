@@ -5,27 +5,28 @@
 	};
 	objectVersion = 56;
 	objects = {
+
 /* Begin PBXBuildFile section */
 		165880FFD76974C2053F21DF /* MelonThumpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */; };
-		2E421CDB6A52FD5565548A9C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC5D729A34425268DB38B91 /* Models.swift */; };
-		CB97A70F0F385EE701AD74CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B83D4865FD0ACC461F77CD92 /* APIClient.swift */; };
-		8853339FA7DBB2137361FE66 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B418DFA2F9336186E772101F /* AudioRecorder.swift */; };
-		64663CE240C602EFF6C997AE /* TapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626E54FE85BB1B0327F46F94 /* TapView.swift */; };
 		2B3C4D5E6F708192A3B4C5D6 /* LocalAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* LocalAnalyzer.swift */; };
+		2E421CDB6A52FD5565548A9C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC5D729A34425268DB38B91 /* Models.swift */; };
 		4D5E6F708192A3B4C5D6E7F8 /* VersionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C4D5E6F708192A3B4C5D6E7 /* VersionGate.swift */; };
 		4E7356890EE1B32CB2F8ABF3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5D54A61DDCC862BDB9951073 /* Assets.xcassets */; };
+		64663CE240C602EFF6C997AE /* TapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626E54FE85BB1B0327F46F94 /* TapView.swift */; };
+		8853339FA7DBB2137361FE66 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B418DFA2F9336186E772101F /* AudioRecorder.swift */; };
+		CB97A70F0F385EE701AD74CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B83D4865FD0ACC461F77CD92 /* APIClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonThumpApp.swift; sourceTree = "<group>"; };
-		5DC5D729A34425268DB38B91 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		B83D4865FD0ACC461F77CD92 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		B418DFA2F9336186E772101F /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
-		626E54FE85BB1B0327F46F94 /* TapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapView.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F708192A3B4C5 /* LocalAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAnalyzer.swift; sourceTree = "<group>"; };
 		3C4D5E6F708192A3B4C5D6E7 /* VersionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionGate.swift; sourceTree = "<group>"; };
-		658704F015387A0D3FB86881 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonThumpApp.swift; sourceTree = "<group>"; };
 		5D54A61DDCC862BDB9951073 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5DC5D729A34425268DB38B91 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		626E54FE85BB1B0327F46F94 /* TapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapView.swift; sourceTree = "<group>"; };
+		658704F015387A0D3FB86881 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B418DFA2F9336186E772101F /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		B83D4865FD0ACC461F77CD92 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		D8620F32F2EB853B0DE3C574 /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -151,21 +152,28 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		67908A6485C3A73129978EB2 /* Debug */ = {
+		1AA5C887076CA57666AA5638 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_TESTABILITY = YES;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
-				ONLY_ACTIVE_ARCH = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TM68JW5KDR;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = MelonThump/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -184,40 +192,21 @@
 			};
 			name = Release;
 		};
-		1AA5C887076CA57666AA5638 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-			ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = MelonThump/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
 		565E62BF67D137DE1A962746 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-			ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = TM68JW5KDR;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = MelonThump/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -227,6 +216,27 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		67908A6485C3A73129978EB2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -241,8 +251,8 @@
 			defaultConfigurationName = Release;
 		};
 		B9B20D2C0DC3F1F0B85BD7DB /* Build configuration list for PBXNativeTarget "MelonThump" */ = {
-				isa = XCConfigurationList;
-				buildConfigurations = (
+			isa = XCConfigurationList;
+			buildConfigurations = (
 				1AA5C887076CA57666AA5638 /* Debug */,
 				565E62BF67D137DE1A962746 /* Release */,
 			);
@@ -250,7 +260,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = FB7FBECE26EB97930E147EFD /* Project object */;
 }
