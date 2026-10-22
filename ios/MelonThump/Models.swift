@@ -33,6 +33,11 @@ struct ClientVersion: Decodable {
     let updateAvailable: Bool
     let forceUpdate: Bool
     let updateUrl: String
+    /// Credits granted for one completed rewarded ad; -1 means a free
+    /// day — unlimited use for the rest of that day and no ads shown.
+    /// Optional so older servers that do not send it still decode;
+    /// nil behaves as the default of 1.
+    let creditPerAd: Int?
 }
 
 /// Response from POST /api/v1/tap/analyze
