@@ -409,6 +409,12 @@ struct ResultView: View {
                 Text(thresholdNote)
                     .font(.caption2)
                     .foregroundColor(MelonTheme.inkSoft)
+                if let debug = result.debugSummary {
+                    Text(debug)
+                        .font(.caption2.monospaced())
+                        .foregroundColor(MelonTheme.inkSoft)
+                        .multilineTextAlignment(.center)
+                }
             }
             .padding(16)
             .background(MelonTheme.cream)

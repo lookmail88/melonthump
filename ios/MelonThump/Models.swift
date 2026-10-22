@@ -43,6 +43,10 @@ struct TapResult: Decodable {
     let verdict: String
     let confidence: Double
     let modelVersion: String
+    /// Local-only diagnostics (gate values from LocalAnalyzer),
+    /// shown in small print on the result screen; absent in any
+    /// server-shaped payload.
+    let debugSummary: String?
 }
 
 enum Ripeness: String {

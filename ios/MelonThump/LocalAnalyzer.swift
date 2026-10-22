@@ -1,31 +1,45 @@
 import AVFoundation
 import Foundation
 
-/// On-device tap analysis, heuristic-v2.
+/// On-device tap analysis, heuristic-v2.2.
 ///
 /// v1 took the loudest spectral peak of the whole clip — with no
 /// thump at all it happily classified background noise, and the
 /// verdict swung from run to run. v2 first proves a credible thump
-/// happened, using time-domain gates on the 10 ms RMS envelope:
+/// happened, using time-domain gates on the 10 ms RMS envelope
+/// (prominence ≥ 10 dB over the median floor, attack ≤ 80 ms,
+/// decay to 1/e ≤ 800 ms), then measures frequency only on the
+/// 500 ms segment at the thump, in the 60–600 Hz melon band,
+/// cross-checked against a noise segment's spectrum (≥ 6 dB).
 ///
-///   prominence — the peak must tower ≥ 10 dB over the median
-///                envelope (the noise floor). Room noise sits within
-///                ~1–6 dB of its own median; a knock next to the
-///                phone is 15–30 dB over.
-///   attack     — the envelope must rise from half-peak to peak in
-///                ≤ 80 ms (a knock is a transient; swells and
-///                crescendos are not).
-///   decay      — after the peak the envelope must fall to 1/e
-///                within ≤ 800 ms (a thump rings down; hums and
-///                sustained tones do not).
+/// v2.1 (silent rooms still occasionally read OVERRIPE): low-
+/// frequency environmental transients pass the envelope gates, so
+/// spectral gates were added — local crest ≥ 18 dB over the peak's
+/// 15–75 Hz neighbourhood (a resonance is one sharp line; a
+/// broadband desk knock is a smooth hump at ≈10–12 dB), ring pitch
+/// consistency within 15%, and a tightened decay exemption (a sound
+/// still loud when the recording ends is sustained, not a thump).
 ///
-/// Only then is frequency measured — on the 500 ms segment starting
-/// at the thump, in the 60–600 Hz band where melon fundamentals
-/// live — and cross-checked against a noise-only segment's spectrum
-/// (peak must stand ≥ 6 dB over it). Any failure returns UNKNOWN
-/// ("no clear thump heard") instead of a made-up verdict.
-/// Thresholds validated on synthetic signals (noise-only → UNKNOWN;
-/// damped bursts at 140/200/320 Hz → correct verdicts).
+/// v2.2 (field test of v2: 4 of 5 silent recordings still read
+/// OVERRIPE — a fixed low-frequency event in the room kept passing,
+/// most plausibly recording-start / handling transients, which the
+/// attack gate even exempted at the clip head):
+///   usable window — the peak is searched only between 0.3 s and
+///     (end − 0.2 s); start pops and set-down bumps at the edges
+///     are out of the game entirely.
+///   peak width — the envelope must hold ≥ half-peak for at least
+///     2 frames (~20 ms); single-frame digital clicks are not
+///     knocks.
+///   absolute floor — a peak under ≈ −45 dBFS is room micro-noise
+///     no matter how far it towers over an even quieter floor.
+/// And every result now carries a debug summary of the gate values
+/// (shown on the result screen) so a false verdict can be traced
+/// to the exact gate that leaked. Validated on synthetic signals
+/// (Python mirror, 16 cases): all noise / pop / click / broadband-
+/// knock cases → UNKNOWN; damped bursts at 140/200/320 Hz, even
+/// weak ones, → correct verdicts. Honest limit: a genuinely
+/// resonant low knock (a hollow door at ~95 Hz) is physically
+/// indistinguishable from an overripe melon.
 ///
 /// The recording itself is decoded with AVAudioFile, which natively
 /// handles every WAV variant the recorder produces. The server no
@@ -50,6 +64,11 @@ enum LocalAnalyzer {
     private static let decayMaxMs = 800.0
     private static let bandHz = 60.0...600.0
     private static let snrDbMin = 6.0
+    private static let crestDbMin = 18.0
+    private static let ringTolerance = 0.15
+    private static let absoluteFloor = 0.0056  // ≈ −45 dBFS
+    private static let trimHeadMs = 300.0
+    private static let trimTailMs = 200.0
     private static let segmentMs = 500.0
 
     static func analyze(audioURL: URL) throws -> TapResult {
@@ -62,7 +81,8 @@ enum LocalAnalyzer {
                 decayTimeMs: round2(features.decayMs),
                 verdict: "UNKNOWN",
                 confidence: 0.3,
-                modelVersion: "heuristic-v2")
+                modelVersion: "heuristic-v2.2",
+                debugSummary: features.debug)
         }
         let verdict = classify(dominantHz: features.dominantHz)
         return TapResult(
@@ -71,7 +91,8 @@ enum LocalAnalyzer {
             decayTimeMs: round2(features.decayMs),
             verdict: verdict.verdict,
             confidence: round2(verdict.confidence),
-            modelVersion: "heuristic-v2")
+            modelVersion: "heuristic-v2.2",
+            debugSummary: features.debug)
     }
 
     // MARK: - Recording decoding (AVAudioFile; channels mixed to mono)
@@ -117,17 +138,17 @@ enum LocalAnalyzer {
         let dominantHz: Double
         let centroidHz: Double
         let decayMs: Double
+        let debug: String
     }
 
     private static func extractFeatures(samples: [Double], sampleRate: Int) throws -> Features {
         let frameLen = max(16, sampleRate / 100)  // 10 ms envelope frames
         let frameCount = samples.count / frameLen
         guard frameCount >= 2 else { throw AnalyzerError.tooShort }
+        let frameMs = 1000.0 * Double(frameLen) / Double(sampleRate)
 
         // RMS envelope.
         var env = [Double](repeating: 0, count: frameCount)
-        var peak = 0.0
-        var peakIdx = 0
         for w in 0..<frameCount {
             var sum = 0.0
             let base = w * frameLen
@@ -136,17 +157,29 @@ enum LocalAnalyzer {
                 sum += s * s
             }
             env[w] = (sum / Double(frameLen)).squareRoot()
+        }
+
+        // Usable window: head/tail trimmed (see header). The peak
+        // and the noise floor both come from this window only.
+        var lo = Int(trimHeadMs / frameMs)
+        var hi = frameCount - Int(trimTailMs / frameMs)
+        if hi - lo < 10 { lo = 0; hi = frameCount }
+        var peak = 0.0
+        var peakIdx = lo
+        for w in lo..<hi {
             if env[w] > peak {
                 peak = env[w]
                 peakIdx = w
             }
         }
-        let frameMs = 1000.0 * Double(frameLen) / Double(sampleRate)
-        let noThump = Features(heardThump: false, dominantHz: 0, centroidHz: 0, decayMs: 0)
-        guard peak > 0 else { return noThump }
+        let floor = median(Array(env[lo..<hi]))
+        guard peak > 0 else {
+            return Features(heardThump: false, dominantHz: 0, centroidHz: 0, decayMs: 0, debug: "flat")
+        }
+        let onsetSec = Double(peakIdx * frameLen) / Double(sampleRate)
 
-        // Decay (shared by the gate and the reported feature): first
-        // frame after the peak at or below peak/e.
+        // Decay (gate + reported feature): first frame after the
+        // peak at or below peak/e.
         var decayMs = Double(frameCount - 1 - peakIdx) * frameMs
         var decayVerified = false
         let decayTarget = peak / 2.718281828459045
@@ -157,11 +190,45 @@ enum LocalAnalyzer {
                 break
             }
         }
-        var rejected = Features(heardThump: false, dominantHz: 0, centroidHz: 0, decayMs: decayMs)
+
+        // Debug summary, built up as gates pass; a rejection names
+        // the gate that failed. For pre-spectrum rejections the
+        // would-be frequency/crest are attached (computed once).
+        var dbg = String(format: "pk@%.2fs pk %.3f", onsetSec, peak)
+        var earlyNote: String?
+        func spectrumNote() -> String {
+            if let earlyNote { return earlyNote }
+            let start = max(0, Int((onsetSec - 0.03) * Double(sampleRate)))
+            var note = ""
+            if let spec = spectrum(samples: samples, start: start, sampleRate: sampleRate),
+               let bp = bandPeak(spectrum: spec, binHz: Double(sampleRate) / Double(spec.count * 2)) {
+                note = String(format: " · f≈%.0f crest %.1f", bp.freq, bp.localCrestDb)
+            }
+            earlyNote = note
+            return note
+        }
+        func reject(_ gate: String) -> Features {
+            Features(heardThump: false, dominantHz: 0, centroidHz: 0,
+                     decayMs: decayMs, debug: dbg + spectrumNote() + " ✗" + gate)
+        }
+
+        // Gate — absolute floor: micro-noise in a silent room.
+        guard peak >= absoluteFloor else { return reject("absfloor") }
+
+        // Gate — peak width: single-frame clicks are not knocks.
+        var width = 1
+        var k = peakIdx - 1
+        while k >= 0, env[k] >= peak * 0.5 { width += 1; k -= 1 }
+        k = peakIdx + 1
+        while k < frameCount, env[k] >= peak * 0.5 { width += 1; k += 1 }
+        guard width >= 2 else { return reject("width \(width)f") }
+        dbg += " · w \(width)f"
 
         // Gate 1 — prominence over the noise floor (median envelope).
-        let floor = median(env)
-        guard floor > 0, 20 * log10(peak / floor) >= prominenceDbMin else { return rejected }
+        guard floor > 0 else { return reject("floor") }
+        let promDb = 20 * log10(peak / floor)
+        guard promDb >= prominenceDbMin else { return reject(String(format: "prom %.1f", promDb)) }
+        dbg += String(format: " · prom %.1f", promDb)
 
         // Gate 2 — attack: rise from half-peak to peak must be fast.
         // (Skipped when the peak lands in the first frames: nothing
@@ -169,63 +236,128 @@ enum LocalAnalyzer {
         if peakIdx >= 3 {
             var j = peakIdx
             while j > 0, env[j - 1] > peak * 0.5 { j -= 1 }
-            guard Double(peakIdx - j) * frameMs <= attackMaxMs else { return rejected }
+            let attackMs = Double(peakIdx - j) * frameMs
+            guard attackMs <= attackMaxMs else { return reject("atk \(Int(attackMs))ms") }
+            dbg += " · atk \(Int(attackMs))ms"
         }
 
-        // Gate 3 — decay: a thump rings down promptly. Unverifiable
-        // when the recording ends first (thump at the very end).
+        // Gate 3 — decay: a thump rings down promptly. When no 1/e
+        // crossing is observed, the end-of-clip exemption is narrow:
+        // the clip must end too soon to judge (< decayMaxMs of
+        // post-peak audio) AND the level must already be falling —
+        // a sound still loud at the end is sustained, not a thump.
         if decayVerified {
-            guard decayMs <= decayMaxMs else { return rejected }
+            guard decayMs <= decayMaxMs else { return reject("dec \(Int(decayMs))ms") }
+        } else {
+            let remainingMs = Double(frameCount - 1 - peakIdx) * frameMs
+            guard remainingMs < decayMaxMs, env[frameCount - 1] <= 0.6 * peak else {
+                return reject("dec sustained")
+            }
         }
+        dbg += " · dec \(Int(decayMs))ms"
 
         // Frequency: FFT of the 500 ms segment starting just before
         // the thump, peak within the melon band.
-        let onsetSec = Double(peakIdx * frameLen) / Double(sampleRate)
         let segStart = max(0, Int((onsetSec - 0.03) * Double(sampleRate)))
         guard let signalSpectrum = spectrum(samples: samples, start: segStart, sampleRate: sampleRate) else {
-            return rejected
+            return reject("spec")
         }
+        earlyNote = ""  // real values follow; no would-be note needed
         let binHz = Double(sampleRate) / Double(signalSpectrum.count * 2)
-        var peakMag = 0.0
-        var peakBin = 0
+        guard let main = bandPeak(spectrum: signalSpectrum, binHz: binHz) else { return reject("peak") }
+        let dominantHz = main.freq
+        let peakMag = main.mag
+        dbg += String(format: " · f %.0f crest %.1f", dominantHz, main.localCrestDb)
+
+        // Gate 4 — local spectral crest: the peak must tower over
+        // its own neighbourhood (see header). Broadband knocks fail.
+        guard main.localCrestDb >= crestDbMin else { return reject("crest") }
+
         var weightedSum = 0.0
         var magSum = 0.0
-        for k in 1..<signalSpectrum.count {
-            let freq = Double(k) * binHz
+        for k2 in 1..<signalSpectrum.count {
+            let freq = Double(k2) * binHz
             guard bandHz.contains(freq) else { continue }
-            let mag = signalSpectrum[k]
-            weightedSum += freq * mag
-            magSum += mag
-            if mag > peakMag {
-                peakMag = mag
-                peakBin = k
-            }
+            weightedSum += freq * signalSpectrum[k2]
+            magSum += signalSpectrum[k2]
         }
-        guard peakMag > 0 else { return rejected }
-        let dominantHz = Double(peakBin) * binHz
 
-        // Spectral SNR: the peak must stand over a noise-only
-        // segment's spectrum (same FFT size). Prefer a segment well
-        // after the thump; fall back to one before it. Skipped when
-        // no clean segment exists — the time gates already passed.
+        // Gate 5 — spectral SNR: the peak must stand over a
+        // noise-only segment's spectrum (same FFT size). Prefer a
+        // segment well after the thump; fall back to one before it.
+        // Skipped when no clean segment exists — gates 1–4 passed.
         if let noiseStart = noiseSegmentStart(onsetSec: onsetSec, totalSec: Double(samples.count) / Double(sampleRate), sampleRate: sampleRate),
            let noiseSpectrum = spectrum(samples: samples, start: noiseStart, sampleRate: sampleRate),
            noiseSpectrum.count == signalSpectrum.count {
             let bandMags = (1..<noiseSpectrum.count).filter { bandHz.contains(Double($0) * binHz) }.map { noiseSpectrum[$0] }
             if !bandMags.isEmpty {
-                let ref = max(noiseSpectrum[peakBin], median(bandMags))
-                if ref > 0, 20 * log10(peakMag / ref) < snrDbMin {
-                    return rejected
+                let ref = max(noiseSpectrum[main.bin], median(bandMags))
+                if ref > 0 {
+                    let snrDb = 20 * log10(peakMag / ref)
+                    dbg += String(format: " · snr %.1f", snrDb)
+                    guard snrDb >= snrDbMin else { return reject("snr") }
                 }
             }
         }
 
-        rejected = Features(
+        // Gate 6 — ring pitch consistency: if a clear tone is still
+        // audible later in the ring, it must be the same pitch.
+        // One-sided: an inaudible ring verifies nothing.
+        let ringOffsetSec = max(0.10, decayMs / 1000.0)
+        let ringStart = Int((onsetSec + ringOffsetSec) * Double(sampleRate))
+        if ringStart + 256 <= samples.count,
+           let ringSpectrum = spectrum(samples: samples, start: ringStart, sampleRate: sampleRate, durationMs: 250) {
+            let ringBinHz = Double(sampleRate) / Double(ringSpectrum.count * 2)
+            if let ring = bandPeak(spectrum: ringSpectrum, binHz: ringBinHz),
+               ring.localCrestDb >= crestDbMin {
+                dbg += String(format: " · ring %.0f", ring.freq)
+                guard abs(ring.freq - dominantHz) / dominantHz <= ringTolerance else {
+                    return reject("ring")
+                }
+            }
+        }
+
+        return Features(
             heardThump: true,
             dominantHz: dominantHz,
             centroidHz: magSum > 0 ? weightedSum / magSum : 0,
-            decayMs: decayMs)
-        return rejected
+            decayMs: decayMs,
+            debug: dbg + " ✓")
+    }
+
+    private struct BandPeak {
+        let freq: Double
+        let mag: Double
+        let bin: Int
+        /// Peak height over the median magnitude 15–75 Hz away
+        /// within the band, in dB — the resonance sharpness measure.
+        let localCrestDb: Double
+    }
+
+    /// Strongest in-band peak of a spectrum, with its local crest.
+    private static func bandPeak(spectrum: [Double], binHz: Double) -> BandPeak? {
+        var peakMag = 0.0
+        var peakBin = 0
+        for k in 1..<spectrum.count {
+            let freq = Double(k) * binHz
+            guard bandHz.contains(freq) else { continue }
+            if spectrum[k] > peakMag {
+                peakMag = spectrum[k]
+                peakBin = k
+            }
+        }
+        guard peakMag > 0 else { return nil }
+        let freq = Double(peakBin) * binHz
+        let neighbours = (1..<spectrum.count).filter { k in
+            let f = Double(k) * binHz
+            return bandHz.contains(f) && abs(f - freq) >= 15 && abs(f - freq) <= 75
+        }.map { spectrum[$0] }
+        let ref = neighbours.isEmpty ? 0 : median(neighbours)
+        return BandPeak(
+            freq: freq,
+            mag: peakMag,
+            bin: peakBin,
+            localCrestDb: ref > 0 ? 20 * log10(peakMag / ref) : 0)
     }
 
     /// Start sample of a 500 ms noise-only segment: 1.2 s after the
@@ -241,10 +373,10 @@ enum LocalAnalyzer {
         return nil
     }
 
-    /// Hann-windowed, zero-padded FFT magnitudes (first half) of the
-    /// 500 ms segment starting at `start`; nil if too short.
-    private static func spectrum(samples: [Double], start: Int, sampleRate: Int) -> [Double]? {
-        let count = Int(segmentMs / 1000.0 * Double(sampleRate))
+    /// Hann-windowed, zero-padded FFT magnitudes (first half) of
+    /// the segment starting at `start`; nil if too short.
+    private static func spectrum(samples: [Double], start: Int, sampleRate: Int, durationMs: Double = segmentMs) -> [Double]? {
+        let count = Int(durationMs / 1000.0 * Double(sampleRate))
         guard start >= 0, start + 256 <= samples.count else { return nil }
         let available = min(count, samples.count - start)
         var size = 1
