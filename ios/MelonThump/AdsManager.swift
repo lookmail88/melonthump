@@ -20,9 +20,14 @@ final class AdsManager: NSObject, ObservableObject {
     private var rewardContinuation: CheckedContinuation<Bool, Never>?
     private var bootstrapped = false
 
+    /// Google public test rewarded unit. Also the fallback: if the
+    /// configured unit fails to load, we retry with this one (it always
+    /// fills) so the promo gate never locks the user out over a no-fill.
+    private static let testRewardedUnitID = "ca-app-pub-3940256099942544/1712485313"
+
     private var rewardedUnitID: String {
         Bundle.main.object(forInfoDictionaryKey: "MelonThumpRewardedAdUnitID") as? String
-            ?? "ca-app-pub-3940256099942544/1712485313"  // Google test rewarded unit
+            ?? Self.testRewardedUnitID
     }
 
     /// Consent → ATT → SDK start → first rewarded preload. Idempotent.
@@ -60,14 +65,28 @@ final class AdsManager: NSObject, ObservableObject {
     // MARK: - Rewarded
 
     func preloadRewarded() async {
+        if await loadRewarded(unitID: rewardedUnitID) { return }
+        // Configured unit failed (reason logged in loadRewarded). Fall
+        // back to the Google test unit so there is almost always an ad
+        // ready to show.
+        if rewardedUnitID != Self.testRewardedUnitID {
+            _ = await loadRewarded(unitID: Self.testRewardedUnitID)
+        }
+    }
+
+    @discardableResult
+    private func loadRewarded(unitID: String) async -> Bool {
         do {
-            let ad = try await RewardedAd.load(with: rewardedUnitID, request: Request())
+            let ad = try await RewardedAd.load(with: unitID, request: Request())
             ad.fullScreenContentDelegate = self
             rewardedAd = ad
             rewardedReady = true
+            return true
         } catch {
             rewardedAd = nil
             rewardedReady = false
+            print("[AdsManager] Rewarded load failed (unit \(unitID)): \(error)")
+            return false
         }
     }
 
