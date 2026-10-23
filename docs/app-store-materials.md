@@ -72,8 +72,9 @@ watermelon,ripe,ripeness,melon,thump,pick,fruit,summer,grocery,produce,scanner,s
 
 ## 9. ★ 支持 URL / Support URL
 
-需要一页真实可达、含联系方式的页面。建议用 GitHub Pages 托管本文档第 10 节的隐私政策页 + 一页简短支持页（仓库 docs 目录即可），URL 形态：
-`https://lookmail88.github.io/melonthump/support.html`（托管方式待拍板，备选：挂到服务端静态页）。
+已落位（2026-10-23，GitHub Pages，仓库 `gh-pages` 分支托管）：
+- 支持 URL：`https://lookmail88.github.io/melonthump/support.html`
+- 隐私政策 URL：`https://lookmail88.github.io/melonthump/privacy.html`（正文与第 10 节一致）
 
 ## 10. ★ 隐私政策 / Privacy Policy（全文，托管后把 URL 填进 ASC）
 
