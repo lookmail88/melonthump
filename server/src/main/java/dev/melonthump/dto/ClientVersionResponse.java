@@ -19,8 +19,9 @@ public record ClientVersionResponse(
         @Schema(description = "Credits granted for one completed rewarded ad; -1 means a free day: unlimited use, no ads shown", example = "1")
         int creditPerAd,
         @Schema(description = "End of the launch promo window as epoch milliseconds; null when no promo is running. "
-                + "During the promo, the first app open of each day requires one completed rewarded ad, "
-                + "which unlocks unlimited use for the rest of that day; credits are neither needed nor spent",
+                + "During the promo, the first thump after each fresh app launch requires one completed "
+                + "rewarded ad, which unlocks unlimited use until the app exits (relaunching gates again, "
+                + "even on the same day); credits are neither needed nor spent",
                 example = "1767225599000", nullable = true)
         Long promoEndsAtEpochMillis) {
 }
