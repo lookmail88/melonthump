@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/lookmail88/melonthump/compare/v1.8.0...v1.8.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **ios:** result screen no longer shows placeholder threshold copy ([3f15ef7](https://github.com/lookmail88/melonthump/commit/3f15ef74a458f8f11e3297c25cb5fac1247691db))
+
 # [1.8.0](https://github.com/lookmail88/melonthump/compare/v1.7.1...v1.8.0) (2026-10-23)
 
 
