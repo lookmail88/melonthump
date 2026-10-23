@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.6.0
+          image: ghcr.io/lookmail88/melonthump-server:v1.7.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

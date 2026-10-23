@@ -1,3 +1,11 @@
+# [1.7.0](https://github.com/lookmail88/melonthump/compare/v1.6.0...v1.7.0) (2026-10-23)
+
+
+### Features
+
+* **ios:** launch promo mode - one ad unlocks the rest of the day ([e5089bd](https://github.com/lookmail88/melonthump/commit/e5089bdbfe694e67290a71c4d22a1661d2d6d387))
+* **server:** promoEndsAtEpochMillis in the client version policy ([5b423d5](https://github.com/lookmail88/melonthump/commit/5b423d5ed93129f1e3ad54e4d7e2d22e9a950223))
+
 # [1.6.0](https://github.com/lookmail88/melonthump/compare/v1.5.0...v1.6.0) (2026-10-23)
 
 
