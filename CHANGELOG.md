@@ -1,3 +1,15 @@
+# [1.8.0](https://github.com/lookmail88/melonthump/compare/v1.7.1...v1.8.0) (2026-10-23)
+
+
+### Bug Fixes
+
+* **ios:** fall back to test rewarded ad when configured unit fails to load ([1495531](https://github.com/lookmail88/melonthump/commit/1495531db40c2ce43dfdf8e8b151c3977ab03efa))
+
+
+### Features
+
+* **ios:** fallback ad unit now comes from DEFAULT_* build settings ([6109022](https://github.com/lookmail88/melonthump/commit/61090223f1d4b2f0ce4351f3f1658ad766f6f355))
+
 ## [1.7.1](https://github.com/lookmail88/melonthump/compare/v1.7.0...v1.7.1) (2026-10-23)
 
 

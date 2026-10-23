@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.7.1
+          image: ghcr.io/lookmail88/melonthump-server:v1.8.0
           imagePullPolicy: Always
           env:
             # Launch promo on the test build: window runs until the end
