@@ -6,16 +6,46 @@ import SwiftUI
 @MainActor
 struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
-    @State private var serverURL = "http://localhost:8080"
+    @StateObject private var wallet = CreditWallet()
+    @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
     @State private var isAnalyzing = false
     @State private var recordingStartedAt: Date?
+    @State private var showOutOfCredits = false
+    @State private var showPromoGate = false
 
     var body: some View {
         ZStack {
             backgroundColor.ignoresSafeArea()
             content
+        }
+        .alert("Something went wrong", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+        .alert("Out of credits", isPresented: $showOutOfCredits) {
+            Button("Watch an ad (+\(wallet.creditPerAd))") { earnWithAd() }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Watch a short ad to earn credits for more thumps.")
+        }
+        .alert("Launch promo", isPresented: $showPromoGate) {
+            Button("Watch an ad") { earnWithAd() }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Watch one short ad to unlock unlimited thumps until you leave the app.")
+        }
+        .task {
+            await recorder.prepareSession()
+            await wallet.refreshPolicy(environment: serverEnvironment)
+        }
+        .onChange(of: serverEnvironment) { _, env in
+            Task { await wallet.refreshPolicy(environment: env) }
         }
     }
 
@@ -31,7 +61,7 @@ struct TapView: View {
         if isAnalyzing {
             AnalyzingView()
         } else if recorder.isRecording {
-            RecordingView(startedAt: recordingStartedAt ?? Date(), onStop: toggleRecording)
+            RecordingView(recorder: recorder, startedAt: recordingStartedAt ?? Date(), onStop: toggleRecording)
         } else if let result {
             ResultView(result: result, errorMessage: errorMessage) {
                 self.result = nil
@@ -100,10 +130,13 @@ struct TapView: View {
                 .shadow(color: MelonTheme.buttonGreen.opacity(0.35), radius: 10, y: 5)
             }
 
-            Text("Tap, thump, done — about 3 seconds")
+            Text("One good thump — it stops itself at 5 seconds")
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
+
+            creditsRow
+                .padding(.top, 8)
 
             if let errorMessage {
                 Text(errorMessage)
@@ -114,11 +147,13 @@ struct TapView: View {
             }
 
             DisclosureGroup("Server") {
-                TextField("Server URL", text: $serverURL)
-                    .textFieldStyle(.roundedBorder)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.footnote)
+                Picker("Server", selection: $serverEnvironment) {
+                    ForEach(ServerEnvironment.allCases) { env in
+                        Text(env.displayName).tag(env)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
             .font(.footnote)
             .foregroundColor(MelonTheme.inkSoft)
@@ -129,6 +164,59 @@ struct TapView: View {
         .padding(.bottom, 12)
     }
 
+    // MARK: - Credits
+
+    @ViewBuilder
+    private var creditsRow: some View {
+        if wallet.needsPromoAd {
+            Button {
+                earnWithAd()
+            } label: {
+                Text("Launch promo — one ad unlocks thumping until you leave")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(MelonTheme.buttonGreen)
+            }
+        } else if wallet.isPromoActive && wallet.promoUnlocked {
+            Text("Promo unlocked — unlimited thumps this visit")
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.isFreeDay {
+            Text("Free day — unlimited thumps, no ads today")
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.balance > 0 {
+            Text("Credits: \(wallet.balance)")
+                .font(.footnote)
+                .foregroundColor(MelonTheme.inkSoft)
+        } else if wallet.canEarnFromAd {
+            Button {
+                earnWithAd()
+            } label: {
+                Text("Out of credits — watch an ad to earn +\(wallet.creditPerAd)")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(MelonTheme.buttonGreen)
+            }
+        } else {
+            Text("Out of credits — daily ad limit reached, come back tomorrow")
+                .font(.footnote)
+                .foregroundColor(MelonTheme.inkSoft)
+        }
+    }
+
+    private func earnWithAd() {
+        Task {
+            if await AdsManager.shared.showRewarded() {
+                if wallet.needsPromoAd {
+                    wallet.unlockPromoForSession()
+                } else {
+                    wallet.grantFromAd()
+                }
+            } else if !AdsManager.shared.rewardedReady {
+                errorMessage = "The ad is still loading — give it a few seconds and try again."
+            }
+        }
+    }
+
     // MARK: - Actions (unchanged from v1)
 
     private func toggleRecording() {
@@ -137,6 +225,14 @@ struct TapView: View {
             recordingStartedAt = nil
             analyze()
         } else {
+            guard wallet.canThump else {
+                if wallet.needsPromoAd {
+                    showPromoGate = true
+                } else {
+                    showOutOfCredits = true
+                }
+                return
+            }
             errorMessage = nil
             result = nil
             Task {
@@ -159,18 +255,18 @@ struct TapView: View {
             errorMessage = "No recording found."
             return
         }
-        guard let baseURL = URL(string: serverURL.trimmingCharacters(in: .whitespaces)),
-              baseURL.scheme != nil else {
-            errorMessage = "Invalid server URL."
-            return
-        }
         isAnalyzing = true
         errorMessage = nil
         Task {
             defer { isAnalyzing = false }
             do {
-                let client = APIClient(baseURL: baseURL)
-                result = try await client.analyzeTap(audioURL: audioURL)
+                // Analysis runs fully on-device; nothing is uploaded.
+                result = try LocalAnalyzer.analyze(audioURL: audioURL)
+                // One credit per completed analysis; an UNKNOWN (too
+                // noisy to judge) result is free.
+                if let verdict = result?.verdict, verdict != "UNKNOWN" {
+                    wallet.spendOne()
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -181,9 +277,26 @@ struct TapView: View {
 // MARK: - Recording
 
 struct RecordingView: View {
+    @ObservedObject var recorder: AudioRecorder
     let startedAt: Date
     let onStop: () -> Void
     @State private var pulsing = false
+    /// Rolling history of live mic levels, oldest → newest (real waveform).
+    @State private var levels: [Double] = []
+    /// Seconds since recording started, ticked by the countdown task.
+    @State private var elapsed: Double = 0
+
+    /// Recording is capped at 5 seconds, counted down on screen.
+    private var secondsLeft: Int { max(0, Int(ceil(5 - elapsed))) }
+    /// The user may stop manually once past the third second.
+    private var canStop: Bool { elapsed > 3 }
+
+    private let barCount = 36
+
+    private func barHeight(at index: Int) -> CGFloat {
+        let level = index < levels.count ? levels[index] : 0
+        return 6 + CGFloat(level) * 56
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -216,26 +329,31 @@ struct RecordingView: View {
                 }
             }
 
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-                let t = context.date.timeIntervalSinceReferenceDate
-                HStack(alignment: .center, spacing: 5) {
-                    ForEach(0..<11, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(MelonTheme.deepGreen)
-                            .frame(width: 7, height: 30 + 22 * (0.5 + 0.5 * sin(t * 6 + Double(i) * 0.9)))
-                    }
+            HStack(alignment: .center, spacing: 3) {
+                ForEach(0..<barCount, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(MelonTheme.deepGreen)
+                        .frame(width: 6, height: barHeight(at: i))
                 }
-                .frame(height: 64)
             }
+            .frame(height: 64)
             .padding(.top, 18)
-
-            TimelineView(.periodic(from: startedAt, by: 0.1)) { context in
-                let elapsed = max(0, context.date.timeIntervalSince(startedAt))
-                Text(String(format: "%d:%02d", Int(elapsed) / 60, Int(elapsed) % 60))
-                    .font(.title3.weight(.bold))
-                    .foregroundColor(MelonTheme.ink)
+            .onChange(of: recorder.audioLevel) { _, newLevel in
+                levels.append(newLevel)
+                if levels.count > barCount {
+                    levels.removeFirst(levels.count - barCount)
+                }
             }
-            .padding(.top, 6)
+
+            VStack(spacing: 0) {
+                Text("\(secondsLeft)")
+                    .font(.system(size: 46, weight: .bold, design: .rounded))
+                    .foregroundColor(MelonTheme.ink)
+                Text(secondsLeft == 1 ? "second left" : "seconds left")
+                    .font(.caption)
+                    .foregroundColor(MelonTheme.inkSoft)
+            }
+            .padding(.top, 10)
 
             Text("Thump the melon now —\none good knock is enough")
                 .font(.subheadline)
@@ -255,13 +373,28 @@ struct RecordingView: View {
                     .cornerRadius(999)
                     .shadow(color: MelonTheme.recordRed.opacity(0.35), radius: 10, y: 5)
             }
-            Text("Recording… keep the phone close")
+            .disabled(!canStop)
+            .opacity(canStop ? 1 : 0.55)
+            Text(canStop ? "Auto-stops when the countdown ends" : "You can stop after 3 seconds")
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
         }
         .padding(.horizontal, 22)
         .padding(.bottom, 12)
+        .task {
+            // 5-second countdown: tick the elapsed clock, unlock the
+            // stop button after 3s (canStop), and stop & analyze
+            // automatically when the countdown runs out.
+            while !Task.isCancelled {
+                elapsed = max(0, Date().timeIntervalSince(startedAt))
+                if elapsed >= 5 {
+                    onStop()
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
     }
 }
 
@@ -364,6 +497,12 @@ struct ResultView: View {
                 Text(thresholdNote)
                     .font(.caption2)
                     .foregroundColor(MelonTheme.inkSoft)
+                if let debug = result.debugSummary {
+                    Text(debug)
+                        .font(.caption2.monospaced())
+                        .foregroundColor(MelonTheme.inkSoft)
+                        .multilineTextAlignment(.center)
+                }
             }
             .padding(16)
             .background(MelonTheme.cream)
@@ -423,12 +562,15 @@ struct ResultView: View {
 
 /// Gradient scale from unripe (yellow) through ripe (green) to overripe
 /// (brown), with a marker at the measured dominant frequency.
+/// The axis runs high → low frequency, matching the labels and the
+/// physics: a high "ping" is unripe (left), a low thud is overripe
+/// (right). Green spans the ripe band, 160–280 Hz.
 struct ZoneBar: View {
     let hz: Double
     let accent: Color
 
     private var position: Double {
-        min(0.98, max(0.02, (hz - 100) / (350 - 100)))
+        min(0.98, max(0.02, (350 - hz) / (350 - 100)))
     }
 
     var body: some View {
@@ -444,10 +586,12 @@ struct ZoneBar: View {
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 5)
                         .fill(LinearGradient(
-                            colors: [Color(red: 0.91, green: 0.83, blue: 0.30),
-                                     Color(red: 0.56, green: 0.80, blue: 0.42),
-                                     Color(red: 0.56, green: 0.80, blue: 0.42),
-                                     Color(red: 0.75, green: 0.52, blue: 0.32)],
+                            stops: [
+                                .init(color: Color(red: 0.91, green: 0.83, blue: 0.30), location: 0),
+                                .init(color: Color(red: 0.56, green: 0.80, blue: 0.42), location: 0.28),
+                                .init(color: Color(red: 0.56, green: 0.80, blue: 0.42), location: 0.76),
+                                .init(color: Color(red: 0.75, green: 0.52, blue: 0.32), location: 1),
+                            ],
                             startPoint: .leading, endPoint: .trailing))
                         .frame(height: 10)
                     Circle()

@@ -15,7 +15,7 @@
     <artifactId>melonthump-server</artifactId>
     <version>0.1.0</version>
     <name>melonthump-server</name>
-    <description>MelonThump server: tap-a-watermelon ripeness analysis (v1 heuristic)</description>
+    <description>MelonThump server: client version policy (tap analysis runs on-device)</description>
 
     <properties>
         <!-- Target JDK 25 (LTS). Local verification on JDK 21 uses -Djava.version=21 -->
@@ -38,12 +38,6 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
-        </dependency>
-        <!-- FFT for audio feature extraction -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-math3</artifactId>
-            <version>3.6.1</version>
         </dependency>
 
         <dependency>

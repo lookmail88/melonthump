@@ -1,6 +1,50 @@
 import Foundation
 import SwiftUI
 
+/// Backend environments the app can talk to. The UI shows only the
+/// display name ("Prod Server" / "Dev Server"), never the raw domain.
+enum ServerEnvironment: String, CaseIterable, Identifiable {
+    case prod
+    case dev
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .prod: return "Prod Server"
+        case .dev: return "Dev Server"
+        }
+    }
+
+    var baseURL: URL {
+        switch self {
+        case .prod: return URL(string: "https://melonthump.stephaniegao.me")!
+        case .dev: return URL(string: "https://melonthump-dev.stephaniegao.me")!
+        }
+    }
+}
+
+/// Response from GET /api/v1/version/getclientversion — the only API the
+/// app still calls; audio analysis runs fully on-device.
+struct ClientVersion: Decodable {
+    let platform: String
+    let latestVersion: String
+    let minSupportedVersion: String
+    let updateAvailable: Bool
+    let forceUpdate: Bool
+    let updateUrl: String
+    /// Credits granted for one completed rewarded ad; -1 means a free
+    /// day — unlimited use for the rest of that day and no ads shown.
+    /// Optional so older servers that do not send it still decode;
+    /// nil behaves as the default of 1.
+    let creditPerAd: Int?
+    /// End of the launch promo window as epoch milliseconds; nil when
+    /// no promo is running. During the promo, the first thump after
+    /// each fresh app launch requires one completed rewarded ad,
+    /// which unlocks unlimited use until the app exits.
+    let promoEndsAtEpochMillis: Int64?
+}
+
 /// Response from POST /api/v1/tap/analyze
 struct TapResult: Decodable {
     let dominantFrequencyHz: Double
@@ -9,6 +53,10 @@ struct TapResult: Decodable {
     let verdict: String
     let confidence: Double
     let modelVersion: String
+    /// Local-only diagnostics (gate values from LocalAnalyzer),
+    /// shown in small print on the result screen; absent in any
+    /// server-shaped payload.
+    let debugSummary: String?
 }
 
 enum Ripeness: String {

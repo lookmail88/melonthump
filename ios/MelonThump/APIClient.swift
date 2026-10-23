@@ -1,14 +1,11 @@
 import Foundation
 
 enum APIError: Error, LocalizedError {
-    case invalidServerURL
     case badResponse(status: Int)
     case decoding(Error)
 
     var errorDescription: String? {
         switch self {
-        case .invalidServerURL:
-            return "Invalid server URL"
         case .badResponse(let status):
             return "Server returned status \(status)"
         case .decoding(let error):
@@ -17,7 +14,9 @@ enum APIError: Error, LocalizedError {
     }
 }
 
-/// Stateless HTTP client for the MelonThump server. Sendable-safe for Swift 6.
+/// HTTP client for the MelonThump server. The server now only serves the
+/// client version policy — tap analysis runs fully on-device
+/// (see LocalAnalyzer). Sendable-safe for Swift 6.
 final class APIClient: Sendable {
     let baseURL: URL
 
@@ -25,19 +24,26 @@ final class APIClient: Sendable {
         self.baseURL = baseURL
     }
 
-    /// Uploads a WAV tap recording and returns the ripeness analysis.
-    func analyzeTap(audioURL: URL) async throws -> TapResult {
-        let endpoint = baseURL.appendingPathComponent("api/v1/tap/analyze")
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 30
+    convenience init(environment: ServerEnvironment) {
+        self.init(baseURL: environment.baseURL)
+    }
 
-        let boundary = "Boundary-\(UUID().uuidString)"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        let body = try multipartBody(boundary: boundary, fileURL: audioURL)
-        let (data, response) = try await URLSession.shared.upload(for: request, from: body)
-
+    /// Fetches the version policy, evaluated server-side against the
+    /// supplied current version.
+    func fetchClientVersion(currentVersion: String) async throws -> ClientVersion {
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("api/v1/version/getclientversion"),
+            resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "currentVersion", value: currentVersion)]
+        guard let url = components?.url else {
+            throw APIError.badResponse(status: -1)
+        }
+        var request = URLRequest(url: url)
+        // The launch splash waits for this check to conclude (it
+        // shows at least 3 seconds); the request gets up to 10
+        // seconds before the gate resolves it as fail-open.
+        request.timeoutInterval = 10
+        let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.badResponse(status: -1)
         }
@@ -45,20 +51,9 @@ final class APIClient: Sendable {
             throw APIError.badResponse(status: http.statusCode)
         }
         do {
-            return try JSONDecoder().decode(TapResult.self, from: data)
+            return try JSONDecoder().decode(ClientVersion.self, from: data)
         } catch {
             throw APIError.decoding(error)
         }
-    }
-
-    private func multipartBody(boundary: String, fileURL: URL) throws -> Data {
-        var body = Data()
-        let filename = fileURL.lastPathComponent
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
-        body.append(try Data(contentsOf: fileURL))
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        return body
     }
 }

@@ -31,3 +31,6 @@ DerivedData/
 .env
 *.pem
 *.key
+
+# AdMob secrets (real IDs stay on the build machine only)
+ios/Secrets.xcconfig

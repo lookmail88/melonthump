@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Generate ios/MelonThump.xcodeproj/project.pbxproj.
 
+WARNING (2026-10-22): STALE — the live project has diverged from this
+script (it also builds LocalAnalyzer.swift / VersionGate.swift /
+AdsManager.swift / CreditWallet.swift, signs with the paid team, links
+the GoogleMobileAds + GoogleUserMessagingPlatform SPM packages, and
+uses Config.xcconfig as the target base configuration). Do NOT
+regenerate without reconciling the script first, or the build breaks.
+
 Modeled on the Retax.xcodeproj template (objectVersion 56, Swift 6,
 SDKROOT=iphoneos, iOS 17 deployment target). Uses a hand-written Info.plist
 (INFOPLIST_FILE) instead of a generated one so we can ship the microphone

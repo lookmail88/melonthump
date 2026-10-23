@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>MelonThump</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -18,21 +20,48 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>CFBundleDisplayName</key>
-	<string>MelonThump</string>
+	<key>GADApplicationIdentifier</key>
+	<string>$(ADMOB_APP_ID)</string>
+	<key>MelonThumpDefaultAppID</key>
+	<string>$(DEFAULT_ADMOB_APP_ID)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Record the sound of tapping a watermelon to judge its ripeness.</string>
+	<key>MelonThumpRewardedAdUnitID</key>
+	<string>$(ADMOB_REWARDED_UNIT_ID)</string>
+	<key>MelonThumpDefaultRewardedAdUnitID</key>
+	<string>$(DEFAULT_ADMOB_REWARDED_UNIT_ID)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- Dev only: allow plain HTTP to local dev server -->
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>UILaunchScreen</key>
-	<dict/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Record the sound of tapping a watermelon to judge its ripeness.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Allowing tracking helps show more relevant ads. Watching a rewarded ad earns you thump credits.</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 </dict>
 </plist>
