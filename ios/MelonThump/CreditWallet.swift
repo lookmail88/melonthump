@@ -11,9 +11,10 @@ import Foundation
 /// - creditPerAd == -1 declares a free day: unlimited use for the rest
 ///   of that local day, and no ads are offered.
 /// - While the server-advertised promo window (promoEndsAtEpochMillis)
-///   is running, the credit economy is suspended: the first thump of
-///   each day requires one completed rewarded ad, which unlocks
-///   unlimited use for the rest of that day.
+///   is running, the credit economy is suspended: the first thump
+///   after each fresh app launch requires one completed rewarded ad,
+///   which unlocks unlimited use until the app exits. The unlock is
+///   memory-only — relaunching always gates again, even the same day.
 /// - New installs receive a one-time welcome grant so the app is usable
 ///   out of the box; ad grants are capped per day (v1 anti-abuse).
 @MainActor
@@ -25,8 +26,9 @@ final class CreditWallet: ObservableObject {
     @Published private(set) var freeDayStamp: String?
     /// Promo window end from the latest policy fetch (nil = no promo).
     @Published private(set) var promoEndsAt: Date?
-    /// yyyy-MM-dd of the day the promo was unlocked; re-render stamp.
-    @Published private(set) var promoUnlockStamp: String?
+    /// Session-only promo unlock: never persisted, so an app relaunch
+    /// always gates again — exactly the promo's daily-first-open feel.
+    @Published private(set) var promoUnlocked = false
 
     static let welcomeGrant = 5
     static let dailyAdCap = 10
@@ -39,7 +41,6 @@ final class CreditWallet: ObservableObject {
         static let freeDay = "credit.freeDay"      // yyyy-MM-dd, local time
         static let grantDay = "credit.grantDay"    // yyyy-MM-dd, local time
         static let grantCount = "credit.grantCount"
-        static let promoUnlockDay = "credit.promoUnlockDay"  // yyyy-MM-dd
     }
 
     init() {
@@ -49,7 +50,6 @@ final class CreditWallet: ObservableObject {
         }
         balance = defaults.integer(forKey: Key.balance)
         freeDayStamp = defaults.string(forKey: Key.freeDay)
-        promoUnlockStamp = defaults.string(forKey: Key.promoUnlockDay)
         rollGrantDay()
     }
 
@@ -58,12 +58,11 @@ final class CreditWallet: ObservableObject {
         guard let promoEndsAt else { return false }
         return Date() < promoEndsAt
     }
-    var isPromoUnlockedToday: Bool { promoUnlockStamp == Self.todayString }
-    /// Promo gate for today: one completed ad unlocks the whole day.
-    var needsPromoAd: Bool { isPromoActive && !isFreeDay && !isPromoUnlockedToday }
+    /// Promo gate: one completed ad unlocks this app session.
+    var needsPromoAd: Bool { isPromoActive && !isFreeDay && !promoUnlocked }
     var canThump: Bool {
         if needsPromoAd { return false }
-        return isFreeDay || isPromoUnlockedToday || balance > 0
+        return isFreeDay || promoUnlocked || balance > 0
     }
     var canEarnFromAd: Bool {
         !isPromoActive && !isFreeDay && creditPerAd > 0 && grantsToday < Self.dailyAdCap
@@ -86,10 +85,9 @@ final class CreditWallet: ObservableObject {
         }
     }
 
-    /// Marks today as promo-unlocked after a completed rewarded ad.
-    func unlockPromoForToday() {
-        defaults.set(Self.todayString, forKey: Key.promoUnlockDay)
-        promoUnlockStamp = Self.todayString
+    /// Unlocks the promo for this app session after a completed ad.
+    func unlockPromoForSession() {
+        promoUnlocked = true
     }
 
     /// Charges one analysis. Free days and promo days never charge.

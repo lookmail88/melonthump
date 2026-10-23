@@ -39,9 +39,9 @@ struct ClientVersion: Decodable {
     /// nil behaves as the default of 1.
     let creditPerAd: Int?
     /// End of the launch promo window as epoch milliseconds; nil when
-    /// no promo is running. During the promo, the first app open of
-    /// each day requires one completed rewarded ad, which unlocks
-    /// unlimited use for the rest of that day.
+    /// no promo is running. During the promo, the first thump after
+    /// each fresh app launch requires one completed rewarded ad,
+    /// which unlocks unlimited use until the app exits.
     let promoEndsAtEpochMillis: Int64?
 }
 

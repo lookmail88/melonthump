@@ -38,7 +38,7 @@ struct TapView: View {
             Button("Watch an ad") { earnWithAd() }
             Button("Not now", role: .cancel) {}
         } message: {
-            Text("First thump of the day: watch one short ad and thump free for the rest of today.")
+            Text("Watch one short ad to unlock unlimited thumps until you leave the app.")
         }
         .task {
             await recorder.prepareSession()
@@ -172,12 +172,12 @@ struct TapView: View {
             Button {
                 earnWithAd()
             } label: {
-                Text("Launch promo — watch one ad, thump free all day")
+                Text("Launch promo — one ad unlocks thumping until you leave")
                     .font(.footnote.weight(.semibold))
                     .foregroundColor(MelonTheme.buttonGreen)
             }
-        } else if wallet.isPromoActive && wallet.isPromoUnlockedToday {
-            Text("Promo unlocked — unlimited thumps today")
+        } else if wallet.isPromoActive && wallet.promoUnlocked {
+            Text("Promo unlocked — unlimited thumps this visit")
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
         } else if wallet.isFreeDay {
@@ -207,7 +207,7 @@ struct TapView: View {
         Task {
             if await AdsManager.shared.showRewarded() {
                 if wallet.needsPromoAd {
-                    wallet.unlockPromoForToday()
+                    wallet.unlockPromoForSession()
                 } else {
                     wallet.grantFromAd()
                 }
