@@ -24,6 +24,11 @@ spec:
         - name: server
           image: ghcr.io/lookmail88/melonthump-server:v1.7.1
           imagePullPolicy: Always
+          env:
+            # Launch promo on the test build: window runs until the end
+            # of 2026 — 2027-01-01 00:00 America/Los_Angeles (epoch ms).
+            - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
+              value: "1798790400000"
           ports:
             - containerPort: 8080
           readinessProbe:
