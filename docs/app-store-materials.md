@@ -163,6 +163,6 @@ lookmail88@gmail.com
 - [] ★ 支持 URL 落位（第 9 节）
 - [] App 隐私问卷按第 11 节提交
 - [] 年龄分级问卷完成（第 12 节）
-- [] 截图：iPhone 6.9" 一套（待补，可由 Pepper 在模拟器出图）
+- [x] 截图：iPhone 6.9" 一套（1320×2868，3 张：主页/录音中/结果页，存 docs/screenshots/）
 - [] 加密出口合规：Info.plist 已含 ITSAppUsesNonExemptEncryption=false，问卷如实选"不使用非豁免加密"
 - [] 提交审核后：回 AdMob 关联 App Store 链接，真实广告才开始投放
