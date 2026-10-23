@@ -552,10 +552,10 @@ struct ResultView: View {
 
     private var thresholdNote: String {
         switch ripeness {
-        case .ripe: return "160–280 Hz = ripe · placeholder thresholds, v1"
-        case .unripe: return "above 280 Hz = not ripe yet · placeholder thresholds, v1"
-        case .overripe: return "below 160 Hz = overripe · placeholder thresholds, v1"
-        case .unknown: return "placeholder thresholds, v1"
+        case .ripe: return "Ripe range: 160–280 Hz"
+        case .unripe: return "Above 280 Hz — not ripe yet"
+        case .overripe: return "Below 160 Hz — past its prime"
+        case .unknown: return "A ripe thump lands in the green zone"
         }
     }
 }
