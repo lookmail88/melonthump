@@ -1,0 +1,13 @@
+// Base build configuration for MelonThump (wired as the target's base
+// configuration in the Xcode project).
+//
+// The values below are Google's PUBLIC test IDs — safe to commit. Real
+// AdMob IDs live in Secrets.xcconfig in this same folder: it is
+// gitignored, never committed, and when present it overrides these
+// defaults (the include sits after the assignments, and in xcconfig
+// the last assignment wins).
+
+ADMOB_APP_ID = ca-app-pub-3940256099942544~1458002511
+ADMOB_REWARDED_UNIT_ID = ca-app-pub-3940256099942544/1712485313
+
+#include? "Secrets.xcconfig"

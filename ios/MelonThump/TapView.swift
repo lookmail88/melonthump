@@ -6,11 +6,13 @@ import SwiftUI
 @MainActor
 struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
+    @StateObject private var wallet = CreditWallet()
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
     @State private var isAnalyzing = false
     @State private var recordingStartedAt: Date?
+    @State private var showOutOfCredits = false
 
     var body: some View {
         ZStack {
@@ -25,8 +27,18 @@ struct TapView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .alert("Out of credits", isPresented: $showOutOfCredits) {
+            Button("Watch an ad (+\(wallet.creditPerAd))") { earnWithAd() }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Watch a short ad to earn credits for more thumps.")
+        }
         .task {
             await recorder.prepareSession()
+            await wallet.refreshPolicy(environment: serverEnvironment)
+        }
+        .onChange(of: serverEnvironment) { _, env in
+            Task { await wallet.refreshPolicy(environment: env) }
         }
     }
 
@@ -116,6 +128,9 @@ struct TapView: View {
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
 
+            creditsRow
+                .padding(.top, 8)
+
             if let errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
@@ -142,6 +157,43 @@ struct TapView: View {
         .padding(.bottom, 12)
     }
 
+    // MARK: - Credits
+
+    @ViewBuilder
+    private var creditsRow: some View {
+        if wallet.isFreeDay {
+            Text("Free day — unlimited thumps, no ads today")
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.balance > 0 {
+            Text("Credits: \(wallet.balance)")
+                .font(.footnote)
+                .foregroundColor(MelonTheme.inkSoft)
+        } else if wallet.canEarnFromAd {
+            Button {
+                earnWithAd()
+            } label: {
+                Text("Out of credits — watch an ad to earn +\(wallet.creditPerAd)")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(MelonTheme.buttonGreen)
+            }
+        } else {
+            Text("Out of credits — daily ad limit reached, come back tomorrow")
+                .font(.footnote)
+                .foregroundColor(MelonTheme.inkSoft)
+        }
+    }
+
+    private func earnWithAd() {
+        Task {
+            if await AdsManager.shared.showRewarded() {
+                wallet.grantFromAd()
+            } else if !AdsManager.shared.rewardedReady {
+                errorMessage = "The ad is still loading — give it a few seconds and try again."
+            }
+        }
+    }
+
     // MARK: - Actions (unchanged from v1)
 
     private func toggleRecording() {
@@ -150,6 +202,10 @@ struct TapView: View {
             recordingStartedAt = nil
             analyze()
         } else {
+            guard wallet.canThump else {
+                showOutOfCredits = true
+                return
+            }
             errorMessage = nil
             result = nil
             Task {
@@ -179,6 +235,11 @@ struct TapView: View {
             do {
                 // Analysis runs fully on-device; nothing is uploaded.
                 result = try LocalAnalyzer.analyze(audioURL: audioURL)
+                // One credit per completed analysis; an UNKNOWN (too
+                // noisy to judge) result is free.
+                if let verdict = result?.verdict, verdict != "UNKNOWN" {
+                    wallet.spendOne()
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
