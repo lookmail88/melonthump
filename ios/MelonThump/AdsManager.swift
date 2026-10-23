@@ -20,14 +20,23 @@ final class AdsManager: NSObject, ObservableObject {
     private var rewardContinuation: CheckedContinuation<Bool, Never>?
     private var bootstrapped = false
 
-    /// Google public test rewarded unit. Also the fallback: if the
-    /// configured unit fails to load, we retry with this one (it always
-    /// fills) so the promo gate never locks the user out over a no-fill.
+    /// Google public test rewarded unit, kept as the last-resort
+    /// literal if the config value below is somehow missing.
     private static let testRewardedUnitID = "ca-app-pub-3940256099942544/1712485313"
+
+    /// Fallback unit from build settings (DEFAULT_ADMOB_REWARDED_UNIT_ID
+    /// in Config/Secrets, surfaced via Info.plist): if the configured
+    /// unit fails to load, we retry with this one (the Google test unit
+    /// always fills) so the promo gate never locks the user out over a
+    /// no-fill.
+    private static var fallbackRewardedUnitID: String {
+        Bundle.main.object(forInfoDictionaryKey: "MelonThumpDefaultRewardedAdUnitID") as? String
+            ?? testRewardedUnitID
+    }
 
     private var rewardedUnitID: String {
         Bundle.main.object(forInfoDictionaryKey: "MelonThumpRewardedAdUnitID") as? String
-            ?? Self.testRewardedUnitID
+            ?? Self.fallbackRewardedUnitID
     }
 
     /// Consent → ATT → SDK start → first rewarded preload. Idempotent.
@@ -69,8 +78,8 @@ final class AdsManager: NSObject, ObservableObject {
         // Configured unit failed (reason logged in loadRewarded). Fall
         // back to the Google test unit so there is almost always an ad
         // ready to show.
-        if rewardedUnitID != Self.testRewardedUnitID {
-            _ = await loadRewarded(unitID: Self.testRewardedUnitID)
+        if rewardedUnitID != Self.fallbackRewardedUnitID {
+            _ = await loadRewarded(unitID: Self.fallbackRewardedUnitID)
         }
     }
 
