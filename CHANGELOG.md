@@ -1,3 +1,15 @@
+# [1.6.0](https://github.com/lookmail88/melonthump/compare/v1.5.0...v1.6.0) (2026-10-23)
+
+
+### Bug Fixes
+
+* **ios:** declare supported interface orientations (portrait on iPhone, all four on iPad) for App Store validation ([edce44e](https://github.com/lookmail88/melonthump/commit/edce44e0e92878a67de3ebdb04217a8bb47eb809))
+
+
+### Features
+
+* **ios:** AdMob rewarded ads with on-device credit wallet ([7347190](https://github.com/lookmail88/melonthump/commit/7347190053161176df96e94614a7d947d8023eb8))
+
 # [1.5.0](https://github.com/lookmail88/melonthump/compare/v1.4.0...v1.5.0) (2026-10-22)
 
 
