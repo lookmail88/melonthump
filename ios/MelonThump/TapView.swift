@@ -13,6 +13,7 @@ struct TapView: View {
     @State private var isAnalyzing = false
     @State private var recordingStartedAt: Date?
     @State private var showOutOfCredits = false
+    @State private var showPromoGate = false
 
     var body: some View {
         ZStack {
@@ -32,6 +33,12 @@ struct TapView: View {
             Button("Not now", role: .cancel) {}
         } message: {
             Text("Watch a short ad to earn credits for more thumps.")
+        }
+        .alert("Launch promo", isPresented: $showPromoGate) {
+            Button("Watch an ad") { earnWithAd() }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("First thump of the day: watch one short ad and thump free for the rest of today.")
         }
         .task {
             await recorder.prepareSession()
@@ -161,7 +168,19 @@ struct TapView: View {
 
     @ViewBuilder
     private var creditsRow: some View {
-        if wallet.isFreeDay {
+        if wallet.needsPromoAd {
+            Button {
+                earnWithAd()
+            } label: {
+                Text("Launch promo — watch one ad, thump free all day")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(MelonTheme.buttonGreen)
+            }
+        } else if wallet.isPromoActive && wallet.isPromoUnlockedToday {
+            Text("Promo unlocked — unlimited thumps today")
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.isFreeDay {
             Text("Free day — unlimited thumps, no ads today")
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
@@ -187,7 +206,11 @@ struct TapView: View {
     private func earnWithAd() {
         Task {
             if await AdsManager.shared.showRewarded() {
-                wallet.grantFromAd()
+                if wallet.needsPromoAd {
+                    wallet.unlockPromoForToday()
+                } else {
+                    wallet.grantFromAd()
+                }
             } else if !AdsManager.shared.rewardedReady {
                 errorMessage = "The ad is still loading — give it a few seconds and try again."
             }
@@ -203,7 +226,11 @@ struct TapView: View {
             analyze()
         } else {
             guard wallet.canThump else {
-                showOutOfCredits = true
+                if wallet.needsPromoAd {
+                    showPromoGate = true
+                } else {
+                    showOutOfCredits = true
+                }
                 return
             }
             errorMessage = nil

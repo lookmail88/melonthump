@@ -38,6 +38,11 @@ struct ClientVersion: Decodable {
     /// Optional so older servers that do not send it still decode;
     /// nil behaves as the default of 1.
     let creditPerAd: Int?
+    /// End of the launch promo window as epoch milliseconds; nil when
+    /// no promo is running. During the promo, the first app open of
+    /// each day requires one completed rewarded ad, which unlocks
+    /// unlimited use for the rest of that day.
+    let promoEndsAtEpochMillis: Int64?
 }
 
 /// Response from POST /api/v1/tap/analyze
