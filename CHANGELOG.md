@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/lookmail88/melonthump/compare/v1.7.0...v1.7.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **ios:** promo unlock is session-scoped, not day-scoped ([3eeb917](https://github.com/lookmail88/melonthump/commit/3eeb917898dcd2f5e6ce06880e7062c3652fd38c))
+
 # [1.7.0](https://github.com/lookmail88/melonthump/compare/v1.6.0...v1.7.0) (2026-10-23)
 
 
