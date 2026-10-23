@@ -1,5 +1,6 @@
 package dev.melonthump.api;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -28,7 +29,8 @@ class VersionControllerTest {
                 .andExpect(jsonPath("$.minSupportedVersion").value("1.0.0"))
                 .andExpect(jsonPath("$.updateAvailable").value(false))
                 .andExpect(jsonPath("$.forceUpdate").value(false))
-                .andExpect(jsonPath("$.creditPerAd").value(1));
+                .andExpect(jsonPath("$.creditPerAd").value(1))
+                .andExpect(jsonPath("$.promoEndsAtEpochMillis", nullValue()));
     }
 
     @Test

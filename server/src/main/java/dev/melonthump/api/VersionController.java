@@ -19,18 +19,33 @@ public class VersionController {
     private final String minSupportedVersion;
     private final String updateUrl;
     private final int creditPerAd;
+    private final Long promoEndsAtEpochMillis;
 
     public VersionController(
             @Value("${melonthump.client.platform:ios}") String platform,
             @Value("${melonthump.client.latest-version:1.0.0}") String latestVersion,
             @Value("${melonthump.client.min-supported-version:1.0.0}") String minSupportedVersion,
             @Value("${melonthump.client.update-url:}") String updateUrl,
-            @Value("${melonthump.client.credit-per-ad:1}") int creditPerAd) {
+            @Value("${melonthump.client.credit-per-ad:1}") int creditPerAd,
+            @Value("${melonthump.client.promo-ends-at-epoch-millis:}") String promoEndsAtRaw) {
         this.platform = platform;
         this.latestVersion = latestVersion;
         this.minSupportedVersion = minSupportedVersion;
         this.updateUrl = updateUrl;
         this.creditPerAd = creditPerAd;
+        this.promoEndsAtEpochMillis = parseEpochMillis(promoEndsAtRaw);
+    }
+
+    /** Blank or malformed config means "no promo running" — never fail the policy over it. */
+    private static Long parseEpochMillis(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Operation(summary = "Get the client version policy",
@@ -44,7 +59,8 @@ public class VersionController {
         boolean forceUpdate = currentVersion != null
                 && compareVersions(currentVersion, minSupportedVersion) < 0;
         return new ClientVersionResponse(
-                platform, latestVersion, minSupportedVersion, updateAvailable, forceUpdate, updateUrl, creditPerAd);
+                platform, latestVersion, minSupportedVersion, updateAvailable, forceUpdate, updateUrl,
+                creditPerAd, promoEndsAtEpochMillis);
     }
 
     /** Compares dotted numeric versions segment by segment; missing segments count as 0. */
