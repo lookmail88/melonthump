@@ -99,6 +99,6 @@ the store build.
 - App Store：**1.0.0 (6) 审核中**（2026-10-23 提交，手动发布）。
   TestFlight 内部组：`xgaoAppTestGroup`。
 - UI follows Stephanie's design — her watermelon/cat artwork is used
-  as-is (cut out, never redrawn), and in-app copy is Chinese.
+  as-is (cut out, never redrawn), and in-app copy is currently English.
 - UI 以 Stephanie 的设计为准——她的西瓜/猫原图只抠图、不重绘；
-  App 内文案为中文。
+  App 内文案目前为英文。
