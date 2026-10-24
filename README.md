@@ -73,7 +73,6 @@ mvn spring-boot:run
 
 - Health 健康检查： http://localhost:8080/api/health
 - Swagger UI: http://localhost:8080/swagger-ui.html
-- Or with Docker 或用 Docker: `cd server && docker build -t melonthump-server .`
 
 Environments 环境： prod `melonthump.stephaniegao.me` · dev
 `melonthump-dev.stephaniegao.me` (k3s + ArgoCD; versions and images are

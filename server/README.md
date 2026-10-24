@@ -105,11 +105,3 @@ are injected from the `melonthump-db` k8s Secret and point to a dedicated
   `:v<release>`）只由 development 的 workflow 构建推送；ArgoCD 部署到
   `melonthump-dev` / `melonthump-prod`。服务端进 prod 是整个发布的
   **最后一步**——须在新版 App 上架之后。
-
-## Docker
-
-```bash
-cd server
-docker build -t melonthump-server .
-docker run -p 8080:8080 melonthump-server
-```
