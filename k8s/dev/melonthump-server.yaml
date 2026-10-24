@@ -29,6 +29,21 @@ spec:
             # of 2026 — 2027-01-01 00:00 America/Los_Angeles (epoch ms).
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
               value: "1798790400000"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: password
           ports:
             - containerPort: 8080
           readinessProbe:

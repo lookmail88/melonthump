@@ -24,6 +24,22 @@ spec:
         - name: server
           image: ghcr.io/lookmail88/melonthump-server:v1.8.1
           imagePullPolicy: Always
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: password
           ports:
             - containerPort: 8080
           readinessProbe:
