@@ -1,5 +1,6 @@
 package dev.melonthump.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Client version policy: what the app should run, and whether it must update")
@@ -23,5 +24,10 @@ public record ClientVersionResponse(
                 + "rewarded ad, which unlocks unlimited use until the app exits (relaunching gates again, "
                 + "even on the same day); credits are neither needed nor spent",
                 example = "1767225599000", nullable = true)
-        Long promoEndsAtEpochMillis) {
+        Long promoEndsAtEpochMillis,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Schema(description = "Production rewarded ad unit ID, issued ONLY to requests carrying a valid "
+                + "App Attest assertion (1.1.0+); the field is entirely absent otherwise, so legacy "
+                + "clients see a byte-identical response", nullable = true)
+        String rewardedAdUnitId) {
 }

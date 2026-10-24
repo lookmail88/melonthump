@@ -21,6 +21,7 @@
         <!-- Target JDK 25 (LTS). Local verification on JDK 21 uses -Djava.version=21 -->
         <java.version>25</java.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <bouncycastle.version>1.80</bouncycastle.version>
     </properties>
 
     <dependencies>
@@ -40,9 +41,51 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- 1.1.0: persistence for usage stats + App Attest state.
+             Boot 4 split: the Flyway starter is required, flyway-core
+             alone never triggers migrations. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- CBOR decoding for App Attest attestation/assertion objects
+             (Jackson 2 line, matching spring-boot-jackson2). -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-cbor</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Tests run the real Flyway migration + repositories against
+             an in-memory H2 in PostgreSQL compatibility mode. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Test-only: mint a synthetic App Attest certificate chain so
+             the verifier can be exercised end to end without a device. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
             <scope>test</scope>
         </dependency>
         <!-- Boot 4 split web test support (MockMvc) into its own module -->

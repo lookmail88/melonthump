@@ -11,10 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class VersionControllerTest {
 
     @Autowired
@@ -30,7 +32,11 @@ class VersionControllerTest {
                 .andExpect(jsonPath("$.updateAvailable").value(false))
                 .andExpect(jsonPath("$.forceUpdate").value(false))
                 .andExpect(jsonPath("$.creditPerAd").value(1))
-                .andExpect(jsonPath("$.promoEndsAtEpochMillis", nullValue()));
+                .andExpect(jsonPath("$.promoEndsAtEpochMillis", nullValue()))
+                // 1.1.0 backward-compat: without an attestation the
+                // response shape is byte-identical to 1.0.0's — the
+                // attested-only field is absent, not null.
+                .andExpect(jsonPath("$.rewardedAdUnitId").doesNotExist());
     }
 
     @Test
