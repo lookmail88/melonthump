@@ -13,7 +13,7 @@
 
     <groupId>dev.melonthump</groupId>
     <artifactId>melonthump-server</artifactId>
-    <version>1.8.1</version>
+    <version>1.9.0</version>
     <name>melonthump-server</name>
     <description>MelonThump server: client version policy (tap analysis runs on-device)</description>
 

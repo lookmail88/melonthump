@@ -1,3 +1,11 @@
+# [1.9.0](https://github.com/lookmail88/melonthump/compare/v1.8.1...v1.9.0) (2026-10-24)
+
+
+### Features
+
+* **ios:** App Attest client, stats reporter, server-issued ad unit (1.1.0) ([d46e922](https://github.com/lookmail88/melonthump/commit/d46e9222902e47aacba121b3da2a4edfd2b359a9))
+* **server:** App Attest gating, usage stats, attested ad config (1.1.0) ([a56b666](https://github.com/lookmail88/melonthump/commit/a56b66683ef0a0a25a64743781a7fd97a19cca2e))
+
 ## [1.8.1](https://github.com/lookmail88/melonthump/compare/v1.8.0...v1.8.1) (2026-10-23)
 
 

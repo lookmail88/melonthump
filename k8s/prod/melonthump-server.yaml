@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.8.1
+          image: ghcr.io/lookmail88/melonthump-server:v1.9.0
           imagePullPolicy: Always
           env:
             - name: SPRING_DATASOURCE_URL
