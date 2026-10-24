@@ -11,7 +11,10 @@ metadata:
   labels:
     app: melonthump-server
 spec:
-  replicas: 1
+  # 1.1.0 (design doc §7): 2 replicas for availability / zero-downtime
+  # rollouts. All request-path state (attest challenges, sign counters)
+  # lives in PostgreSQL, never in pod memory.
+  replicas: 2
   selector:
     matchLabels:
       app: melonthump-server

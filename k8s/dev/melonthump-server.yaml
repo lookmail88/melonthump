@@ -25,6 +25,14 @@ spec:
           image: ghcr.io/lookmail88/melonthump-server:v1.8.1
           imagePullPolicy: Always
           env:
+            # 1.1.0 App Attest (design doc §5/§7): the dev backend also
+            # accepts develop-environment attestations (Xcode installs)
+            # and the simulator debug bypass. Prod sets NEITHER — its
+            # defaults stay production-only with no bypass.
+            - name: MELONTHUMP_ATTEST_ACCEPT_DEVELOP
+              value: "true"
+            - name: MELONTHUMP_ATTEST_DEBUG_BYPASS
+              value: "true"
             # Launch promo on the test build: window runs until the end
             # of 2026 — 2027-01-01 00:00 America/Los_Angeles (epoch ms).
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
