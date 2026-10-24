@@ -20,6 +20,11 @@ final class AdsManager: NSObject, ObservableObject {
     private var rewardContinuation: CheckedContinuation<Bool, Never>?
     private var bootstrapped = false
 
+    /// Rewarded unit issued by the server on the attested version
+    /// policy fetch (1.1.0). Wins over the Info.plist value when set;
+    /// the real ID never ships in the binary or in git.
+    private var serverRewardedUnitID: String?
+
     /// Google public test rewarded unit, kept as the last-resort
     /// literal if the config value below is somehow missing.
     private static let testRewardedUnitID = "ca-app-pub-3940256099942544/1712485313"
@@ -35,8 +40,26 @@ final class AdsManager: NSObject, ObservableObject {
     }
 
     private var rewardedUnitID: String {
-        Bundle.main.object(forInfoDictionaryKey: "MelonThumpRewardedAdUnitID") as? String
+        serverRewardedUnitID
+            ?? Bundle.main.object(forInfoDictionaryKey: "MelonThumpRewardedAdUnitID") as? String
             ?? Self.fallbackRewardedUnitID
+    }
+
+    /// Where a unit came from, for the stats ledger (closed set in
+    /// design doc §3.3: server / test_fallback). Anything that did not
+    /// come from the server counts as the local fallback chain.
+    private func unitSource(for unitID: String) -> String {
+        unitID == serverRewardedUnitID ? "server" : "test_fallback"
+    }
+
+    /// Applies the server-issued rewarded unit ID from the attested
+    /// policy fetch; re-preloads with it when the SDK is already up.
+    func applyServerRewardedUnitId(_ unitID: String) {
+        guard !unitID.isEmpty, unitID != serverRewardedUnitID else { return }
+        serverRewardedUnitID = unitID
+        if bootstrapped {
+            Task { await preloadRewarded() }
+        }
     }
 
     /// Consent → ATT → SDK start → first rewarded preload. Idempotent.
@@ -85,16 +108,19 @@ final class AdsManager: NSObject, ObservableObject {
 
     @discardableResult
     private func loadRewarded(unitID: String) async -> Bool {
+        Task { await StatsReporter.shared.recordAdRequested(unitSource: unitSource(for: unitID)) }
         do {
             let ad = try await RewardedAd.load(with: unitID, request: Request())
             ad.fullScreenContentDelegate = self
             rewardedAd = ad
             rewardedReady = true
+            Task { await StatsReporter.shared.recordAdLoaded() }
             return true
         } catch {
             rewardedAd = nil
             rewardedReady = false
             print("[AdsManager] Rewarded load failed (unit \(unitID)): \(error)")
+            Task { await StatsReporter.shared.recordAdLoadFailed(errorCode: (error as NSError).code) }
             return false
         }
     }
@@ -112,6 +138,7 @@ final class AdsManager: NSObject, ObservableObject {
         return await withCheckedContinuation { continuation in
             rewardContinuation = continuation
             ad.present(from: vc) { [weak self] in
+                Task { await StatsReporter.shared.recordAdRewarded() }
                 self?.resolveReward(true)
             }
         }
@@ -134,7 +161,12 @@ final class AdsManager: NSObject, ObservableObject {
 // MARK: - FullScreenContentDelegate
 
 extension AdsManager: FullScreenContentDelegate {
+    nonisolated func adDidRecordImpression(_ ad: FullScreenPresentingAd) {
+        Task { await StatsReporter.shared.recordAdShown() }
+    }
+
     nonisolated func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
+        Task { await StatsReporter.shared.recordAdDismissed() }
         Task { @MainActor in
             // Closed without earning → the pending show resolves false.
             if rewardContinuation != nil { resolveReward(false) }

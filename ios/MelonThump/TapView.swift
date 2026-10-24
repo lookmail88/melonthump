@@ -267,6 +267,11 @@ struct TapView: View {
                 if let verdict = result?.verdict, verdict != "UNKNOWN" {
                     wallet.spendOne()
                 }
+                // Usage stats (1.1.0): only the verdict label is
+                // reported — never the recording or any audio data.
+                if let verdict = result?.verdict {
+                    Task { await StatsReporter.shared.recordAnalysis(verdict: verdict) }
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }

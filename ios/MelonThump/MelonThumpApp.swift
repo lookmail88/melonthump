@@ -14,9 +14,18 @@ struct MelonThumpApp: App {
         AdsManager.shared.bootstrap()
     }
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             rootView
+                .onChange(of: scenePhase) { _, phase in
+                    // Background trigger for the usage-stats queue
+                    // (design doc §6).
+                    if phase == .background {
+                        Task { await StatsReporter.shared.flush() }
+                    }
+                }
         }
     }
 

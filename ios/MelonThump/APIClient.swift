@@ -29,8 +29,11 @@ final class APIClient: Sendable {
     }
 
     /// Fetches the version policy, evaluated server-side against the
-    /// supplied current version.
-    func fetchClientVersion(currentVersion: String) async throws -> ClientVersion {
+    /// supplied current version. When assertion headers are supplied
+    /// and verify, the response additionally carries the server-issued
+    /// rewarded ad unit ID (1.1.0); without them it is exactly the
+    /// 1.0.0 response.
+    func fetchClientVersion(currentVersion: String, assertionHeaders: [String: String]? = nil) async throws -> ClientVersion {
         var components = URLComponents(
             url: baseURL.appendingPathComponent("api/v1/version/getclientversion"),
             resolvingAgainstBaseURL: false)
@@ -39,6 +42,11 @@ final class APIClient: Sendable {
             throw APIError.badResponse(status: -1)
         }
         var request = URLRequest(url: url)
+        if let assertionHeaders {
+            for (name, value) in assertionHeaders {
+                request.setValue(value, forHTTPHeaderField: name)
+            }
+        }
         // The launch splash waits for this check to conclude (it
         // shows at least 3 seconds); the request gets up to 10
         // seconds before the gate resolves it as fail-open.
@@ -54,6 +62,73 @@ final class APIClient: Sendable {
             return try JSONDecoder().decode(ClientVersion.self, from: data)
         } catch {
             throw APIError.decoding(error)
+        }
+    }
+
+    // MARK: - App Attest (1.1.0)
+
+    private struct ChallengeResponse: Decodable {
+        let challenge: String
+        let expiresInSeconds: Int
+    }
+
+    private struct EnrollBody: Encodable {
+        let keyId: String
+        let attestationObject: String
+        let challenge: String
+        let installId: UUID
+    }
+
+    /// POST /api/v1/attest/challenge — a fresh, single-use challenge.
+    func fetchAttestChallenge() async throws -> String {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/attest/challenge"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 10
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.requireSuccess(response)
+        return try JSONDecoder().decode(ChallengeResponse.self, from: data).challenge
+    }
+
+    /// POST /api/v1/attest/enroll — registers an attested key with
+    /// this backend (once per install per environment).
+    func enrollAttestKey(keyId: String, attestationObjectB64: String,
+                         challengeB64: String, installId: UUID) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/attest/enroll"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 10
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(EnrollBody(
+            keyId: keyId, attestationObject: attestationObjectB64,
+            challenge: challengeB64, installId: installId))
+        let (_, response) = try await URLSession.shared.data(for: request)
+        try Self.requireSuccess(response)
+    }
+
+    /// POST /api/v1/stats/events — uploads one attested batch. Returns
+    /// the HTTP status (rather than throwing on non-2xx) so the caller
+    /// can decide whether the queue keeps or drops the batch.
+    func uploadStats(body: Data, headers: [String: String]) async throws -> Int {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/stats/events"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (name, value) in headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
+        request.httpBody = body
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.badResponse(status: -1)
+        }
+        return http.statusCode
+    }
+
+    private static func requireSuccess(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.badResponse(status: -1)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw APIError.badResponse(status: http.statusCode)
         }
     }
 }

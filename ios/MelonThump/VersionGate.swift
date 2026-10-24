@@ -47,14 +47,33 @@ struct VersionGateView: View {
         defer { checkFinished = true }
         let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         let client = APIClient(environment: serverEnvironment)
+        // 1.1.0: enroll the App Attest key (first launch that needs
+        // it) so the policy fetch can carry an assertion and unlock
+        // the server-issued ad unit ID. The extra round-trips ride
+        // inside the existing splash window; every failure is silent
+        // and the gate stays fail-open.
+        _ = await AttestManager.shared.ensureEnrolled(
+            environment: serverEnvironment, installId: StatsReporter.installId)
+        let canonicalRequest = "GET /api/v1/version/getclientversion?currentVersion=\(current)"
+        var headers = await AttestManager.shared.assertionHeaders(
+            environment: serverEnvironment, payload: Data(canonicalRequest.utf8))
+        if headers == nil && !AttestManager.isSupported {
+            headers = AttestManager.bypassHeaders
+        }
         do {
-            let policy = try await client.fetchClientVersion(currentVersion: current)
+            let policy = try await client.fetchClientVersion(
+                currentVersion: current, assertionHeaders: headers)
+            if let unitID = policy.rewardedAdUnitId, !unitID.isEmpty {
+                AdsManager.shared.applyServerRewardedUnitId(unitID)
+            }
             if policy.updateAvailable || policy.forceUpdate {
                 requiredPolicy = policy
             }
         } catch {
             // Fail-open: no policy, no block.
         }
+        // Launch trigger for the usage-stats queue (design doc §6).
+        await StatsReporter.shared.flush()
     }
 }
 
