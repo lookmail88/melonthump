@@ -30,23 +30,12 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 'lts/*'
-
-      - name: Run Semantic Release
-        id: semantic
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npm install semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/github @semantic-release/git @semantic-release/exec
-          npx semantic-release
-
+      # No semantic-release on main: version bumps happen only on
+      # development. This workflow just reads the latest release tag
+      # (created by the dev workflow) and builds/deploys that version.
       - name: Get release version
         id: version
         run: |
-          git pull origin main
           VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
           echo "APP_VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
