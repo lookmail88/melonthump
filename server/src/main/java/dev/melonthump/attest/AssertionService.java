@@ -76,9 +76,9 @@ public class AssertionService {
             // construction can be verified offline. Challenges are
             // single-use and already consumed at this point. Remove
             // together with the fix this informs.
-            log.debug("ATTEST-CAPTURE keyId={} challenge={} assertion={} payload={} error={}",
+            log.debug("ATTEST-CAPTURE keyId={} challenge={} assertion={} payload={} payloadBytes={} error={}",
                     keyId, challengeB64, assertionB64,
-                    Base64.getEncoder().encodeToString(payload), e.getMessage());
+                    Base64.getEncoder().encodeToString(payload), payload.length, e.getMessage());
             throw e;
         }
         if (!store.advanceSignCount(keyId, signCount)) {
