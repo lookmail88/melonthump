@@ -37,6 +37,12 @@ spec:
             # prints one line (RequestLoggingFilter). Prod uses ERROR.
             - name: MELONTHUMP_LOG_LEVEL
               value: "DEBUG"
+            # Pin the client latest-version at 1.0.0 on dev: the image
+            # build stamps the in-development 1.1.0, and a 1.0.0 client
+            # pointed at dev would hit the update gate with nothing to
+            # download. Unpin when 1.1.0 ships.
+            - name: MELONTHUMP_CLIENT_LATEST_VERSION
+              value: "1.0.0"
             # Launch promo on the test build: window runs until the end
             # of 2026 — 2027-01-01 00:00 America/Los_Angeles (epoch ms).
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
