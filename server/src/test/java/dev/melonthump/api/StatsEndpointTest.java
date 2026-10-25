@@ -143,6 +143,36 @@ class StatsEndpointTest {
         assertTrue(today.get("activeInstalls").asLong() >= 1);
     }
 
+    @Test
+    void uploadWithVersionAndChannelIsStoredAndSummarized() throws Exception {
+        UUID installId = UUID.randomUUID();
+        String body = "{\"installId\":\"" + installId + "\",\"sessionId\":\"" + UUID.randomUUID()
+                + "\",\"appVersion\":\"1.1.0\",\"channel\":\"testflight\",\"events\":[{"
+                + "\"eventId\":\"" + UUID.randomUUID() + "\",\"type\":\"ad_requested\",\"clientTs\":1790000000123,"
+                + "\"slot\":\"rewarded_main\",\"unitSource\":\"server\"}]}";
+        mvc.perform(post("/api/v1/stats/events")
+                        .header("X-Attest-Bypass", "simulator")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.accepted").value(1));
+
+        JsonNode today = todayRow(summary(7));
+        assertEquals(1, today.get("channelInstalls").get("testflight").asLong());
+        assertEquals(1, today.get("versionEvents").get("1.1.0").asLong());
+    }
+
+    @Test
+    void uploadWithUnknownChannelIsBadRequest() throws Exception {
+        String body = "{\"installId\":\"" + UUID.randomUUID()
+                + "\",\"channel\":\"carrier_pigeon\",\"events\":[{"
+                + "\"eventId\":\"" + UUID.randomUUID() + "\",\"type\":\"ad_shown\",\"clientTs\":1790000000123,"
+                + "\"slot\":\"rewarded_main\"}]}";
+        mvc.perform(post("/api/v1/stats/events")
+                        .header("X-Attest-Bypass", "simulator")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+    }
+
     private JsonNode summary(int days) throws Exception {
         MvcResult result = mvc.perform(get("/api/v1/stats/summary")
                         .param("days", String.valueOf(days))

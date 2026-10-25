@@ -21,11 +21,12 @@ public class AppEventStore {
     /** One validated event, ready to insert. received_ts is stamped by the DB default. */
     public record EventRow(UUID eventId, UUID installId, UUID sessionId, String type,
                            String verdict, String slot, String unitSource, Integer errorCode,
-                           Instant clientTs) {
+                           Instant clientTs, String appVersion, String channel) {
     }
 
     /** Minimal projection the summary aggregation needs. */
-    public record ReceivedEvent(Instant receivedTs, String type, String verdict, UUID installId) {
+    public record ReceivedEvent(Instant receivedTs, String type, String verdict, UUID installId,
+                                String appVersion, String channel) {
     }
 
     /**
@@ -37,9 +38,11 @@ public class AppEventStore {
         for (EventRow row : rows) {
             try {
                 jdbc.update("INSERT INTO app_event (event_id, install_id, session_id, type, verdict, "
-                                + "slot, unit_source, error_code, client_ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                + "slot, unit_source, error_code, client_ts, app_version, channel) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         row.eventId(), row.installId(), row.sessionId(), row.type(), row.verdict(),
-                        row.slot(), row.unitSource(), row.errorCode(), Timestamp.from(row.clientTs()));
+                        row.slot(), row.unitSource(), row.errorCode(), Timestamp.from(row.clientTs()),
+                        row.appVersion(), row.channel());
                 inserted++;
             } catch (DuplicateKeyException duplicate) {
                 // Same event uploaded twice: count it once, say nothing.
@@ -51,13 +54,15 @@ public class AppEventStore {
     /** All events received in [fromInclusive, toExclusive), oldest first. */
     public List<ReceivedEvent> eventsReceivedBetween(Instant fromInclusive, Instant toExclusive) {
         return jdbc.query(
-                "SELECT received_ts, type, verdict, install_id FROM app_event "
+                "SELECT received_ts, type, verdict, install_id, app_version, channel FROM app_event "
                         + "WHERE received_ts >= ? AND received_ts < ? ORDER BY received_ts",
                 (rs, rowNum) -> new ReceivedEvent(
                         rs.getTimestamp("received_ts").toInstant(),
                         rs.getString("type"),
                         rs.getString("verdict"),
-                        rs.getObject("install_id", UUID.class)),
+                        rs.getObject("install_id", UUID.class),
+                        rs.getString("app_version"),
+                        rs.getString("channel")),
                 Timestamp.from(fromInclusive), Timestamp.from(toExclusive));
     }
 

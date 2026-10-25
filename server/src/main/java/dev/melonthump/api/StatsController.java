@@ -50,6 +50,7 @@ public class StatsController {
             "ad_shown", "ad_rewarded", "ad_dismissed");
     private static final Set<String> VERDICTS = Set.of("UNRIPE", "RIPE", "OVERRIPE", "UNKNOWN");
     private static final Set<String> UNIT_SOURCES = Set.of("server", "test_fallback");
+    private static final Set<String> CHANNELS = Set.of("xcode", "testflight", "appstore");
 
     private final AppEventStore events;
     private final AssertionService assertions;
@@ -74,13 +75,14 @@ public class StatsController {
             @RequestHeader(value = "X-Key-Id", required = false) String keyId,
             @RequestHeader(value = "X-Assertion", required = false) String assertion,
             @RequestHeader(value = "X-Challenge", required = false) String challenge,
-            @RequestHeader(value = AssertionService.BYPASS_HEADER, required = false) String bypass)
+            @RequestHeader(value = AssertionService.BYPASS_HEADER, required = false) String bypass,
+            @RequestHeader(value = "X-App-Version", required = false) String appVersionHeader)
             throws AttestException {
         if (!assertions.isDebugBypass(bypass)) {
             assertions.verify(keyId, assertion, challenge, rawBody);
         }
         EventsRequest request = parse(rawBody);
-        List<AppEventStore.EventRow> rows = validate(request);
+        List<AppEventStore.EventRow> rows = validate(request, appVersionHeader);
         return new EventsResponse(events.insertIgnoringDuplicates(rows));
     }
 
@@ -128,21 +130,32 @@ public class StatsController {
         }
     }
 
-    private List<AppEventStore.EventRow> validate(EventsRequest request) {
+    private List<AppEventStore.EventRow> validate(EventsRequest request, String appVersionHeader) {
         if (request.installId() == null || request.events() == null || request.events().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "installId and a non-empty events list are required");
         }
         if (request.events().size() > MAX_BATCH) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "batch exceeds " + MAX_BATCH + " events");
         }
+        // Client-reported context (analytics only, never a trust input):
+        // the envelope wins; the X-App-Version header is the fallback.
+        String appVersion = request.appVersion() != null ? request.appVersion() : appVersionHeader;
+        if (appVersion != null && (appVersion.isBlank() || appVersion.length() > 32)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "appVersion must be 1-32 chars");
+        }
+        String channel = request.channel();
+        if (channel != null && !CHANNELS.contains(channel)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "channel must be xcode/testflight/appstore");
+        }
         List<AppEventStore.EventRow> rows = new ArrayList<>();
         for (EventDto event : request.events()) {
-            rows.add(validateEvent(request, event));
+            rows.add(validateEvent(request, event, appVersion, channel));
         }
         return rows;
     }
 
-    private AppEventStore.EventRow validateEvent(EventsRequest request, EventDto event) {
+    private AppEventStore.EventRow validateEvent(EventsRequest request, EventDto event,
+                                                 String appVersion, String channel) {
         if (event.eventId() == null || event.type() == null || !EVENT_TYPES.contains(event.type())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "unknown or missing event type");
         }
@@ -178,7 +191,8 @@ public class StatsController {
         }
         return new AppEventStore.EventRow(
                 event.eventId(), request.installId(), request.sessionId(), event.type(),
-                verdict, slot, unitSource, errorCode, Instant.ofEpochMilli(event.clientTs()));
+                verdict, slot, unitSource, errorCode, Instant.ofEpochMilli(event.clientTs()),
+                appVersion, channel);
     }
 
     private static String requireSlot(EventDto event) {
@@ -200,9 +214,17 @@ public class StatsController {
         private long adRewarded;
         private long adDismissed;
         private final Set<java.util.UUID> installs = new LinkedHashSet<>();
+        private final Map<String, Set<java.util.UUID>> channelInstallSets = new LinkedHashMap<>();
+        private final Map<String, Long> versionEvents = new LinkedHashMap<>();
 
         void add(AppEventStore.ReceivedEvent event) {
             installs.add(event.installId());
+            channelInstallSets
+                    .computeIfAbsent(event.channel() == null ? "unknown" : event.channel(),
+                            key -> new LinkedHashSet<>())
+                    .add(event.installId());
+            versionEvents.merge(event.appVersion() == null ? "unknown" : event.appVersion(),
+                    1L, Long::sum);
             switch (event.type()) {
                 case "analysis_completed" -> {
                     analyses++;
@@ -223,8 +245,12 @@ public class StatsController {
         }
 
         SummaryDay toDay(LocalDate date) {
+            Map<String, Long> channelInstalls = new LinkedHashMap<>();
+            channelInstallSets.forEach((channel, set) ->
+                    channelInstalls.put(channel, (long) set.size()));
             return new SummaryDay(date.toString(), analyses, verdicts, adRequested, adLoaded,
-                    adLoadFailed, adShown, adRewarded, adDismissed, installs.size());
+                    adLoadFailed, adShown, adRewarded, adDismissed, installs.size(),
+                    channelInstalls, versionEvents);
         }
     }
 }

@@ -34,7 +34,11 @@ public final class StatsDtos {
             UUID installId,
             @Schema(description = "Per-launch session UUID")
             UUID sessionId,
-            List<EventDto> events) {
+            List<EventDto> events,
+            @Schema(description = "Client app marketing version, e.g. 1.1.0 (client-reported; the X-App-Version header is the fallback carrier)")
+            String appVersion,
+            @Schema(description = "Distribution channel computed on-device from the App Store receipt: xcode / testflight / appstore (client-reported, analytics only)")
+            String channel) {
     }
 
     @Schema(description = "Upload outcome: how many events were newly stored (duplicates are accepted but counted once)")
@@ -53,7 +57,11 @@ public final class StatsDtos {
             long adShown,
             long adRewarded,
             long adDismissed,
-            long activeInstalls) {
+            long activeInstalls,
+            @Schema(description = "Distinct active installs per distribution channel (unknown = channel not reported)")
+            Map<String, Long> channelInstalls,
+            @Schema(description = "Event counts per client app version (unknown = version not reported)")
+            Map<String, Long> versionEvents) {
     }
 
     @Schema(description = "Reconciliation summary (design doc §3.4)")
