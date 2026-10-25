@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.11.1
+          image: ghcr.io/lookmail88/melonthump-server:v1.11.2
           imagePullPolicy: Always
           env:
             # 1.1.0 App Attest (design doc §5/§7): the dev backend also

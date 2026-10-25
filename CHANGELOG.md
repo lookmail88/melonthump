@@ -1,3 +1,11 @@
+## [1.11.2](https://github.com/lookmail88/melonthump/compare/v1.11.1...v1.11.2) (2026-10-25)
+
+
+### Bug Fixes
+
+* **ios:** stats upload stays attested-only by design (unsigned posts are 401 by spec) ([e7b64e1](https://github.com/lookmail88/melonthump/commit/e7b64e1e1d0af81def82e03983ff667dc1796aa6))
+* **server:** parse SEQUENCE-wrapped nonce in real Apple attestation certs ([d8a7328](https://github.com/lookmail88/melonthump/commit/d8a73285c787245253d6ef53628266dcb1573bbc))
+
 ## [1.11.1](https://github.com/lookmail88/melonthump/compare/v1.11.0...v1.11.1) (2026-10-25)
 
 
