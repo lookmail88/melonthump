@@ -1,3 +1,10 @@
+## [1.11.3](https://github.com/lookmail88/melonthump/compare/v1.11.2...v1.11.3) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** walk the DER tree for the attestation nonce (Apple nests it under SEQUENCE/[1]) ([976bc3c](https://github.com/lookmail88/melonthump/commit/976bc3c9ed8766a3f4dc164b6ff690aa3edc3fc1))
+
 ## [1.11.2](https://github.com/lookmail88/melonthump/compare/v1.11.1...v1.11.2) (2026-10-25)
 
 
