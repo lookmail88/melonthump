@@ -1,3 +1,10 @@
+## [1.11.4](https://github.com/lookmail88/melonthump/compare/v1.11.3...v1.11.4) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** accept P1363 (raw) assertion signatures, not only DER ([231f43d](https://github.com/lookmail88/melonthump/commit/231f43d9de2a1c3ebcd2e854b2747e5dfed45b5b))
+
 ## [1.11.3](https://github.com/lookmail88/melonthump/compare/v1.11.2...v1.11.3) (2026-10-25)
 
 
