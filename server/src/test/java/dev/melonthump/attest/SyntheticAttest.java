@@ -27,6 +27,7 @@ import java.util.Base64;
 import java.util.Date;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
+import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.Extension;
@@ -194,7 +195,7 @@ public final class SyntheticAttest {
         builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(ca));
         if (nonceExtension != null) {
             builder.addExtension(new ASN1ObjectIdentifier(NONCE_OID), false,
-                    new DEROctetString(nonceExtension));
+                    new DERSequence(new DEROctetString(nonceExtension)));
         }
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withECDSA")
                 .setProvider("BC").build(issuerKey);

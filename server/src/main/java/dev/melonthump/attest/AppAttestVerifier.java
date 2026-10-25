@@ -245,21 +245,47 @@ public class AppAttestVerifier {
     }
 
     /**
-     * The nonce extension value is an OCTET STRING wrapping a DER-encoded
-     * OCTET STRING that holds the 32-byte nonce. Minimal DER walk, no ASN.1
-     * library needed.
+     * The nonce extension value is an OCTET STRING wrapping the payload.
+     * In real Apple certificates the payload is a DER SEQUENCE holding a
+     * single OCTET STRING with the 32-byte nonce:
+     * SEQUENCE { OCTET STRING nonce }. (An earlier synthetic fixture
+     * omitted the SEQUENCE, which is why the tests passed while real
+     * attestations failed with "malformed DER octet string".) Accept
+     * both shapes. Minimal DER walk, no ASN.1 library needed.
      */
     private static byte[] extractNonceExtension(X509Certificate leaf) throws AttestException {
         byte[] ext = leaf.getExtensionValue(NONCE_EXTENSION_OID);
         if (ext == null) {
             throw new AttestException("leaf certificate lacks the nonce extension");
         }
-        byte[] outer = readOctetString(ext, 0);
-        byte[] inner = readOctetString(outer, 0);
+        byte[] payload = readOctetString(ext, 0);
+        byte[] inner;
+        if (payload.length > 0 && (payload[0] & 0xFF) == 0x30) {
+            // SEQUENCE: skip its header, the nonce octet string follows.
+            inner = readOctetString(payload, derHeaderLength(payload, 0));
+        } else {
+            inner = readOctetString(payload, 0);
+        }
         if (inner.length != 32) {
             throw new AttestException("nonce extension has unexpected length");
         }
         return inner;
+    }
+
+    /** Length of the DER header (tag + length bytes) of the element at {@code offset}. */
+    private static int derHeaderLength(byte[] der, int offset) throws AttestException {
+        if (der.length < offset + 2) {
+            throw new AttestException("malformed DER element");
+        }
+        int lenByte = der[offset + 1] & 0xFF;
+        if (lenByte < 0x80) {
+            return 2;
+        } else if (lenByte == 0x81) {
+            return 3;
+        } else if (lenByte == 0x82) {
+            return 4;
+        }
+        throw new AttestException("unsupported DER length form");
     }
 
     /** Reads one DER OCTET STRING at {@code offset} and returns its content bytes. */
