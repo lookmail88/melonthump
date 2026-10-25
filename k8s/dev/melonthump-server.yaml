@@ -33,6 +33,10 @@ spec:
               value: "true"
             - name: MELONTHUMP_ATTEST_DEBUG_BYPASS
               value: "true"
+            # Dev runs the app log at DEBUG so every client request
+            # prints one line (RequestLoggingFilter). Prod uses ERROR.
+            - name: MELONTHUMP_LOG_LEVEL
+              value: "DEBUG"
             # Launch promo on the test build: window runs until the end
             # of 2026 — 2027-01-01 00:00 America/Los_Angeles (epoch ms).
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
