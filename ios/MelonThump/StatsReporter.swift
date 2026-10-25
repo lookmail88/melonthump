@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// Anonymous usage events (design doc §3.3/§6): analysis verdicts and
@@ -138,9 +137,6 @@ actor StatsReporter {
         }
         guard let uploadHeaders = headers else { return } // cannot attest yet; keep queued
 
-        #if DEBUG
-        print("[AttestDiag] flush bodySha256=\(SHA256.hash(data: body).map { String(format: "%02x", $0) }.joined()) bodyBytes=\(body.count)")
-        #endif
         do {
             let status = try await APIClient(environment: environment)
                 .uploadStats(body: body, headers: uploadHeaders)
