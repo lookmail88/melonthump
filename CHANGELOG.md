@@ -1,3 +1,15 @@
+# [1.11.0](https://github.com/lookmail88/melonthump/compare/v1.10.0...v1.11.0) (2026-10-25)
+
+
+### Bug Fixes
+
+* **ios:** Xcode (Debug) builds bypass the version gate in test mode ([2e1a4eb](https://github.com/lookmail88/melonthump/commit/2e1a4ebf3db88a74e72cb10709e9990d8456fc54))
+
+
+### Features
+
+* **server:** log every request at DEBUG; log level DEBUG on dev, ERROR on prod ([45b594e](https://github.com/lookmail88/melonthump/commit/45b594e6268c92aa88048407d6051115da0ec3c5))
+
 # [1.10.0](https://github.com/lookmail88/melonthump/compare/v1.9.1...v1.10.0) (2026-10-25)
 
 
