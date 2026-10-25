@@ -2,6 +2,8 @@ package dev.melonthump.attest;
 
 import dev.melonthump.store.AttestStore;
 import java.util.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +19,8 @@ public class AssertionService {
     /** Header carrying the simulator debug bypass token. */
     public static final String BYPASS_HEADER = "X-Attest-Bypass";
     public static final String BYPASS_VALUE = "simulator";
+
+    private static final Logger log = LoggerFactory.getLogger(AssertionService.class);
 
     private final AttestStore store;
     private final AppAttestVerifier verifier;
@@ -61,9 +65,22 @@ public class AssertionService {
         if (!store.consumeChallenge(challenge)) {
             throw new AttestException("challenge unknown, expired, or already used");
         }
-        long signCount = verifier.verifyAssertion(
-                AppAttestVerifier.decodeStoredPublicKey(key.publicKeyEncoded()),
-                assertion, challenge, payload);
+        long signCount;
+        try {
+            signCount = verifier.verifyAssertion(
+                    AppAttestVerifier.decodeStoredPublicKey(key.publicKeyEncoded()),
+                    assertion, challenge, payload);
+        } catch (AttestException e) {
+            // TEMPORARY DIAGNOSTIC (dev debugging, 2026-10-24): capture
+            // one rejected assertion package so the exact Apple wire
+            // construction can be verified offline. Challenges are
+            // single-use and already consumed at this point. Remove
+            // together with the fix this informs.
+            log.debug("ATTEST-CAPTURE keyId={} challenge={} assertion={} payload={} error={}",
+                    keyId, challengeB64, assertionB64,
+                    Base64.getEncoder().encodeToString(payload), e.getMessage());
+            throw e;
+        }
         if (!store.advanceSignCount(keyId, signCount)) {
             throw new AttestException("sign counter did not strictly increase (replay?)");
         }
