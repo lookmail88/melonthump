@@ -10,6 +10,7 @@ import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.SignatureException;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertificateFactory;
@@ -152,10 +153,7 @@ public class AppAttestVerifier {
 
             byte[] clientDataHash = sha256(challenge, sha256(payload));
             byte[] digest = sha256(authData, clientDataHash);
-            Signature verifier = Signature.getInstance("NONEwithECDSA");
-            verifier.initVerify(publicKey);
-            verifier.update(digest);
-            if (!verifier.verify(signature)) {
+            if (!verifyEcdsa(publicKey, signature, digest)) {
                 throw new AttestException("assertion signature invalid");
             }
 
@@ -169,6 +167,66 @@ public class AppAttestVerifier {
         } catch (Exception e) {
             throw new AttestException("assertion verification failed: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Verifies an ECDSA signature over a precomputed digest. Accepts
+     * the signature in either encoding: DER (what Java produces) or
+     * raw IEEE P1363 (r || s, 64 bytes for P-256) — Apple's assertion
+     * signatures arrive in P1363 form, which a DER-only check rejects
+     * even though the signature itself is genuine. The encoding is
+     * detected unambiguously (length + leading tag), never guessed.
+     */
+    private static boolean verifyEcdsa(PublicKey publicKey, byte[] signature, byte[] digest)
+            throws Exception {
+        Signature verifier = Signature.getInstance("NONEwithECDSA");
+        verifier.initVerify(publicKey);
+        verifier.update(digest);
+        try {
+            if (verifier.verify(signature)) {
+                return true;
+            }
+        } catch (SignatureException notDer) {
+            // fall through to the P1363 form
+        }
+        if (signature.length == 64) {
+            Signature p1363Verifier = Signature.getInstance("NONEwithECDSA");
+            p1363Verifier.initVerify(publicKey);
+            p1363Verifier.update(digest);
+            try {
+                return p1363Verifier.verify(p1363ToDer(signature));
+            } catch (SignatureException e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /** Converts a raw P1363 (r || s) ECDSA signature to DER encoding. */
+    private static byte[] p1363ToDer(byte[] raw) {
+        byte[] r = derInteger(raw, 0, 32);
+        byte[] s = derInteger(raw, 32, 32);
+        byte[] out = new byte[2 + r.length + s.length];
+        out[0] = 0x30;
+        out[1] = (byte) (r.length + s.length);
+        System.arraycopy(r, 0, out, 2, r.length);
+        System.arraycopy(s, 0, out, 2 + r.length, s.length);
+        return out;
+    }
+
+    /** DER-encodes one fixed-width unsigned big-endian integer slice. */
+    private static byte[] derInteger(byte[] raw, int offset, int length) {
+        int start = offset;
+        while (start < offset + length - 1 && raw[start] == 0) {
+            start++;
+        }
+        int trimmed = offset + length - start;
+        boolean pad = (raw[start] & 0x80) != 0;
+        byte[] out = new byte[2 + trimmed + (pad ? 1 : 0)];
+        out[0] = 0x02;
+        out[1] = (byte) (trimmed + (pad ? 1 : 0));
+        System.arraycopy(raw, start, out, pad ? 3 : 2, trimmed);
+        return out;
     }
 
     /** Decodes a stored X.509 SubjectPublicKeyInfo back into a public key. */

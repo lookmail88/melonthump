@@ -150,7 +150,10 @@ public final class SyntheticAttest {
         byte[] signature = signer.sign();
 
         ObjectNode root = CBOR.createObjectNode();
-        root.put("signature", signature);
+        // Apple delivers assertion signatures in raw P1363 (r || s)
+        // form, not DER — emit that, so the tests cover the real wire
+        // format instead of Java's DER habit.
+        root.put("signature", derToP1363(signature));
         root.put("authenticatorData", authDataBytes);
         return CBOR.writeValueAsBytes(root);
     }
@@ -236,5 +239,25 @@ public final class SyntheticAttest {
         ASN1EncodableVector vector = new ASN1EncodableVector();
         vector.add(new DERTaggedObject(true, 1, new DEROctetString(nonce)));
         return vector;
+    }
+    /** Converts a DER ECDSA signature to raw P1363 (r || s, 32 + 32 bytes). */
+    private static byte[] derToP1363(byte[] der) {
+        // SEQUENCE { INTEGER r, INTEGER s }, short-form lengths (P-256).
+        int idx = 2; // skip SEQUENCE tag + length
+        int rLen = der[idx + 1] & 0xFF;
+        byte[] r = java.util.Arrays.copyOfRange(der, idx + 2, idx + 2 + rLen);
+        idx += 2 + rLen;
+        int sLen = der[idx + 1] & 0xFF;
+        byte[] s = java.util.Arrays.copyOfRange(der, idx + 2, idx + 2 + sLen);
+        byte[] out = new byte[64];
+        padLeft(r, out, 0);
+        padLeft(s, out, 32);
+        return out;
+    }
+
+    private static void padLeft(byte[] value, byte[] out, int offset) {
+        int srcPos = Math.max(0, value.length - 32);
+        int length = Math.min(32, value.length);
+        System.arraycopy(value, srcPos, out, offset + (32 - length), length);
     }
 }
