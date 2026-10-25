@@ -88,8 +88,15 @@ actor AttestManager {
             var hasher = SHA256()
             hasher.update(data: challenge)
             hasher.update(data: Data(SHA256.hash(data: payload)))
+            let clientDataHash = Data(hasher.finalize())
+            #if DEBUG
+            // TEMPORARY DIAGNOSTIC (2026-10-24): disclose exactly what
+            // is fed to generateAssertion so a rejected assertion can
+            // be reproduced offline byte for byte.
+            print("[AttestDiag] keyId=\(keyId) challenge=\(challengeB64) payloadSha256=\(SHA256.hash(data: payload).map { String(format: "%02x", $0) }.joined()) payloadBytes=\(payload.count) clientDataHash=\(clientDataHash.map { String(format: "%02x", $0) }.joined())")
+            #endif
             let assertion = try await DCAppAttestService.shared.generateAssertion(
-                keyId, clientDataHash: Data(hasher.finalize()))
+                keyId, clientDataHash: clientDataHash)
             return [
                 "X-Key-Id": keyId,
                 "X-Assertion": assertion.base64EncodedString(),
