@@ -23,6 +23,8 @@ actor StatsReporter {
         var installId: UUID
         var sessionId: UUID
         var events: [Event]
+        var appVersion: String
+        var channel: String
     }
 
     /// Logical ad slot name — never a real ad unit ID (design doc §3.3).
@@ -125,7 +127,8 @@ actor StatsReporter {
         let environment = Self.environment
         let batch = queue
         guard let body = try? JSONEncoder().encode(
-            UploadBody(installId: Self.installId, sessionId: sessionId, events: batch))
+            UploadBody(installId: Self.installId, sessionId: sessionId, events: batch,
+                       appVersion: AppIdentity.appVersion, channel: AppIdentity.channel))
         else { return }
 
         var headers = await AttestManager.shared.assertionHeaders(environment: environment, payload: body)

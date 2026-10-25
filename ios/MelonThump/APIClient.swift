@@ -42,6 +42,7 @@ final class APIClient: Sendable {
             throw APIError.badResponse(status: -1)
         }
         var request = URLRequest(url: url)
+        applyIdentityHeaders(&request)
         if let assertionHeaders {
             for (name, value) in assertionHeaders {
                 request.setValue(value, forHTTPHeaderField: name)
@@ -82,6 +83,7 @@ final class APIClient: Sendable {
     /// POST /api/v1/attest/challenge — a fresh, single-use challenge.
     func fetchAttestChallenge() async throws -> String {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/attest/challenge"))
+        applyIdentityHeaders(&request)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -94,6 +96,7 @@ final class APIClient: Sendable {
     func enrollAttestKey(keyId: String, attestationObjectB64: String,
                          challengeB64: String, installId: UUID) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/attest/enroll"))
+        applyIdentityHeaders(&request)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -109,6 +112,7 @@ final class APIClient: Sendable {
     /// can decide whether the queue keeps or drops the batch.
     func uploadStats(body: Data, headers: [String: String]) async throws -> Int {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/stats/events"))
+        applyIdentityHeaders(&request)
         request.httpMethod = "POST"
         request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -123,6 +127,11 @@ final class APIClient: Sendable {
         return http.statusCode
     }
 
+    /// Every request identifies the client build (X-App-Version).
+    private func applyIdentityHeaders(_ request: inout URLRequest) {
+        request.setValue(AppIdentity.appVersion, forHTTPHeaderField: "X-App-Version")
+    }
+
     private static func requireSuccess(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else {
             throw APIError.badResponse(status: -1)
@@ -130,5 +139,32 @@ final class APIClient: Sendable {
         guard (200..<300).contains(http.statusCode) else {
             throw APIError.badResponse(status: http.statusCode)
         }
+    }
+}
+
+/// Client identity reported to the server for operational analytics
+/// (design doc section 3.4, 2026-10-24 addition): the app version goes
+/// out on every request as the X-App-Version header, and the
+/// distribution channel rides along in stats upload envelopes.
+/// Analytics-grade only — the server never treats either as a
+/// trust input.
+enum AppIdentity {
+    static var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+    }
+
+    /// Distribution channel, following the project's channel rules:
+    /// Debug builds (installed from Xcode) are "xcode"; Release builds
+    /// split by receipt — a sandbox receipt means TestFlight, a store
+    /// receipt means the App Store.
+    static var channel: String {
+        #if DEBUG
+        return "xcode"
+        #else
+        if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
+            return "testflight"
+        }
+        return "appstore"
+        #endif
     }
 }
