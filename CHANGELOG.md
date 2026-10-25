@@ -1,3 +1,10 @@
+## [1.11.5](https://github.com/lookmail88/melonthump/compare/v1.11.4...v1.11.5) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** include payload length in ATTEST-CAPTURE line ([eb83149](https://github.com/lookmail88/melonthump/commit/eb83149d767621e9b74a11499c274f6e86e8b295))
+
 ## [1.11.4](https://github.com/lookmail88/melonthump/compare/v1.11.3...v1.11.4) (2026-10-25)
 
 
