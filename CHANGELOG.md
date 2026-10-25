@@ -1,3 +1,11 @@
+## [1.9.1](https://github.com/lookmail88/melonthump/compare/v1.9.0...v1.9.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** release the OpenAPI branding (chore commits do not trigger semantic-release) ([b7a3cf9](https://github.com/lookmail88/melonthump/commit/b7a3cf9e3a3318bc59e8ee77f42ae3ebfbd5dd2d))
+* **server:** ship the OpenAPI branding (chore type + path filter had kept it from releasing) ([a6ec865](https://github.com/lookmail88/melonthump/commit/a6ec865f82b39420c166334a0509288b9736fe1e))
+
 # [1.9.0](https://github.com/lookmail88/melonthump/compare/v1.8.1...v1.9.0) (2026-10-24)
 
 
