@@ -27,6 +27,12 @@ struct VersionGateView: View {
 
     private var stillLaunching: Bool { !(checkFinished && splashElapsed) }
 
+    /// The stored selection resolved for this build's channel —
+    /// TestFlight / App Store builds always check against prod.
+    private var effectiveEnvironment: ServerEnvironment {
+        AppIdentity.resolvedEnvironment(stored: serverEnvironment)
+    }
+
     var body: some View {
         ZStack {
             if let policy = requiredPolicy {
@@ -70,17 +76,17 @@ struct VersionGateView: View {
     private func checkVersion() async {
         defer { checkFinished = true }
         let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-        let client = APIClient(environment: serverEnvironment)
+        let client = APIClient(environment: effectiveEnvironment)
         // 1.1.0: enroll the App Attest key (first launch that needs
         // it) so the policy fetch can carry an assertion and unlock
         // the server-issued ad unit ID. The extra round-trips ride
         // inside the existing splash window; every failure is silent
         // and the gate stays fail-open.
         _ = await AttestManager.shared.ensureEnrolled(
-            environment: serverEnvironment, installId: StatsReporter.installId)
+            environment: effectiveEnvironment, installId: StatsReporter.installId)
         let canonicalRequest = "GET /api/v1/version/getclientversion?currentVersion=\(current)"
         var headers = await AttestManager.shared.assertionHeaders(
-            environment: serverEnvironment, payload: Data(canonicalRequest.utf8))
+            environment: effectiveEnvironment, payload: Data(canonicalRequest.utf8))
         if headers == nil && !AttestManager.isSupported {
             headers = AttestManager.bypassHeaders
         }

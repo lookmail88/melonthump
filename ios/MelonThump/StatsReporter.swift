@@ -51,9 +51,10 @@ actor StatsReporter {
     }
 
     /// The backend the app is currently pointed at (same AppStorage
-    /// key the version gate's picker writes).
+    /// key the version gate's picker writes), resolved per build
+    /// channel — TestFlight / App Store builds always land on prod.
     static var environment: ServerEnvironment {
-        ServerEnvironment(rawValue: UserDefaults.standard.string(forKey: "serverEnvironment") ?? "") ?? .prod
+        AppIdentity.effectiveEnvironment
     }
 
     // MARK: - Recording

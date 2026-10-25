@@ -42,10 +42,10 @@ struct TapView: View {
         }
         .task {
             await recorder.prepareSession()
-            await wallet.refreshPolicy(environment: serverEnvironment)
+            await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: serverEnvironment))
         }
         .onChange(of: serverEnvironment) { _, env in
-            Task { await wallet.refreshPolicy(environment: env) }
+            Task { await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: env)) }
         }
     }
 
@@ -146,18 +146,23 @@ struct TapView: View {
                     .padding(.top, 8)
             }
 
-            DisclosureGroup("Server") {
-                Picker("Server", selection: $serverEnvironment) {
-                    ForEach(ServerEnvironment.allCases) { env in
-                        Text(env.displayName).tag(env)
+            // The server picker exists only on Xcode (Debug) builds;
+            // TestFlight / App Store builds always talk to prod and
+            // never see it (channel rule, 2026-10-24).
+            if AppIdentity.channel == "xcode" {
+                DisclosureGroup("Server") {
+                    Picker("Server", selection: $serverEnvironment) {
+                        ForEach(ServerEnvironment.allCases) { env in
+                            Text(env.displayName).tag(env)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                .font(.footnote)
+                .foregroundColor(MelonTheme.inkSoft)
+                .padding(.top, 14)
             }
-            .font(.footnote)
-            .foregroundColor(MelonTheme.inkSoft)
-            .padding(.top, 14)
         }
         .padding(.horizontal, 22)
         .padding(.top, 20)

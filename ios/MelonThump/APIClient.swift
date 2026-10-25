@@ -167,4 +167,20 @@ enum AppIdentity {
         return "appstore"
         #endif
     }
+
+    /// The backend this build may talk to. Channel rule (tightened
+    /// 2026-10-24): only Xcode (Debug) builds may use the stored
+    /// server selection; TestFlight and App Store builds always use
+    /// prod, whatever the picker was left on — a TestFlight install
+    /// left on Dev once walled itself behind the dev update gate.
+    static func resolvedEnvironment(stored: ServerEnvironment) -> ServerEnvironment {
+        channel == "xcode" ? stored : .prod
+    }
+
+    /// The stored picker selection, resolved for this build.
+    static var effectiveEnvironment: ServerEnvironment {
+        let stored = ServerEnvironment(
+            rawValue: UserDefaults.standard.string(forKey: "serverEnvironment") ?? "") ?? .prod
+        return resolvedEnvironment(stored: stored)
+    }
 }
