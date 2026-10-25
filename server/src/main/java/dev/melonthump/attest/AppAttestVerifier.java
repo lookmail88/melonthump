@@ -259,17 +259,71 @@ public class AppAttestVerifier {
             throw new AttestException("leaf certificate lacks the nonce extension");
         }
         byte[] payload = readOctetString(ext, 0);
-        byte[] inner;
-        if (payload.length > 0 && (payload[0] & 0xFF) == 0x30) {
-            // SEQUENCE: skip its header, the nonce octet string follows.
-            inner = readOctetString(payload, derHeaderLength(payload, 0));
-        } else {
-            inner = readOctetString(payload, 0);
+        byte[] nonce = findNonce(payload, 0, payload.length, 0);
+        if (nonce == null) {
+            throw new AttestException("no 32-byte nonce in the attestation extension");
         }
-        if (inner.length != 32) {
-            throw new AttestException("nonce extension has unexpected length");
+        return nonce;
+    }
+
+    /**
+     * Walks a DER tree looking for a primitive OCTET STRING of exactly
+     * 32 bytes — the nonce — descending into constructed elements
+     * (SEQUENCE, context-specific [1], ...). Apple's real layout nests
+     * the nonce three levels deep; a fixed two-step unwrap is what the
+     * first version of this parser did, and real certificates failed.
+     */
+    private static byte[] findNonce(byte[] der, int start, int end, int depth) throws AttestException {
+        if (depth > 4) {
+            return null;
         }
-        return inner;
+        int offset = start;
+        while (offset < end) {
+            if (offset + 2 > end) {
+                throw new AttestException("truncated DER element");
+            }
+            int tag = der[offset] & 0xFF;
+            int headerLen = derHeaderLength(der, offset);
+            int length = derContentLength(der, offset);
+            int contentStart = offset + headerLen;
+            int contentEnd = contentStart + length;
+            if (contentEnd > end) {
+                throw new AttestException("truncated DER element");
+            }
+            if (tag == 0x04 && length == 32) {
+                return Arrays.copyOfRange(der, contentStart, contentEnd);
+            }
+            if ((tag & 0x20) != 0) { // constructed: descend
+                byte[] found = findNonce(der, contentStart, contentEnd, depth + 1);
+                if (found != null) {
+                    return found;
+                }
+            }
+            offset = contentEnd;
+        }
+        return null;
+    }
+
+    /** Content length of the DER element whose header starts at {@code offset}. */
+    private static int derContentLength(byte[] der, int offset) throws AttestException {
+        if (der.length < offset + 2) {
+            throw new AttestException("malformed DER element");
+        }
+        int lenByte = der[offset + 1] & 0xFF;
+        if (lenByte < 0x80) {
+            return lenByte;
+        } else if (lenByte == 0x81) {
+            if (der.length < offset + 3) {
+                throw new AttestException("malformed DER element");
+            }
+            return der[offset + 2] & 0xFF;
+        } else if (lenByte == 0x82) {
+            if (der.length < offset + 4) {
+                throw new AttestException("malformed DER element");
+            }
+            return ((der[offset + 2] & 0xFF) << 8) | (der[offset + 3] & 0xFF);
+        }
+        throw new AttestException("unsupported DER length form");
     }
 
     /** Length of the DER header (tag + length bytes) of the element at {@code offset}. */

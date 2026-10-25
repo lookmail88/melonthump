@@ -26,7 +26,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Date;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.DEROctetString;
+import org.bouncycastle.asn1.DERTaggedObject;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.BasicConstraints;
@@ -195,7 +197,7 @@ public final class SyntheticAttest {
         builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(ca));
         if (nonceExtension != null) {
             builder.addExtension(new ASN1ObjectIdentifier(NONCE_OID), false,
-                    new DERSequence(new DEROctetString(nonceExtension)));
+                    new DERSequence(taggedNonce(nonceExtension)));
         }
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withECDSA")
                 .setProvider("BC").build(issuerKey);
@@ -228,5 +230,11 @@ public final class SyntheticAttest {
         int len = Math.min(raw.length, 32);
         System.arraycopy(raw, raw.length - len, out, 32 - len, len);
         return out;
+    }
+    /** Apple's real nesting: SEQUENCE { [1] EXPLICIT { OCTET STRING nonce } }. */
+    private static ASN1EncodableVector taggedNonce(byte[] nonce) {
+        ASN1EncodableVector vector = new ASN1EncodableVector();
+        vector.add(new DERTaggedObject(true, 1, new DEROctetString(nonce)));
+        return vector;
     }
 }
