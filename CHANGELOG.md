@@ -1,3 +1,10 @@
+## [1.11.6](https://github.com/lookmail88/melonthump/compare/v1.11.5...v1.11.6) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** verify assertion signatures with the double hash the device actually signs ([b46953e](https://github.com/lookmail88/melonthump/commit/b46953ecbb26b2a19d12a3db8ef9f8a5b9150c7f))
+
 ## [1.11.5](https://github.com/lookmail88/melonthump/compare/v1.11.4...v1.11.5) (2026-10-25)
 
 
