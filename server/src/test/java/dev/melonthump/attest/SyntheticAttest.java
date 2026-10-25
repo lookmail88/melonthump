@@ -144,7 +144,7 @@ public final class SyntheticAttest {
 
         byte[] clientDataHash = sha256(challenge, sha256(payload));
         byte[] digest = sha256(authDataBytes, clientDataHash);
-        Signature signer = Signature.getInstance("NONEwithECDSA");
+        Signature signer = Signature.getInstance("SHA256withECDSA");
         signer.initSign(device.keyPair().getPrivate());
         signer.update(digest);
         byte[] signature = signer.sign();

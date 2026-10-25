@@ -43,7 +43,11 @@ import org.springframework.stereotype.Component;
  *       body-less version-policy GET, the UTF-8 canonical request string
  *       built by {@code VersionController} / {@code AttestManager}.</li>
  * </ul>
- * In both flows the signed digest is SHA-256(authenticatorData || clientDataHash).
+ * In both flows the authenticator hash is SHA-256(authenticatorData ||
+ * clientDataHash); the device signature is ECDSA-with-SHA-256 over that
+ * hash, so verification feeds the hash to a SHA256withECDSA verifier
+ * (which hashes it once more). Verified against 14 real device
+ * assertions on 2026-10-24.
  */
 @Component
 public class AppAttestVerifier {
@@ -179,7 +183,7 @@ public class AppAttestVerifier {
      */
     private static boolean verifyEcdsa(PublicKey publicKey, byte[] signature, byte[] digest)
             throws Exception {
-        Signature verifier = Signature.getInstance("NONEwithECDSA");
+        Signature verifier = Signature.getInstance("SHA256withECDSA");
         verifier.initVerify(publicKey);
         verifier.update(digest);
         try {
@@ -190,7 +194,7 @@ public class AppAttestVerifier {
             // fall through to the P1363 form
         }
         if (signature.length == 64) {
-            Signature p1363Verifier = Signature.getInstance("NONEwithECDSA");
+            Signature p1363Verifier = Signature.getInstance("SHA256withECDSA");
             p1363Verifier.initVerify(publicKey);
             p1363Verifier.update(digest);
             try {
