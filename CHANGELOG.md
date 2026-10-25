@@ -1,3 +1,11 @@
+## [1.11.1](https://github.com/lookmail88/melonthump/compare/v1.11.0...v1.11.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **ios:** stats upload no longer waits on attestation; log enrollment failures in Debug ([b376d89](https://github.com/lookmail88/melonthump/commit/b376d89fdf6e6e569b7669c6b4b5b474457426cb))
+* **server:** log the attestation rejection reason at DEBUG ([bc30512](https://github.com/lookmail88/melonthump/commit/bc305123526d1e25cba6a779da680fb873f64bd2))
+
 # [1.11.0](https://github.com/lookmail88/melonthump/compare/v1.10.0...v1.11.0) (2026-10-25)
 
 
