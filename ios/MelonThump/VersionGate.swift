@@ -66,9 +66,19 @@ struct VersionGateView: View {
             if let unitID = policy.rewardedAdUnitId, !unitID.isEmpty {
                 AdsManager.shared.applyServerRewardedUnitId(unitID)
             }
+            // Test mode: Xcode (Debug) builds are never blocked by
+            // the gate. A tester pointing a local build at the dev
+            // backend — whose latest version tracks the newest code —
+            // would otherwise be walled by a policy written for
+            // shipped users. Release builds (TestFlight / App Store)
+            // keep the exact blocking behavior, and everything else
+            // in this check (attested fetch, server ad unit, stats
+            // flush) still runs in Debug too.
+            #if !DEBUG
             if policy.updateAvailable || policy.forceUpdate {
                 requiredPolicy = policy
             }
+            #endif
         } catch {
             // Fail-open: no policy, no block.
         }
