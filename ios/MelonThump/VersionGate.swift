@@ -6,14 +6,22 @@ import SwiftUI
 /// BOTH at least 3 seconds have elapsed AND the check has concluded
 /// (the request itself is capped at 10s — see APIClient; a slow
 /// network therefore stretches the splash, up to that cap). So the
-/// user never sees the home screen flash before an update prompt:
-/// if this build is not the latest version, the blocking update
-/// screen is what appears when the splash ends. If the policy
+/// user never sees the home screen flash before an update prompt.
+/// Two tiers, by the policy's forceUpdate flag: a forced update
+/// (this build is below the minimum supported version) gets the
+/// blocking update screen when the splash ends; a soft update
+/// (a newer version exists but this build is still supported)
+/// only gets a dismissible alert, once per version, and only when
+/// an update link is configured — never a wall. If the policy
 /// cannot be fetched (offline, server down, timeout), the app
 /// proceeds — fail-open, per the design.
 struct VersionGateView: View {
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
+    @AppStorage("softUpdateDismissedVersion") private var softUpdateDismissedVersion: String = ""
+    @Environment(\.openURL) private var openURL
     @State private var requiredPolicy: ClientVersion?
+    @State private var softUpdatePolicy: ClientVersion?
+    @State private var showSoftUpdate = false
     @State private var checkFinished = false
     @State private var splashElapsed = false
 
@@ -32,6 +40,19 @@ struct VersionGateView: View {
                     .zIndex(1)
             }
         }
+        .alert("A new version is available", isPresented: $showSoftUpdate, presenting: softUpdatePolicy) { policy in
+            Button("Not Now") {
+                softUpdateDismissedVersion = policy.latestVersion
+            }
+            Button("Update") {
+                softUpdateDismissedVersion = policy.latestVersion
+                if let url = URL(string: policy.updateUrl) {
+                    openURL(url)
+                }
+            }
+        } message: { policy in
+            Text("MelonThump \(policy.latestVersion) is ready. You can update now or keep thumping.")
+        }
         .task {
             await checkVersion()
         }
@@ -39,6 +60,9 @@ struct VersionGateView: View {
             try? await Task.sleep(for: .seconds(3))
             withAnimation(.easeOut(duration: 0.35)) {
                 splashElapsed = true
+            }
+            if softUpdatePolicy != nil {
+                showSoftUpdate = true
             }
         }
     }
@@ -75,8 +99,16 @@ struct VersionGateView: View {
             // in this check (attested fetch, server ad unit, stats
             // flush) still runs in Debug too.
             #if !DEBUG
-            if policy.updateAvailable || policy.forceUpdate {
+            if policy.forceUpdate {
                 requiredPolicy = policy
+            } else if policy.updateAvailable, !policy.updateUrl.isEmpty,
+                      softUpdateDismissedVersion != policy.latestVersion {
+                // Soft update: remember it for a dismissible alert
+                // once the splash lifts (see the timer task). With
+                // no update link configured there is nothing the
+                // user could do, so it stays silent rather than
+                // nagging — and it never blocks.
+                softUpdatePolicy = policy
             }
             #endif
         } catch {
