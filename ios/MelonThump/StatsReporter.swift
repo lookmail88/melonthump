@@ -135,11 +135,16 @@ actor StatsReporter {
         if headers == nil && !AttestManager.isSupported {
             headers = AttestManager.bypassHeaders
         }
-        guard let headers else { return } // cannot attest yet; keep queued
+        // Attestation is a bonus signal for stats, never a gate:
+        // when no assertion is available (not enrolled yet, or
+        // enrollment was rejected), upload unsigned — the endpoint
+        // accepts it — so a broken attestation can never strand
+        // the whole queue.
+        let uploadHeaders = headers ?? [:]
 
         do {
             let status = try await APIClient(environment: environment)
-                .uploadStats(body: body, headers: headers)
+                .uploadStats(body: body, headers: uploadHeaders)
             if (200..<300).contains(status) || status == 400 {
                 let sentIds = Set(batch.map(\.eventId))
                 queue.removeAll { sentIds.contains($0.eventId) }

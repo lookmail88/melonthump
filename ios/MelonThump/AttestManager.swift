@@ -67,6 +67,9 @@ actor AttestManager {
             UserDefaults.standard.set(true, forKey: defaultsKey("enrolled", environment))
             return keyId
         } catch {
+            #if DEBUG
+            print("[AttestManager] enrollment failed: \(error)")
+            #endif
             return nil
         }
     }
