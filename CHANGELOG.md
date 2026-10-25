@@ -1,3 +1,11 @@
+# [1.10.0](https://github.com/lookmail88/melonthump/compare/v1.9.1...v1.10.0) (2026-10-25)
+
+
+### Features
+
+* **ios:** send X-App-Version header and report version/channel in stats uploads ([d11ab7a](https://github.com/lookmail88/melonthump/commit/d11ab7a812895dd6f891a52f99160af9bc979f93))
+* **server:** store client app version and channel with usage events ([3648798](https://github.com/lookmail88/melonthump/commit/3648798f8b741052091368049d0258d034661c19))
+
 ## [1.9.1](https://github.com/lookmail88/melonthump/compare/v1.9.0...v1.9.1) (2026-10-25)
 
 
