@@ -32,6 +32,11 @@ spec:
             # silent. Dev runs DEBUG instead.
             - name: MELONTHUMP_LOG_LEVEL
               value: "ERROR"
+            # Launch promo on prod (set at App Store launch):
+            # window runs until the end of 2026 - 2027-01-01
+            # 00:00 America/Los_Angeles (epoch ms), same as dev.
+            - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
+              value: "1798790400000"
             - name: SPRING_DATASOURCE_URL
               valueFrom:
                 secretKeyRef:
