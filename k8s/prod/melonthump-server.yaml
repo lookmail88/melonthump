@@ -24,6 +24,12 @@ spec:
         - name: server
           image: ghcr.io/lookmail88/melonthump-server:v1.8.1
           imagePullPolicy: Always
+          env:
+            # Launch promo on prod (set at App Store launch):
+            # window until end of 2026 — 2027-01-01 00:00
+            # America/Los_Angeles, same as dev.
+            - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
+              value: "1798790400000"
           ports:
             - containerPort: 8080
           readinessProbe:
