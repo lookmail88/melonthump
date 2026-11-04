@@ -1,3 +1,11 @@
+## [1.11.7](https://github.com/lookmail88/melonthump/compare/v1.11.6...v1.11.7) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ios:** soft updates no longer wall the app behind the update gate ([abef9bd](https://github.com/lookmail88/melonthump/commit/abef9bd9576a5afcc355bfbf5023c1d7f5645cf7))
+* **ios:** TestFlight and App Store builds always talk to prod ([45205d7](https://github.com/lookmail88/melonthump/commit/45205d758546b66aaf593ba07e0a0cdfe2efd7ff))
+
 ## [1.11.6](https://github.com/lookmail88/melonthump/compare/v1.11.5...v1.11.6) (2026-10-25)
 
 

@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.11.6
+          image: ghcr.io/lookmail88/melonthump-server:v1.11.7
           imagePullPolicy: Always
           env:
             # Prod logs at ERROR only: request lines (DEBUG) stay
