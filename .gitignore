@@ -34,3 +34,7 @@ DerivedData/
 
 # AdMob secrets (real IDs stay on the build machine only)
 ios/Secrets.xcconfig
+
+# Apple App Attest Root CA is a PUBLIC trust anchor bundled as a
+# server resource (not a key) — exempt from the *.pem key guard.
+!server/src/main/resources/apple/Apple_App_Attestation_Root_CA.pem

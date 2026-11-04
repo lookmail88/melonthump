@@ -11,7 +11,10 @@ metadata:
   labels:
     app: melonthump-server
 spec:
-  replicas: 1
+  # 1.1.0 (design doc §7): 2 replicas for availability / zero-downtime
+  # rollouts. All request-path state (attest challenges, sign counters)
+  # lives in PostgreSQL, never in pod memory.
+  replicas: 2
   selector:
     matchLabels:
       app: melonthump-server
@@ -22,14 +25,33 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.8.1
+          image: ghcr.io/lookmail88/melonthump-server:v1.11.7
           imagePullPolicy: Always
           env:
+            # Prod logs at ERROR only: request lines (DEBUG) stay
+            # silent. Dev runs DEBUG instead.
+            - name: MELONTHUMP_LOG_LEVEL
+              value: "ERROR"
             # Launch promo on prod (set at App Store launch):
-            # window until end of 2026 — 2027-01-01 00:00
-            # America/Los_Angeles, same as dev.
+            # window runs until the end of 2026 - 2027-01-01
+            # 00:00 America/Los_Angeles (epoch ms), same as dev.
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
               value: "1798790400000"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: password
           ports:
             - containerPort: 8080
           readinessProbe:

@@ -6,18 +6,32 @@ import SwiftUI
 /// BOTH at least 3 seconds have elapsed AND the check has concluded
 /// (the request itself is capped at 10s — see APIClient; a slow
 /// network therefore stretches the splash, up to that cap). So the
-/// user never sees the home screen flash before an update prompt:
-/// if this build is not the latest version, the blocking update
-/// screen is what appears when the splash ends. If the policy
+/// user never sees the home screen flash before an update prompt.
+/// Two tiers, by the policy's forceUpdate flag: a forced update
+/// (this build is below the minimum supported version) gets the
+/// blocking update screen when the splash ends; a soft update
+/// (a newer version exists but this build is still supported)
+/// only gets a dismissible alert, once per version, and only when
+/// an update link is configured — never a wall. If the policy
 /// cannot be fetched (offline, server down, timeout), the app
 /// proceeds — fail-open, per the design.
 struct VersionGateView: View {
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
+    @AppStorage("softUpdateDismissedVersion") private var softUpdateDismissedVersion: String = ""
+    @Environment(\.openURL) private var openURL
     @State private var requiredPolicy: ClientVersion?
+    @State private var softUpdatePolicy: ClientVersion?
+    @State private var showSoftUpdate = false
     @State private var checkFinished = false
     @State private var splashElapsed = false
 
     private var stillLaunching: Bool { !(checkFinished && splashElapsed) }
+
+    /// The stored selection resolved for this build's channel —
+    /// TestFlight / App Store builds always check against prod.
+    private var effectiveEnvironment: ServerEnvironment {
+        AppIdentity.resolvedEnvironment(stored: serverEnvironment)
+    }
 
     var body: some View {
         ZStack {
@@ -32,6 +46,19 @@ struct VersionGateView: View {
                     .zIndex(1)
             }
         }
+        .alert("A new version is available", isPresented: $showSoftUpdate, presenting: softUpdatePolicy) { policy in
+            Button("Not Now") {
+                softUpdateDismissedVersion = policy.latestVersion
+            }
+            Button("Update") {
+                softUpdateDismissedVersion = policy.latestVersion
+                if let url = URL(string: policy.updateUrl) {
+                    openURL(url)
+                }
+            }
+        } message: { policy in
+            Text("MelonThump \(policy.latestVersion) is ready. You can update now or keep thumping.")
+        }
         .task {
             await checkVersion()
         }
@@ -40,21 +67,61 @@ struct VersionGateView: View {
             withAnimation(.easeOut(duration: 0.35)) {
                 splashElapsed = true
             }
+            if softUpdatePolicy != nil {
+                showSoftUpdate = true
+            }
         }
     }
 
     private func checkVersion() async {
         defer { checkFinished = true }
         let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-        let client = APIClient(environment: serverEnvironment)
+        let client = APIClient(environment: effectiveEnvironment)
+        // 1.1.0: enroll the App Attest key (first launch that needs
+        // it) so the policy fetch can carry an assertion and unlock
+        // the server-issued ad unit ID. The extra round-trips ride
+        // inside the existing splash window; every failure is silent
+        // and the gate stays fail-open.
+        _ = await AttestManager.shared.ensureEnrolled(
+            environment: effectiveEnvironment, installId: StatsReporter.installId)
+        let canonicalRequest = "GET /api/v1/version/getclientversion?currentVersion=\(current)"
+        var headers = await AttestManager.shared.assertionHeaders(
+            environment: effectiveEnvironment, payload: Data(canonicalRequest.utf8))
+        if headers == nil && !AttestManager.isSupported {
+            headers = AttestManager.bypassHeaders
+        }
         do {
-            let policy = try await client.fetchClientVersion(currentVersion: current)
-            if policy.updateAvailable || policy.forceUpdate {
-                requiredPolicy = policy
+            let policy = try await client.fetchClientVersion(
+                currentVersion: current, assertionHeaders: headers)
+            if let unitID = policy.rewardedAdUnitId, !unitID.isEmpty {
+                AdsManager.shared.applyServerRewardedUnitId(unitID)
             }
+            // Test mode: Xcode (Debug) builds are never blocked by
+            // the gate. A tester pointing a local build at the dev
+            // backend — whose latest version tracks the newest code —
+            // would otherwise be walled by a policy written for
+            // shipped users. Release builds (TestFlight / App Store)
+            // keep the exact blocking behavior, and everything else
+            // in this check (attested fetch, server ad unit, stats
+            // flush) still runs in Debug too.
+            #if !DEBUG
+            if policy.forceUpdate {
+                requiredPolicy = policy
+            } else if policy.updateAvailable, !policy.updateUrl.isEmpty,
+                      softUpdateDismissedVersion != policy.latestVersion {
+                // Soft update: remember it for a dismissible alert
+                // once the splash lifts (see the timer task). With
+                // no update link configured there is nothing the
+                // user could do, so it stays silent rather than
+                // nagging — and it never blocks.
+                softUpdatePolicy = policy
+            }
+            #endif
         } catch {
             // Fail-open: no policy, no block.
         }
+        // Launch trigger for the usage-stats queue (design doc §6).
+        await StatsReporter.shared.flush()
     }
 }
 

@@ -22,13 +22,46 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.8.1
+          image: ghcr.io/lookmail88/melonthump-server:v1.11.7
           imagePullPolicy: Always
           env:
+            # 1.1.0 App Attest (design doc §5/§7): the dev backend also
+            # accepts develop-environment attestations (Xcode installs)
+            # and the simulator debug bypass. Prod sets NEITHER — its
+            # defaults stay production-only with no bypass.
+            - name: MELONTHUMP_ATTEST_ACCEPT_DEVELOP
+              value: "true"
+            - name: MELONTHUMP_ATTEST_DEBUG_BYPASS
+              value: "true"
+            # Dev runs the app log at DEBUG so every client request
+            # prints one line (RequestLoggingFilter). Prod uses ERROR.
+            - name: MELONTHUMP_LOG_LEVEL
+              value: "DEBUG"
+            # Pin the client latest-version at 1.0.0 on dev: the image
+            # build stamps the in-development 1.1.0, and a 1.0.0 client
+            # pointed at dev would hit the update gate with nothing to
+            # download. Unpin when 1.1.0 ships.
+            - name: MELONTHUMP_CLIENT_LATEST_VERSION
+              value: "1.0.0"
             # Launch promo on the test build: window runs until the end
             # of 2026 — 2027-01-01 00:00 America/Los_Angeles (epoch ms).
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
               value: "1798790400000"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: melonthump-db
+                  key: password
           ports:
             - containerPort: 8080
           readinessProbe:

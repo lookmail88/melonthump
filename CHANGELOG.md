@@ -1,3 +1,91 @@
+## [1.11.7](https://github.com/lookmail88/melonthump/compare/v1.11.6...v1.11.7) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ios:** soft updates no longer wall the app behind the update gate ([abef9bd](https://github.com/lookmail88/melonthump/commit/abef9bd9576a5afcc355bfbf5023c1d7f5645cf7))
+* **ios:** TestFlight and App Store builds always talk to prod ([45205d7](https://github.com/lookmail88/melonthump/commit/45205d758546b66aaf593ba07e0a0cdfe2efd7ff))
+
+## [1.11.6](https://github.com/lookmail88/melonthump/compare/v1.11.5...v1.11.6) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** verify assertion signatures with the double hash the device actually signs ([b46953e](https://github.com/lookmail88/melonthump/commit/b46953ecbb26b2a19d12a3db8ef9f8a5b9150c7f))
+
+## [1.11.5](https://github.com/lookmail88/melonthump/compare/v1.11.4...v1.11.5) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** include payload length in ATTEST-CAPTURE line ([eb83149](https://github.com/lookmail88/melonthump/commit/eb83149d767621e9b74a11499c274f6e86e8b295))
+
+## [1.11.4](https://github.com/lookmail88/melonthump/compare/v1.11.3...v1.11.4) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** accept P1363 (raw) assertion signatures, not only DER ([231f43d](https://github.com/lookmail88/melonthump/commit/231f43d9de2a1c3ebcd2e854b2747e5dfed45b5b))
+
+## [1.11.3](https://github.com/lookmail88/melonthump/compare/v1.11.2...v1.11.3) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** walk the DER tree for the attestation nonce (Apple nests it under SEQUENCE/[1]) ([976bc3c](https://github.com/lookmail88/melonthump/commit/976bc3c9ed8766a3f4dc164b6ff690aa3edc3fc1))
+
+## [1.11.2](https://github.com/lookmail88/melonthump/compare/v1.11.1...v1.11.2) (2026-10-25)
+
+
+### Bug Fixes
+
+* **ios:** stats upload stays attested-only by design (unsigned posts are 401 by spec) ([e7b64e1](https://github.com/lookmail88/melonthump/commit/e7b64e1e1d0af81def82e03983ff667dc1796aa6))
+* **server:** parse SEQUENCE-wrapped nonce in real Apple attestation certs ([d8a7328](https://github.com/lookmail88/melonthump/commit/d8a73285c787245253d6ef53628266dcb1573bbc))
+
+## [1.11.1](https://github.com/lookmail88/melonthump/compare/v1.11.0...v1.11.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **ios:** stats upload no longer waits on attestation; log enrollment failures in Debug ([b376d89](https://github.com/lookmail88/melonthump/commit/b376d89fdf6e6e569b7669c6b4b5b474457426cb))
+* **server:** log the attestation rejection reason at DEBUG ([bc30512](https://github.com/lookmail88/melonthump/commit/bc305123526d1e25cba6a779da680fb873f64bd2))
+
+# [1.11.0](https://github.com/lookmail88/melonthump/compare/v1.10.0...v1.11.0) (2026-10-25)
+
+
+### Bug Fixes
+
+* **ios:** Xcode (Debug) builds bypass the version gate in test mode ([2e1a4eb](https://github.com/lookmail88/melonthump/commit/2e1a4ebf3db88a74e72cb10709e9990d8456fc54))
+
+
+### Features
+
+* **server:** log every request at DEBUG; log level DEBUG on dev, ERROR on prod ([45b594e](https://github.com/lookmail88/melonthump/commit/45b594e6268c92aa88048407d6051115da0ec3c5))
+
+# [1.10.0](https://github.com/lookmail88/melonthump/compare/v1.9.1...v1.10.0) (2026-10-25)
+
+
+### Features
+
+* **ios:** send X-App-Version header and report version/channel in stats uploads ([d11ab7a](https://github.com/lookmail88/melonthump/commit/d11ab7a812895dd6f891a52f99160af9bc979f93))
+* **server:** store client app version and channel with usage events ([3648798](https://github.com/lookmail88/melonthump/commit/3648798f8b741052091368049d0258d034661c19))
+
+## [1.9.1](https://github.com/lookmail88/melonthump/compare/v1.9.0...v1.9.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **server:** release the OpenAPI branding (chore commits do not trigger semantic-release) ([b7a3cf9](https://github.com/lookmail88/melonthump/commit/b7a3cf9e3a3318bc59e8ee77f42ae3ebfbd5dd2d))
+* **server:** ship the OpenAPI branding (chore type + path filter had kept it from releasing) ([a6ec865](https://github.com/lookmail88/melonthump/commit/a6ec865f82b39420c166334a0509288b9736fe1e))
+
+# [1.9.0](https://github.com/lookmail88/melonthump/compare/v1.8.1...v1.9.0) (2026-10-24)
+
+
+### Features
+
+* **ios:** App Attest client, stats reporter, server-issued ad unit (1.1.0) ([d46e922](https://github.com/lookmail88/melonthump/commit/d46e9222902e47aacba121b3da2a4edfd2b359a9))
+* **server:** App Attest gating, usage stats, attested ad config (1.1.0) ([a56b666](https://github.com/lookmail88/melonthump/commit/a56b66683ef0a0a25a64743781a7fd97a19cca2e))
+
 ## [1.8.1](https://github.com/lookmail88/melonthump/compare/v1.8.0...v1.8.1) (2026-10-23)
 
 

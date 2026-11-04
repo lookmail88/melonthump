@@ -43,6 +43,10 @@ struct ClientVersion: Decodable {
     /// each fresh app launch requires one completed rewarded ad,
     /// which unlocks unlimited use until the app exits.
     let promoEndsAtEpochMillis: Int64?
+    /// Server-issued rewarded ad unit ID (1.1.0): present only when
+    /// the policy fetch carried a valid App Attest assertion. When
+    /// absent, AdsManager keeps its existing fallback chain.
+    let rewardedAdUnitId: String?
 }
 
 /// Response from POST /api/v1/tap/analyze
