@@ -64,6 +64,33 @@ segment (missing segments count as 0).
   costs one rewarded ad, then the session is unlimited.
 - 上线推广期结束时刻（null = 无推广期）。推广期内每次新开 App 第一次
   拍瓜看一支激励广告，之后本次打开内无限用。
+- **1.2.0 fields** (`initialFreeThumps`, `sessionUnlockEnabled`,
+  `adFreeSessionCreditPrice`, `testflightVersion`, `productVersion`) are
+  sent **only when `currentVersion` ≥ 1.2.0**; every older client (and a
+  request without `currentVersion`) receives the 1.1.0 response byte for
+  byte. Unconfigured version fields are omitted.
+- **1.2.0 字段**只下发给 `currentVersion` ≥ 1.2.0 的客户端；更老的客户端
+  （以及不带 `currentVersion` 的请求）收到与 1.1.0 逐字节相同的响应。
+
+### Invites 邀请 (1.2.0) — `POST /api/v1/invite/{code,attribute,confirm,status,claim}`
+
+All five are App Attest gated like the stats upload (assertion over the
+exact body; the body's `installId` must match the attested key's
+install; the dev simulator bypass trusts the body). Flow: inviter gets
+`/code` → invitee `/attribute` (via the `melonthump://invite?code=` link
+or a typed code; attribution only) → invitee `/confirm` after the first
+completed thump analysis → each side `/claim`s its +5 once (idempotent
+per client `claimId`). One install and one App Attest key are attributed
+at most once; self-invites and installs that already completed a real
+analysis are refused; confirmations past the per-inviter cap (10) carry
+no reward for either side. `GET /invite/{code}` is a tiny public landing
+page showing the code. Tables: `invite_code`, `invite_attribution`
+(migration V3). The credit ledger stays on-device.
+
+五个接口均走 App Attest（与统计上传相同）。流程：邀请人取 `/code` →
+被邀请人 `/attribute`（链接或手输码，只做归因）→ 首次完成拍瓜分析后
+`/confirm` → 双方各 `/claim` 一次 +5（按 `claimId` 幂等）。同一安装、
+同一 App Attest key 只计一次；超过上限 10 的确认双方都不发奖。
 
 ## Configuration 配置（`application.properties`）
 
@@ -74,6 +101,11 @@ segment (missing segments count as 0).
 | `melonthump.client.update-url` | App Store link, filled in after listing 上架后填 App Store 链接 |
 | `melonthump.client.credit-per-ad` | Default 1; -1 = free day 默认 1；-1 为免费日 |
 | `melonthump.client.promo-ends-at-epoch-millis` | Via env `MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS` 由 env 注入 |
+| `melonthump.client.initial-free-thumps` | 1.2.0+: default 2, env `MELONTHUMP_INITIAL_FREE_THUMPS` 起始免费次数 |
+| `melonthump.client.session-unlock-enabled` | 1.2.0+: default true, env `MELONTHUMP_SESSION_UNLOCK_ENABLED`; false = no gate 会话闸门开关 |
+| `melonthump.client.ad-free-session-credit-price` | 1.2.0+: default 1, env `MELONTHUMP_AD_FREE_SESSION_CREDIT_PRICE` 免广告会话价格 |
+| `melonthump.client.testflight-version` / `product-version` | 1.2.0+: server-selector gate, env `MELONTHUMP_TESTFLIGHT_VERSION` / `MELONTHUMP_PRODUCT_VERSION`; empty = omitted 留空即不下发 |
+| `melonthump.invite.reward-credits` / `melonthump.invite.cap` | 1.2.0 invites: +5 each side, cap 10 rewarded invites per inviter (env `MELONTHUMP_INVITE_REWARD_CREDITS` / `MELONTHUMP_INVITE_CAP`) 邀请奖励与上限 |
 
 ## Database 数据库（配置已就位，1.1.0 起使用）
 

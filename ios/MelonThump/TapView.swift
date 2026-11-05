@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 /// Main screen: record a tap, upload, show the verdict.
@@ -6,43 +7,98 @@ import SwiftUI
 @MainActor
 struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
-    @StateObject private var wallet = CreditWallet()
+    @ObservedObject private var wallet = CreditWallet.shared
+    @ObservedObject private var invites = InviteManager.shared
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
     @State private var isAnalyzing = false
     @State private var recordingStartedAt: Date?
-    @State private var showOutOfCredits = false
+    /// Post-promotion session gate (ad, or credits for no ad).
+    @State private var showSessionGate = false
+    @State private var shareItem: ShareItem?
+    @State private var inviteNotice: String?
     @State private var showPromoGate = false
+    @State private var menuOpen = false
+    @State private var menuDestination: MenuDestination?
+    @State private var ratingAskedThisSession = false
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    @AppStorage(AppSettings.listeningDurationKey) private var listeningDuration = AppSettings.defaultListeningDuration
+    @Environment(\.requestReview) private var requestReview
+    private var l: L10n { L10n(preference: languagePref) }
+    /// The duration the current recording runs for (fixed at its start).
+    @State private var activeRecordingSeconds = AppSettings.defaultListeningDuration
+    @State private var showInviteSheet = false
+
+    init(startWithMenuOpen: Bool = false, startWithInviteSheet: Bool = false) {
+        _menuOpen = State(initialValue: startWithMenuOpen)
+        _showInviteSheet = State(initialValue: startWithInviteSheet)
+    }
 
     var body: some View {
         ZStack {
             backgroundColor.ignoresSafeArea()
             content
+            MenuDrawer(isOpen: $menuOpen) { menuDestination = $0 }
         }
-        .alert("Something went wrong", isPresented: Binding(
+        .sheet(item: $menuDestination) { destination in
+            switch destination {
+            case .models: ModelPickerView()
+            case .settings: SettingsView()
+            case .about: AboutView()
+            }
+        }
+        .alert(l.t("error.title"), isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("OK", role: .cancel) { errorMessage = nil }
+            Button(l.t("common.ok"), role: .cancel) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
-        .alert("Out of credits", isPresented: $showOutOfCredits) {
-            Button("Watch an ad (+\(wallet.creditPerAd))") { earnWithAd() }
-            Button("Not now", role: .cancel) {}
+        .alert(l.t("gate.title"), isPresented: $showSessionGate) {
+            Button(l.t("gate.watchAd")) { earnWithAd() }
+            if wallet.canPayAdFree {
+                Button(wallet.adFreeSessionCreditPrice == 1
+                       ? l.t("gate.useCredit") : l.f("gate.useCredits", wallet.adFreeSessionCreditPrice)) {
+                    wallet.unlockSessionWithCredits()
+                }
+            }
+            Button(l.t("common.notNow"), role: .cancel) {}
         } message: {
-            Text("Watch a short ad to earn credits for more thumps.")
+            Text(wallet.canPayAdFree ? l.f("gate.messageCredits", wallet.balance) : l.t("gate.messageAd"))
         }
-        .alert("Launch promo", isPresented: $showPromoGate) {
-            Button("Watch an ad") { earnWithAd() }
-            Button("Not now", role: .cancel) {}
+        .sheet(isPresented: $showInviteSheet) { InviteSheet() }
+        .sheet(item: $shareItem) { item in ShareSheet(items: [item.text]) }
+        .alert(inviteNotice ?? "", isPresented: Binding(
+            get: { inviteNotice != nil },
+            set: { if !$0 { inviteNotice = nil } }
+        )) {
+            Button(l.t("common.ok"), role: .cancel) { inviteNotice = nil }
+        }
+        .onChange(of: invites.lastReward) { _, reward in
+            if let reward {
+                inviteNotice = l.f("invite.reward", reward)
+                invites.clearLastReward()
+            }
+        }
+        .onOpenURL { url in
+            Task {
+                if let outcome = await invites.handle(url: url) {
+                    inviteNotice = outcome == .applied ? l.t("invite.linkReceived") : InviteSheet.message(for: outcome, l: l)
+                }
+            }
+        }
+        .alert(l.t("promo.title"), isPresented: $showPromoGate) {
+            Button(l.t("gate.watchAd")) { earnWithAd() }
+            Button(l.t("common.notNow"), role: .cancel) {}
         } message: {
-            Text("Watch one short ad to unlock unlimited thumps until you leave the app.")
+            Text(l.t("promo.message"))
         }
         .task {
             await recorder.prepareSession()
             await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: serverEnvironment))
+            await invites.onLaunch(wallet: wallet)
         }
         .onChange(of: serverEnvironment) { _, env in
             Task { await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: env)) }
@@ -61,7 +117,8 @@ struct TapView: View {
         if isAnalyzing {
             AnalyzingView()
         } else if recorder.isRecording {
-            RecordingView(recorder: recorder, startedAt: recordingStartedAt ?? Date(), onStop: toggleRecording)
+            RecordingView(recorder: recorder, startedAt: recordingStartedAt ?? Date(),
+                          durationSeconds: activeRecordingSeconds, onStop: toggleRecording)
         } else if let result {
             ResultView(result: result, errorMessage: errorMessage) {
                 self.result = nil
@@ -79,7 +136,26 @@ struct TapView: View {
             Text("MelonThump")
                 .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundColor(MelonTheme.ink)
-            Text("thump it & know it!")
+                .frame(maxWidth: .infinity)
+                // Top bar (design doc 1.2.0 §2): hamburger top-left,
+                // Invite top-right, laid over the title row's empty
+                // margins. An overlay takes no layout space, so none of
+                // Stephanie's artwork moves, and nothing covers it.
+                .overlay(alignment: .leading) {
+                    TopBarButton(systemImage: "line.3.horizontal", label: l.t("home.menu")) {
+                        menuOpen = true
+                    }
+                    .offset(x: -6)
+                    .accessibilityIdentifier("topbar.menu")
+                }
+                .overlay(alignment: .trailing) {
+                    TopBarButton(systemImage: "gift", label: l.t("home.invite")) {
+                        inviteTapped()
+                    }
+                    .offset(x: 6)
+                    .accessibilityIdentifier("topbar.invite")
+                }
+            Text(l.t("home.tagline"))
                 .font(.custom("Snell Roundhand", size: 21))
                 .fontWeight(.bold)
                 .foregroundColor(MelonTheme.deepGreen)
@@ -92,10 +168,10 @@ struct TapView: View {
                 .padding(.top, 26)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("How it works")
+                Text(l.t("home.howTitle"))
                     .font(.headline)
                     .foregroundColor(MelonTheme.ink)
-                Text("Hold your phone near a watermelon, thump it once, and we'll listen to how ripe it is.")
+                Text(l.t("home.howBody"))
                     .font(.subheadline)
                     .foregroundColor(MelonTheme.inkSoft)
             }
@@ -119,7 +195,7 @@ struct TapView: View {
             Button(action: toggleRecording) {
                 HStack(spacing: 9) {
                     Circle().fill(Color.white).frame(width: 12, height: 12)
-                    Text("Start Recording")
+                    Text(l.t("home.start"))
                 }
                 .font(.headline)
                 .frame(maxWidth: .infinity)
@@ -130,7 +206,7 @@ struct TapView: View {
                 .shadow(color: MelonTheme.buttonGreen.opacity(0.35), radius: 10, y: 5)
             }
 
-            Text("One good thump — it stops itself at 5 seconds")
+            Text(l.f("home.hint", AppSettings.sanitizedDuration(listeningDuration)))
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
@@ -146,23 +222,8 @@ struct TapView: View {
                     .padding(.top, 8)
             }
 
-            // The server picker exists only on Xcode (Debug) builds;
-            // TestFlight / App Store builds always talk to prod and
-            // never see it (channel rule, 2026-10-24).
-            if AppIdentity.channel == "xcode" {
-                DisclosureGroup("Server") {
-                    Picker("Server", selection: $serverEnvironment) {
-                        ForEach(ServerEnvironment.allCases) { env in
-                            Text(env.displayName).tag(env)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
-                .font(.footnote)
-                .foregroundColor(MelonTheme.inkSoft)
-                .padding(.top, 14)
-            }
+            // 1.2.0: the server selector moved into Settings, behind
+            // the server-published version gate (PolicyStore).
         }
         .padding(.horizontal, 22)
         .padding(.top, 20)
@@ -173,51 +234,54 @@ struct TapView: View {
 
     @ViewBuilder
     private var creditsRow: some View {
-        if wallet.needsPromoAd {
+        if wallet.isFreeDay {
+            Text(l.t("credits.freeDay"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.needsPromoAd {
+            // Launch promo (1.1.0 behaviour, unchanged).
             Button {
                 earnWithAd()
             } label: {
-                Text("Launch promo — one ad unlocks thumping until you leave")
+                Text(l.t("credits.promoGate"))
                     .font(.footnote.weight(.semibold))
                     .foregroundColor(MelonTheme.buttonGreen)
             }
-        } else if wallet.isPromoActive && wallet.promoUnlocked {
-            Text("Promo unlocked — unlimited thumps this visit")
+        } else if wallet.isPromoActive {
+            Text(l.t("credits.promoUnlocked"))
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
-        } else if wallet.isFreeDay {
-            Text("Free day — unlimited thumps, no ads today")
+        } else if wallet.sessionUnlocked {
+            Text(l.t("credits.sessionUnlocked"))
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
-        } else if wallet.balance > 0 {
-            Text("Credits: \(wallet.balance)")
-                .font(.footnote)
-                .foregroundColor(MelonTheme.inkSoft)
-        } else if wallet.canEarnFromAd {
-            Button {
-                earnWithAd()
-            } label: {
-                Text("Out of credits — watch an ad to earn +\(wallet.creditPerAd)")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(MelonTheme.buttonGreen)
-            }
+        } else if wallet.nextThumpIsFirstFree {
+            Text(l.t("credits.firstFree"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if !wallet.sessionUnlockEnabled {
+            Text(l.t("credits.unlimited"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
         } else {
-            Text("Out of credits — daily ad limit reached, come back tomorrow")
-                .font(.footnote)
-                .foregroundColor(MelonTheme.inkSoft)
+            Button {
+                showSessionGate = true
+            } label: {
+                Text(wallet.canPayAdFree ? l.f("credits.gateWithBalance", wallet.balance) : l.t("credits.gate"))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(MelonTheme.buttonGreen)
+            }
         }
     }
 
+    /// Plays one rewarded ad; on completion it unlocks this app session
+    /// (promo or post-promotion gate). Gate ads earn no credits.
     private func earnWithAd() {
         Task {
             if await AdsManager.shared.showRewarded() {
-                if wallet.needsPromoAd {
-                    wallet.unlockPromoForSession()
-                } else {
-                    wallet.grantFromAd()
-                }
+                wallet.unlockSessionWithAd()
             } else if !AdsManager.shared.rewardedReady {
-                errorMessage = "The ad is still loading — give it a few seconds and try again."
+                errorMessage = l.t("ad.loading")
             }
         }
     }
@@ -234,7 +298,7 @@ struct TapView: View {
                 if wallet.needsPromoAd {
                     showPromoGate = true
                 } else {
-                    showOutOfCredits = true
+                    showSessionGate = true
                 }
                 return
             }
@@ -242,14 +306,16 @@ struct TapView: View {
             result = nil
             Task {
                 guard await recorder.requestPermission() else {
-                    errorMessage = "Microphone permission denied."
+                    errorMessage = l.t("error.mic")
                     return
                 }
                 do {
+                    // Listening Duration applies from this recording on.
+                    activeRecordingSeconds = AppSettings.sanitizedDuration(listeningDuration)
                     try recorder.startRecording()
                     recordingStartedAt = Date()
                 } catch {
-                    errorMessage = "Failed to start recording: \(error.localizedDescription)"
+                    errorMessage = l.f("error.startRecording", error.localizedDescription)
                 }
             }
         }
@@ -257,7 +323,7 @@ struct TapView: View {
 
     private func analyze() {
         guard let audioURL = recorder.lastRecordingURL else {
-            errorMessage = "No recording found."
+            errorMessage = l.t("error.noRecording")
             return
         }
         isAnalyzing = true
@@ -266,22 +332,84 @@ struct TapView: View {
             defer { isAnalyzing = false }
             do {
                 // Analysis runs fully on-device; nothing is uploaded.
-                result = try LocalAnalyzer.analyze(audioURL: audioURL)
-                // One credit per completed analysis; an UNKNOWN (too
-                // noisy to judge) result is free.
-                if let verdict = result?.verdict, verdict != "UNKNOWN" {
-                    wallet.spendOne()
+                // The model is the one picked in the hamburger menu
+                // (Baby 1.0 by default), effective from this analysis.
+                result = try ModelRegistry.shared.activeModel.analyze(audioURL: audioURL)
+                // 1.2.0 allowance: the first real (non-UNKNOWN) analysis
+                // uses up the free thump; it is also the invitee's
+                // confirmation event for an invite.
+                if let verdict = result?.verdict {
+                    wallet.recordAnalysis(verdict: verdict)
+                    Task { await invites.recordAnalysis(verdict: verdict, wallet: wallet) }
                 }
                 // Usage stats (1.1.0): only the verdict label is
                 // reported — never the recording or any audio data.
                 if let verdict = result?.verdict {
                     Task { await StatsReporter.shared.recordAnalysis(verdict: verdict) }
                 }
+                if result?.verdict == Ripeness.ripe.rawValue {
+                    scheduleRatingPrompt()
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
         }
     }
+
+    // MARK: - Rating prompt (design doc 1.2.0 §2)
+
+    /// After a RIPE verdict, for a user past their first sessions: ask
+    /// StoreKit for the system rating prompt once the result screen has
+    /// settled — never in the first sessions, never while recording or
+    /// analyzing, at most once per launch; the system's own throttling
+    /// decides whether anything is actually shown.
+    private func scheduleRatingPrompt() {
+        guard RatingPolicy.isEligible(launchCount: RatingPolicy.launchCount), !ratingAskedThisSession else { return }
+        Task {
+            try? await Task.sleep(for: .seconds(RatingPolicy.settleDelaySeconds))
+            guard result?.verdict == Ripeness.ripe.rawValue, !isAnalyzing, !recorder.isRecording,
+                  !menuOpen, menuDestination == nil, errorMessage == nil,
+                  !showSessionGate, !showPromoGate, !showInviteSheet, shareItem == nil,
+                  inviteNotice == nil, !ratingAskedThisSession else { return }
+            ratingAskedThisSession = true
+            requestReview()
+        }
+    }
+
+    // MARK: - Invite
+
+    /// Before the first thump completes: the "Share my invite / I have
+    /// a code" choice. Afterwards: straight to the system share sheet.
+    private func inviteTapped() {
+        if invites.offersCodeEntry {
+            showInviteSheet = true
+            return
+        }
+        Task {
+            guard let code = await invites.ensureCode() else {
+                errorMessage = l.t("invite.err.network")
+                return
+            }
+            shareItem = ShareItem(text: invites.shareText(code: code, l: l))
+        }
+    }
+}
+
+/// Rating-prompt eligibility: launches are counted once per process
+/// start; the prompt is considered from the third launch on (past the
+/// first sessions). Never mid-flow: only after the result has settled.
+enum RatingPolicy {
+    static let launchCountKey = "rating.launchCount"
+    static let minimumLaunches = 3
+    static let settleDelaySeconds = 1.5
+
+    static var launchCount: Int { UserDefaults.standard.integer(forKey: launchCountKey) }
+
+    static func recordLaunch() {
+        UserDefaults.standard.set(launchCount + 1, forKey: launchCountKey)
+    }
+
+    static func isEligible(launchCount: Int) -> Bool { launchCount >= minimumLaunches }
 }
 
 // MARK: - Recording
@@ -289,17 +417,24 @@ struct TapView: View {
 struct RecordingView: View {
     @ObservedObject var recorder: AudioRecorder
     let startedAt: Date
+    /// Listening Duration (Settings): 3 / 5 / 8 s; the countdown follows it.
+    var durationSeconds: Int = AppSettings.defaultListeningDuration
     let onStop: () -> Void
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
     @State private var pulsing = false
     /// Rolling history of live mic levels, oldest → newest (real waveform).
     @State private var levels: [Double] = []
     /// Seconds since recording started, ticked by the countdown task.
     @State private var elapsed: Double = 0
 
-    /// Recording is capped at 5 seconds, counted down on screen.
-    private var secondsLeft: Int { max(0, Int(ceil(5 - elapsed))) }
-    /// The user may stop manually once past the third second.
-    private var canStop: Bool { elapsed > 3 }
+    /// Recording is capped at the listening duration, counted down on screen.
+    private var secondsLeft: Int { max(0, Int(ceil(Double(durationSeconds) - elapsed))) }
+    /// The user may stop manually once past the third second (with a
+    /// 3 s duration the countdown itself ends the recording).
+    private static let manualStopAfterSeconds = 3
+    private var manualStopPossible: Bool { durationSeconds > Self.manualStopAfterSeconds }
+    private var canStop: Bool { manualStopPossible && elapsed > Double(Self.manualStopAfterSeconds) }
 
     private let barCount = 36
 
@@ -310,7 +445,7 @@ struct RecordingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("listening…")
+            Text(l.t("rec.listening"))
                 .font(.custom("Snell Roundhand", size: 32))
                 .fontWeight(.bold)
                 .foregroundColor(MelonTheme.deepGreen)
@@ -359,13 +494,13 @@ struct RecordingView: View {
                 Text("\(secondsLeft)")
                     .font(.system(size: 46, weight: .bold, design: .rounded))
                     .foregroundColor(MelonTheme.ink)
-                Text(secondsLeft == 1 ? "second left" : "seconds left")
+                Text(secondsLeft == 1 ? l.t("rec.secondLeft") : l.t("rec.secondsLeft"))
                     .font(.caption)
                     .foregroundColor(MelonTheme.inkSoft)
             }
             .padding(.top, 10)
 
-            Text("Thump the melon now —\none good knock is enough")
+            Text(l.t("rec.prompt"))
                 .font(.subheadline)
                 .foregroundColor(MelonTheme.inkSoft)
                 .multilineTextAlignment(.center)
@@ -374,7 +509,7 @@ struct RecordingView: View {
             Spacer()
 
             Button(action: onStop) {
-                Text("■  Stop & Analyze")
+                Text(l.t("rec.stop"))
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 17)
@@ -385,7 +520,8 @@ struct RecordingView: View {
             }
             .disabled(!canStop)
             .opacity(canStop ? 1 : 0.55)
-            Text(canStop ? "Auto-stops when the countdown ends" : "You can stop after 3 seconds")
+            Text(canStop || !manualStopPossible
+                 ? l.t("rec.autoStops") : l.f("rec.canStopAfter", Self.manualStopAfterSeconds))
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
@@ -393,12 +529,12 @@ struct RecordingView: View {
         .padding(.horizontal, 22)
         .padding(.bottom, 12)
         .task {
-            // 5-second countdown: tick the elapsed clock, unlock the
-            // stop button after 3s (canStop), and stop & analyze
-            // automatically when the countdown runs out.
+            // Countdown over the listening duration: tick the elapsed
+            // clock, unlock the stop button after 3s (canStop), and stop
+            // & analyze automatically when the countdown runs out.
             while !Task.isCancelled {
                 elapsed = max(0, Date().timeIntervalSince(startedAt))
-                if elapsed >= 5 {
+                if elapsed >= Double(durationSeconds) {
                     onStop()
                     return
                 }
@@ -412,6 +548,8 @@ struct RecordingView: View {
 
 struct AnalyzingView: View {
     @State private var sheen = false
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -422,7 +560,7 @@ struct AnalyzingView: View {
                 .shadow(color: MelonTheme.ink.opacity(0.25), radius: 12, y: 6)
                 .padding(.top, 16)
 
-            Text("Her original page, kept as-is —\nthe cats are listening to your thump…")
+            Text(l.t("an.caption"))
                 .font(.subheadline)
                 .foregroundColor(MelonTheme.inkSoft)
                 .multilineTextAlignment(.center)
@@ -450,7 +588,7 @@ struct AnalyzingView: View {
                     }
                 }
 
-            Text("Analyzing…")
+            Text(l.t("an.analyzing"))
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
@@ -468,10 +606,12 @@ struct ResultView: View {
     let onAgain: () -> Void
 
     private var ripeness: Ripeness { Ripeness(verdict: result.verdict) }
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("RESULT")
+            Text(l.t("res.badge"))
                 .font(.caption.weight(.bold))
                 .foregroundColor(.white)
                 .padding(.horizontal, 14)
@@ -486,12 +626,12 @@ struct ResultView: View {
                 .frame(height: 118)
                 .padding(.top, 18)
 
-            Text(ripeness.displayName)
+            Text(ripeness.displayName(l))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundColor(ripeness.accent)
                 .padding(.top, 12)
 
-            Text(ripeness.tagline)
+            Text(ripeness.tagline(l))
                 .font(.subheadline)
                 .foregroundColor(MelonTheme.inkSoft)
                 .multilineTextAlignment(.center)
@@ -499,9 +639,9 @@ struct ResultView: View {
 
             VStack(spacing: 14) {
                 HStack(spacing: 8) {
-                    stat(value: String(format: "%.0f Hz", result.dominantFrequencyHz), label: "DOMINANT")
-                    stat(value: "\(Int(result.confidence * 100))%", label: "CONFIDENCE")
-                    stat(value: String(format: "%.0f ms", result.decayTimeMs), label: "DECAY")
+                    stat(value: String(format: "%.0f Hz", result.dominantFrequencyHz), label: l.t("res.dominant"))
+                    stat(value: "\(Int(result.confidence * 100))%", label: l.t("res.confidence"))
+                    stat(value: String(format: "%.0f ms", result.decayTimeMs), label: l.t("res.decay"))
                 }
                 ZoneBar(hz: result.dominantFrequencyHz, accent: ripeness.accent)
                 Text(thresholdNote)
@@ -531,7 +671,7 @@ struct ResultView: View {
             Spacer()
 
             Button(action: onAgain) {
-                Text("Thump Another Melon")
+                Text(l.t("res.again"))
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 17)
@@ -560,12 +700,18 @@ struct ResultView: View {
         .cornerRadius(16)
     }
 
+    /// Band edges of the model in use (Baby 1.0: 160 / 280 Hz).
+    private var bands: (low: String, high: String) {
+        let p = (ModelRegistry.shared.activeModel as? HeuristicBandsModel)?.parameters ?? .babyV22
+        return (String(format: "%g", p.overripeBelowHz), String(format: "%g", p.ripeUpToHz))
+    }
+
     private var thresholdNote: String {
         switch ripeness {
-        case .ripe: return "Ripe range: 160–280 Hz"
-        case .unripe: return "Above 280 Hz — not ripe yet"
-        case .overripe: return "Below 160 Hz — past its prime"
-        case .unknown: return "A ripe thump lands in the green zone"
+        case .ripe: return l.f("res.ripeRange", bands.low, bands.high)
+        case .unripe: return l.f("res.above", bands.high)
+        case .overripe: return l.f("res.below", bands.low)
+        case .unknown: return l.t("res.unknownNote")
         }
     }
 }
@@ -578,6 +724,8 @@ struct ResultView: View {
 struct ZoneBar: View {
     let hz: Double
     let accent: Color
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
 
     private var position: Double {
         min(0.98, max(0.02, (350 - hz) / (350 - 100)))
@@ -586,11 +734,11 @@ struct ZoneBar: View {
     var body: some View {
         VStack(spacing: 6) {
             HStack {
-                Text("unripe").font(.caption2).foregroundColor(MelonTheme.inkSoft)
+                Text(l.t("zone.unripe")).font(.caption2).foregroundColor(MelonTheme.inkSoft)
                 Spacer()
-                Text("ripe").font(.caption2).foregroundColor(MelonTheme.inkSoft)
+                Text(l.t("zone.ripe")).font(.caption2).foregroundColor(MelonTheme.inkSoft)
                 Spacer()
-                Text("overripe").font(.caption2).foregroundColor(MelonTheme.inkSoft)
+                Text(l.t("zone.overripe")).font(.caption2).foregroundColor(MelonTheme.inkSoft)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {

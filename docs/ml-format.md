@@ -13,7 +13,7 @@
    | Field | Type | Required | Meaning |
    |---|---|---|---|
    | `formatVersion` | number | yes | Must be `1`. A file with a higher value is skipped (forward-incompatible). |
-   | `modelId` | string | yes | `[a-z0-9.-]`, unique per source. `baby-1.0` is reserved for the built-in model. |
+   | `modelId` | string | yes | `[a-z0-9.-]` (dot allowed — corrected 2026-11-05), unique per source. `baby-1.0` is reserved for the built-in model. |
    | `modelVersion` | string | yes | The model's own version label (e.g. `"1.0"`). |
    | `displayName` | string | yes | Shown in the model picker (e.g. `"Baby 1.0"`). |
    | `kind` | string | yes | `"heuristic-bands"` in format v1. Other values are reserved for future model kinds (the loader seam); a v1 loader skips kinds it does not implement. |
@@ -25,10 +25,36 @@
 
    - `overripeBelowHz` (number): dominant frequency **<** this → OVERRIPE.
      主频 **<** 此值 → 过熟。
-   - `ripeUpToHz` (number): dominant frequency **<** this → RIPE; at or above → UNRIPE. (Boundary semantics reproduce heuristic v2.2 exactly: 160 Hz itself is RIPE, 280 Hz itself is UNRIPE.)
-     主频 **<** 此值 → 熟；≥ 此值 → 生。（边界语义与启发式 v2.2 逐字一致：160 Hz 本身算熟，280 Hz 本身算生。）
+   - `ripeUpToHz` (number): dominant frequency **<** this → RIPE; **at or above** → UNRIPE. (Corrected 2026-11-05 to match the shipped v2.2 code: exactly 280 Hz is UNRIPE. Bands: `f < 160` OVERRIPE; `160 ≤ f < 280` RIPE; `f ≥ 280` UNRIPE.)
+     主频 **<** 此值 → 熟；**≥** 此值 → 生。（2026-11-05 更正，与 v2.2 代码一致：恰为 280 Hz 判生。）
    - Plus the complete remaining tunable set of the current heuristic **v2.2** (signal-quality / confidence gates and any other thresholds), extracted from `LocalAnalyzer` at implementation time and named in the same style.
      再加现行启发式 **v2.2** 的其余全部可调项（信号质量/置信度门槛等），实现时从 `LocalAnalyzer` 抽全，命名风格一致。
+
+   As implemented (1.2.0) — all **required**; values shown are Baby 1.0 = v2.2. Integer-typed fields must be whole numbers. Beyond rule 4 below, the loader range-checks every field (finite, sensible ranges) so a file that validates can never make the analyzer misbehave.
+   实现定稿（1.2.0）——全部**必填**；所示数值即 Baby 1.0 = v2.2。
+
+   | Parameter | v2.2 | Meaning |
+   |---|---|---|
+   | `overripeBelowHz` / `ripeUpToHz` | 160 / 280 | verdict bands (above) |
+   | `confidenceBase` / `confidenceSpan` / `confidenceMax` | 0.55 / 0.40 / 0.95 | confidence = base + span × min(1, distance / scale), capped |
+   | `unripeConfidenceScaleHz` | 120 | confidence scale above the ripe band |
+   | `unknownConfidence` | 0.3 | confidence reported with UNKNOWN |
+   | `envelopeFramesPerSecond` (int) | 100 | RMS envelope frame rate (10 ms frames) |
+   | `trimHeadMs` / `trimTailMs` | 300 / 200 | usable window trimmed off the clip edges |
+   | `minUsableWindowFrames` (int) | 10 | below this the whole clip is used |
+   | `absoluteFloor` | 0.0056 | peak floor (≈ −45 dBFS) |
+   | `peakWidthMinFrames` (int) / `peakWidthLevelRatio` | 2 / 0.5 | peak must hold ≥ ratio × peak this many frames |
+   | `prominenceDbMin` | 10 | peak over the median envelope floor |
+   | `attackLevelRatio` / `attackMaxMs` | 0.5 / 80 | rise from ratio × peak to peak |
+   | `decayMaxMs` | 800 | fall to 1/e |
+   | `sustainedEndLevelRatio` | 0.6 | decay exemption: clip end must be ≤ ratio × peak |
+   | `segmentMs` / `segmentPrerollMs` | 500 / 30 | analysis FFT segment and its start before the peak |
+   | `bandMinHz` / `bandMaxHz` | 60 / 600 | melon band (closed range) |
+   | `crestNeighbourMinHz` / `crestNeighbourMaxHz` / `crestDbMin` | 15 / 75 / 18 | local spectral crest gate |
+   | `snrDbMin` / `noiseSegmentAfterMs` / `noiseSegmentBeforeGapMs` | 6 / 1200 / 300 | spectral SNR against a noise segment |
+   | `ringMinOffsetMs` / `ringSegmentMs` / `ringTolerance` | 100 / 250 / 0.15 | ring pitch consistency |
+
+   Structural numerical guards stay in code and are not tunables: the 16-sample minimum envelope frame, the 256-sample minimum FFT segment, the 3-frame lead an attack needs to be measurable, and e (decay is defined as the fall to 1/e).
 
 4. **Validation — a file failing ANY rule is skipped whole** (never partially applied, never crashes the app):
    **校验——任一规则不过，整文件跳过**（绝不部分应用、绝不让 App 崩溃）：
