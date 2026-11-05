@@ -13,7 +13,7 @@
    | Field | Type | Required | Meaning |
    |---|---|---|---|
    | `formatVersion` | number | yes | Must be `1`. A file with a higher value is skipped (forward-incompatible). |
-   | `modelId` | string | yes | `[a-z0-9-]`, unique per source. `baby-1.0` is reserved for the built-in model. |
+   | `modelId` | string | yes | `[a-z0-9.-]`, unique per source. `baby-1.0` is reserved for the built-in model. |
    | `modelVersion` | string | yes | The model's own version label (e.g. `"1.0"`). |
    | `displayName` | string | yes | Shown in the model picker (e.g. `"Baby 1.0"`). |
    | `kind` | string | yes | `"heuristic-bands"` in format v1. Other values are reserved for future model kinds (the loader seam); a v1 loader skips kinds it does not implement. |
@@ -25,8 +25,8 @@
 
    - `overripeBelowHz` (number): dominant frequency **<** this → OVERRIPE.
      主频 **<** 此值 → 过熟。
-   - `ripeUpToHz` (number): dominant frequency **≤** this → RIPE; above → UNRIPE.
-     主频 **≤** 此值 → 熟；再高 → 生。
+   - `ripeUpToHz` (number): dominant frequency **<** this → RIPE; at or above → UNRIPE. (Boundary semantics reproduce heuristic v2.2 exactly: 160 Hz itself is RIPE, 280 Hz itself is UNRIPE.)
+     主频 **<** 此值 → 熟；≥ 此值 → 生。（边界语义与启发式 v2.2 逐字一致：160 Hz 本身算熟，280 Hz 本身算生。）
    - Plus the complete remaining tunable set of the current heuristic **v2.2** (signal-quality / confidence gates and any other thresholds), extracted from `LocalAnalyzer` at implementation time and named in the same style.
      再加现行启发式 **v2.2** 的其余全部可调项（信号质量/置信度门槛等），实现时从 `LocalAnalyzer` 抽全，命名风格一致。
 
