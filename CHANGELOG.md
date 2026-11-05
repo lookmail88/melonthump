@@ -1,3 +1,19 @@
+# [1.12.0](https://github.com/lookmail88/melonthump/compare/v1.11.7...v1.12.0) (2026-11-05)
+
+
+### Bug Fixes
+
+* **server:** set the app store update url and enable the prod launch promo ([20dafb3](https://github.com/lookmail88/melonthump/commit/20dafb3adf58faf05de088552bf25a7f7aa9f817))
+
+
+### Features
+
+* **ios:** 1.2.0 UI — top bar, menu, model picker, Settings, About, i18n ([1728caa](https://github.com/lookmail88/melonthump/commit/1728caaf40a4dfbf4764c3d6c4a7c8053995ac00))
+* **ios:** analysis model as a .ml file (Baby 1.0) with external mounting ([864fbcb](https://github.com/lookmail88/melonthump/commit/864fbcbc1ac7ab0b1d38dbcad69b04c885c6a29e))
+* **ios:** post-promotion allowance, session gate and invites ([0529154](https://github.com/lookmail88/melonthump/commit/05291543be27ecc6dfe4836571100049ab07adfc))
+* **server:** App Attest gated invite attribution, confirmation and claims ([5b8b2da](https://github.com/lookmail88/melonthump/commit/5b8b2da52487e97d255f171656b6604a3d12721c))
+* **server:** server-tunable allowance policy fields for 1.2.0 clients ([7d4f4a6](https://github.com/lookmail88/melonthump/commit/7d4f4a67580e114bc3a24bfd4f8012cb0319a9cd))
+
 ## [1.11.7](https://github.com/lookmail88/melonthump/compare/v1.11.6...v1.11.7) (2026-11-04)
 
 
