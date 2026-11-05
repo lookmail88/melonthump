@@ -266,7 +266,9 @@ struct TapView: View {
             defer { isAnalyzing = false }
             do {
                 // Analysis runs fully on-device; nothing is uploaded.
-                result = try LocalAnalyzer.analyze(audioURL: audioURL)
+                // The model is the one picked in the hamburger menu
+                // (Baby 1.0 by default), effective from this analysis.
+                result = try ModelRegistry.shared.activeModel.analyze(audioURL: audioURL)
                 // One credit per completed analysis; an UNKNOWN (too
                 // noisy to judge) result is free.
                 if let verdict = result?.verdict, verdict != "UNKNOWN" {

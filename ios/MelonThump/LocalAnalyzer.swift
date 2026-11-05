@@ -44,6 +44,15 @@ import Foundation
 /// The recording itself is decoded with AVAudioFile, which natively
 /// handles every WAV variant the recorder produces. The server no
 /// longer analyzes audio; it only serves the client version policy.
+///
+/// 1.2.0 (design doc §1): every tunable now comes from a loaded model
+/// (`HeuristicBandsParameters`, carried by a `.ml` file — see
+/// ModelFile.swift and docs/ml-format.md). With Baby 1.0's parameters
+/// the analysis is bit-for-bit heuristic v2.2. What stays in code are
+/// only structural numerical guards, not tunables: the 16-sample
+/// minimum envelope frame, the 256-sample minimum FFT segment, the
+/// 3-frame lead an attack needs to be measurable, and e (the decay
+/// time is by definition the fall to 1/e).
 enum LocalAnalyzer {
 
     enum AnalyzerError: Error, LocalizedError {
@@ -58,40 +67,37 @@ enum LocalAnalyzer {
         }
     }
 
-    // Gate / band constants (see header).
-    private static let prominenceDbMin = 10.0
-    private static let attackMaxMs = 80.0
-    private static let decayMaxMs = 800.0
-    private static let bandHz = 60.0...600.0
-    private static let snrDbMin = 6.0
-    private static let crestDbMin = 18.0
-    private static let ringTolerance = 0.15
-    private static let absoluteFloor = 0.0056  // ≈ −45 dBFS
-    private static let trimHeadMs = 300.0
-    private static let trimTailMs = 200.0
-    private static let segmentMs = 500.0
+    // Gate / band values all come from `parameters` (see header).
 
-    static func analyze(audioURL: URL) throws -> TapResult {
+    static func analyze(audioURL: URL, parameters p: HeuristicBandsParameters,
+                        modelLabel: String) throws -> TapResult {
         let (samples, sampleRate) = try loadSamples(url: audioURL)
-        let features = try extractFeatures(samples: samples, sampleRate: sampleRate)
+        return try analyze(samples: samples, sampleRate: sampleRate, parameters: p, modelLabel: modelLabel)
+    }
+
+    /// Analysis of already-decoded mono samples (the file-free entry
+    /// point; also what the v2.2 equivalence harness drives).
+    static func analyze(samples: [Double], sampleRate: Int, parameters p: HeuristicBandsParameters,
+                        modelLabel: String) throws -> TapResult {
+        let features = try extractFeatures(samples: samples, sampleRate: sampleRate, p: p)
         guard features.heardThump else {
             return TapResult(
                 dominantFrequencyHz: 0,
                 spectralCentroidHz: 0,
                 decayTimeMs: round2(features.decayMs),
                 verdict: "UNKNOWN",
-                confidence: 0.3,
-                modelVersion: "heuristic-v2.2",
+                confidence: p.unknownConfidence,
+                modelVersion: modelLabel,
                 debugSummary: features.debug)
         }
-        let verdict = classify(dominantHz: features.dominantHz)
+        let verdict = classify(dominantHz: features.dominantHz, p: p)
         return TapResult(
             dominantFrequencyHz: round2(features.dominantHz),
             spectralCentroidHz: round2(features.centroidHz),
             decayTimeMs: round2(features.decayMs),
             verdict: verdict.verdict,
             confidence: round2(verdict.confidence),
-            modelVersion: "heuristic-v2.2",
+            modelVersion: modelLabel,
             debugSummary: features.debug)
     }
 
@@ -141,8 +147,9 @@ enum LocalAnalyzer {
         let debug: String
     }
 
-    private static func extractFeatures(samples: [Double], sampleRate: Int) throws -> Features {
-        let frameLen = max(16, sampleRate / 100)  // 10 ms envelope frames
+    private static func extractFeatures(samples: [Double], sampleRate: Int,
+                                        p: HeuristicBandsParameters) throws -> Features {
+        let frameLen = max(16, sampleRate / p.envelopeFramesPerSecond)  // 10 ms envelope frames in v2.2
         let frameCount = samples.count / frameLen
         guard frameCount >= 2 else { throw AnalyzerError.tooShort }
         let frameMs = 1000.0 * Double(frameLen) / Double(sampleRate)
@@ -161,9 +168,9 @@ enum LocalAnalyzer {
 
         // Usable window: head/tail trimmed (see header). The peak
         // and the noise floor both come from this window only.
-        var lo = Int(trimHeadMs / frameMs)
-        var hi = frameCount - Int(trimTailMs / frameMs)
-        if hi - lo < 10 { lo = 0; hi = frameCount }
+        var lo = Int(p.trimHeadMs / frameMs)
+        var hi = frameCount - Int(p.trimTailMs / frameMs)
+        if hi - lo < p.minUsableWindowFrames { lo = 0; hi = frameCount }
         var peak = 0.0
         var peakIdx = lo
         for w in lo..<hi {
@@ -198,10 +205,10 @@ enum LocalAnalyzer {
         var earlyNote: String?
         func spectrumNote() -> String {
             if let earlyNote { return earlyNote }
-            let start = max(0, Int((onsetSec - 0.03) * Double(sampleRate)))
+            let start = max(0, Int((onsetSec - p.segmentPrerollMs / 1000.0) * Double(sampleRate)))
             var note = ""
-            if let spec = spectrum(samples: samples, start: start, sampleRate: sampleRate),
-               let bp = bandPeak(spectrum: spec, binHz: Double(sampleRate) / Double(spec.count * 2)) {
+            if let spec = spectrum(samples: samples, start: start, sampleRate: sampleRate, durationMs: p.segmentMs),
+               let bp = bandPeak(spectrum: spec, binHz: Double(sampleRate) / Double(spec.count * 2), p: p) {
                 note = String(format: " · f≈%.0f crest %.1f", bp.freq, bp.localCrestDb)
             }
             earlyNote = note
@@ -213,21 +220,21 @@ enum LocalAnalyzer {
         }
 
         // Gate — absolute floor: micro-noise in a silent room.
-        guard peak >= absoluteFloor else { return reject("absfloor") }
+        guard peak >= p.absoluteFloor else { return reject("absfloor") }
 
         // Gate — peak width: single-frame clicks are not knocks.
         var width = 1
         var k = peakIdx - 1
-        while k >= 0, env[k] >= peak * 0.5 { width += 1; k -= 1 }
+        while k >= 0, env[k] >= peak * p.peakWidthLevelRatio { width += 1; k -= 1 }
         k = peakIdx + 1
-        while k < frameCount, env[k] >= peak * 0.5 { width += 1; k += 1 }
-        guard width >= 2 else { return reject("width \(width)f") }
+        while k < frameCount, env[k] >= peak * p.peakWidthLevelRatio { width += 1; k += 1 }
+        guard width >= p.peakWidthMinFrames else { return reject("width \(width)f") }
         dbg += " · w \(width)f"
 
         // Gate 1 — prominence over the noise floor (median envelope).
         guard floor > 0 else { return reject("floor") }
         let promDb = 20 * log10(peak / floor)
-        guard promDb >= prominenceDbMin else { return reject(String(format: "prom %.1f", promDb)) }
+        guard promDb >= p.prominenceDbMin else { return reject(String(format: "prom %.1f", promDb)) }
         dbg += String(format: " · prom %.1f", promDb)
 
         // Gate 2 — attack: rise from half-peak to peak must be fast.
@@ -235,9 +242,9 @@ enum LocalAnalyzer {
         // before it to measure.)
         if peakIdx >= 3 {
             var j = peakIdx
-            while j > 0, env[j - 1] > peak * 0.5 { j -= 1 }
+            while j > 0, env[j - 1] > peak * p.attackLevelRatio { j -= 1 }
             let attackMs = Double(peakIdx - j) * frameMs
-            guard attackMs <= attackMaxMs else { return reject("atk \(Int(attackMs))ms") }
+            guard attackMs <= p.attackMaxMs else { return reject("atk \(Int(attackMs))ms") }
             dbg += " · atk \(Int(attackMs))ms"
         }
 
@@ -247,10 +254,10 @@ enum LocalAnalyzer {
         // post-peak audio) AND the level must already be falling —
         // a sound still loud at the end is sustained, not a thump.
         if decayVerified {
-            guard decayMs <= decayMaxMs else { return reject("dec \(Int(decayMs))ms") }
+            guard decayMs <= p.decayMaxMs else { return reject("dec \(Int(decayMs))ms") }
         } else {
             let remainingMs = Double(frameCount - 1 - peakIdx) * frameMs
-            guard remainingMs < decayMaxMs, env[frameCount - 1] <= 0.6 * peak else {
+            guard remainingMs < p.decayMaxMs, env[frameCount - 1] <= p.sustainedEndLevelRatio * peak else {
                 return reject("dec sustained")
             }
         }
@@ -258,26 +265,27 @@ enum LocalAnalyzer {
 
         // Frequency: FFT of the 500 ms segment starting just before
         // the thump, peak within the melon band.
-        let segStart = max(0, Int((onsetSec - 0.03) * Double(sampleRate)))
-        guard let signalSpectrum = spectrum(samples: samples, start: segStart, sampleRate: sampleRate) else {
+        let segStart = max(0, Int((onsetSec - p.segmentPrerollMs / 1000.0) * Double(sampleRate)))
+        guard let signalSpectrum = spectrum(samples: samples, start: segStart, sampleRate: sampleRate,
+                                            durationMs: p.segmentMs) else {
             return reject("spec")
         }
         earlyNote = ""  // real values follow; no would-be note needed
         let binHz = Double(sampleRate) / Double(signalSpectrum.count * 2)
-        guard let main = bandPeak(spectrum: signalSpectrum, binHz: binHz) else { return reject("peak") }
+        guard let main = bandPeak(spectrum: signalSpectrum, binHz: binHz, p: p) else { return reject("peak") }
         let dominantHz = main.freq
         let peakMag = main.mag
         dbg += String(format: " · f %.0f crest %.1f", dominantHz, main.localCrestDb)
 
         // Gate 4 — local spectral crest: the peak must tower over
         // its own neighbourhood (see header). Broadband knocks fail.
-        guard main.localCrestDb >= crestDbMin else { return reject("crest") }
+        guard main.localCrestDb >= p.crestDbMin else { return reject("crest") }
 
         var weightedSum = 0.0
         var magSum = 0.0
         for k2 in 1..<signalSpectrum.count {
             let freq = Double(k2) * binHz
-            guard bandHz.contains(freq) else { continue }
+            guard inBand(freq, p) else { continue }
             weightedSum += freq * signalSpectrum[k2]
             magSum += signalSpectrum[k2]
         }
@@ -286,16 +294,16 @@ enum LocalAnalyzer {
         // noise-only segment's spectrum (same FFT size). Prefer a
         // segment well after the thump; fall back to one before it.
         // Skipped when no clean segment exists — gates 1–4 passed.
-        if let noiseStart = noiseSegmentStart(onsetSec: onsetSec, totalSec: Double(samples.count) / Double(sampleRate), sampleRate: sampleRate),
-           let noiseSpectrum = spectrum(samples: samples, start: noiseStart, sampleRate: sampleRate),
+        if let noiseStart = noiseSegmentStart(onsetSec: onsetSec, totalSec: Double(samples.count) / Double(sampleRate), sampleRate: sampleRate, p: p),
+           let noiseSpectrum = spectrum(samples: samples, start: noiseStart, sampleRate: sampleRate, durationMs: p.segmentMs),
            noiseSpectrum.count == signalSpectrum.count {
-            let bandMags = (1..<noiseSpectrum.count).filter { bandHz.contains(Double($0) * binHz) }.map { noiseSpectrum[$0] }
+            let bandMags = (1..<noiseSpectrum.count).filter { inBand(Double($0) * binHz, p) }.map { noiseSpectrum[$0] }
             if !bandMags.isEmpty {
                 let ref = max(noiseSpectrum[main.bin], median(bandMags))
                 if ref > 0 {
                     let snrDb = 20 * log10(peakMag / ref)
                     dbg += String(format: " · snr %.1f", snrDb)
-                    guard snrDb >= snrDbMin else { return reject("snr") }
+                    guard snrDb >= p.snrDbMin else { return reject("snr") }
                 }
             }
         }
@@ -303,15 +311,15 @@ enum LocalAnalyzer {
         // Gate 6 — ring pitch consistency: if a clear tone is still
         // audible later in the ring, it must be the same pitch.
         // One-sided: an inaudible ring verifies nothing.
-        let ringOffsetSec = max(0.10, decayMs / 1000.0)
+        let ringOffsetSec = max(p.ringMinOffsetMs / 1000.0, decayMs / 1000.0)
         let ringStart = Int((onsetSec + ringOffsetSec) * Double(sampleRate))
         if ringStart + 256 <= samples.count,
-           let ringSpectrum = spectrum(samples: samples, start: ringStart, sampleRate: sampleRate, durationMs: 250) {
+           let ringSpectrum = spectrum(samples: samples, start: ringStart, sampleRate: sampleRate, durationMs: p.ringSegmentMs) {
             let ringBinHz = Double(sampleRate) / Double(ringSpectrum.count * 2)
-            if let ring = bandPeak(spectrum: ringSpectrum, binHz: ringBinHz),
-               ring.localCrestDb >= crestDbMin {
+            if let ring = bandPeak(spectrum: ringSpectrum, binHz: ringBinHz, p: p),
+               ring.localCrestDb >= p.crestDbMin {
                 dbg += String(format: " · ring %.0f", ring.freq)
-                guard abs(ring.freq - dominantHz) / dominantHz <= ringTolerance else {
+                guard abs(ring.freq - dominantHz) / dominantHz <= p.ringTolerance else {
                     return reject("ring")
                 }
             }
@@ -335,12 +343,17 @@ enum LocalAnalyzer {
     }
 
     /// Strongest in-band peak of a spectrum, with its local crest.
-    private static func bandPeak(spectrum: [Double], binHz: Double) -> BandPeak? {
+    /// The melon band as a closed range (v2.2: 60...600 Hz).
+    private static func inBand(_ freq: Double, _ p: HeuristicBandsParameters) -> Bool {
+        freq >= p.bandMinHz && freq <= p.bandMaxHz
+    }
+
+    private static func bandPeak(spectrum: [Double], binHz: Double, p: HeuristicBandsParameters) -> BandPeak? {
         var peakMag = 0.0
         var peakBin = 0
         for k in 1..<spectrum.count {
             let freq = Double(k) * binHz
-            guard bandHz.contains(freq) else { continue }
+            guard inBand(freq, p) else { continue }
             if spectrum[k] > peakMag {
                 peakMag = spectrum[k]
                 peakBin = k
@@ -350,7 +363,7 @@ enum LocalAnalyzer {
         let freq = Double(peakBin) * binHz
         let neighbours = (1..<spectrum.count).filter { k in
             let f = Double(k) * binHz
-            return bandHz.contains(f) && abs(f - freq) >= 15 && abs(f - freq) <= 75
+            return inBand(f, p) && abs(f - freq) >= p.crestNeighbourMinHz && abs(f - freq) <= p.crestNeighbourMaxHz
         }.map { spectrum[$0] }
         let ref = neighbours.isEmpty ? 0 : median(neighbours)
         return BandPeak(
@@ -362,20 +375,23 @@ enum LocalAnalyzer {
 
     /// Start sample of a 500 ms noise-only segment: 1.2 s after the
     /// thump if that fits, else the 500 ms ending 0.3 s before it.
-    private static func noiseSegmentStart(onsetSec: Double, totalSec: Double, sampleRate: Int) -> Int? {
-        let segSec = segmentMs / 1000.0
-        if onsetSec + 1.2 + segSec <= totalSec {
-            return Int((onsetSec + 1.2) * Double(sampleRate))
+    private static func noiseSegmentStart(onsetSec: Double, totalSec: Double, sampleRate: Int,
+                                          p: HeuristicBandsParameters) -> Int? {
+        let segSec = p.segmentMs / 1000.0
+        let after = p.noiseSegmentAfterMs / 1000.0
+        let gap = p.noiseSegmentBeforeGapMs / 1000.0
+        if onsetSec + after + segSec <= totalSec {
+            return Int((onsetSec + after) * Double(sampleRate))
         }
-        if onsetSec - 0.3 - segSec >= 0 {
-            return Int((onsetSec - 0.3 - segSec) * Double(sampleRate))
+        if onsetSec - gap - segSec >= 0 {
+            return Int((onsetSec - gap - segSec) * Double(sampleRate))
         }
         return nil
     }
 
     /// Hann-windowed, zero-padded FFT magnitudes (first half) of
     /// the segment starting at `start`; nil if too short.
-    private static func spectrum(samples: [Double], start: Int, sampleRate: Int, durationMs: Double = segmentMs) -> [Double]? {
+    private static func spectrum(samples: [Double], start: Int, sampleRate: Int, durationMs: Double) -> [Double]? {
         let count = Int(durationMs / 1000.0 * Double(sampleRate))
         guard start >= 0, start + 256 <= samples.count else { return nil }
         let available = min(count, samples.count - start)
@@ -397,24 +413,26 @@ enum LocalAnalyzer {
         return sorted.count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
     }
 
-    // MARK: - Heuristic classifier (placeholder thresholds, as on the server)
+    // MARK: - Heuristic classifier (bands from the model)
 
-    private static func classify(dominantHz f: Double) -> (verdict: String, confidence: Double) {
-        let overripeMaxHz = 160.0
-        let ripeMaxHz = 280.0
+    /// f < overripeBelowHz → OVERRIPE; f < ripeUpToHz → RIPE; else
+    /// UNRIPE (ripeUpToHz itself is UNRIPE, exactly as v2.2).
+    private static func classify(dominantHz f: Double, p: HeuristicBandsParameters) -> (verdict: String, confidence: Double) {
+        let overripeMaxHz = p.overripeBelowHz
+        let ripeMaxHz = p.ripeUpToHz
         if f < overripeMaxHz {
-            return ("OVERRIPE", confidence(distanceHz: f, scaleHz: overripeMaxHz))
+            return ("OVERRIPE", confidence(distanceHz: f, scaleHz: overripeMaxHz, p: p))
         }
         if f < ripeMaxHz {
             let distToEdge = min(f - overripeMaxHz, ripeMaxHz - f)
-            return ("RIPE", confidence(distanceHz: distToEdge, scaleHz: (ripeMaxHz - overripeMaxHz) / 2))
+            return ("RIPE", confidence(distanceHz: distToEdge, scaleHz: (ripeMaxHz - overripeMaxHz) / 2, p: p))
         }
-        return ("UNRIPE", confidence(distanceHz: f - ripeMaxHz, scaleHz: 120.0))
+        return ("UNRIPE", confidence(distanceHz: f - ripeMaxHz, scaleHz: p.unripeConfidenceScaleHz, p: p))
     }
 
-    private static func confidence(distanceHz: Double, scaleHz: Double) -> Double {
-        let c = 0.55 + 0.40 * min(1.0, distanceHz / scaleHz)
-        return min(0.95, c)
+    private static func confidence(distanceHz: Double, scaleHz: Double, p: HeuristicBandsParameters) -> Double {
+        let c = p.confidenceBase + p.confidenceSpan * min(1.0, distanceHz / scaleHz)
+        return min(p.confidenceMax, c)
     }
 
     private static func round2(_ v: Double) -> Double {

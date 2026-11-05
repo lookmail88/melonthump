@@ -21,6 +21,8 @@
 		CB97A70F0F385EE701AD74CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B83D4865FD0ACC461F77CD92 /* APIClient.swift */; };
 		AA1100000000000000000002 /* AttestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1100000000000000000001 /* AttestManager.swift */; };
 		AA1200000000000000000002 /* StatsReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1200000000000000000001 /* StatsReporter.swift */; };
+		C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE84823A264EC109C72E57 /* ModelFile.swift */; };
+		C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */ = {isa = PBXBuildFile; fileRef = C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +43,8 @@
 		AA1300000000000000000001 /* MelonThump.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MelonThump.entitlements; sourceTree = "<group>"; };
 		CF6100000000000000000001 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		D8620F32F2EB853B0DE3C574 /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0DE84823A264EC109C72E57 /* ModelFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFile.swift; sourceTree = "<group>"; };
+		C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Models/baby-1.0.ml"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,6 +93,8 @@
 				AA1100000000000000000001 /* AttestManager.swift */,
 				AA1200000000000000000001 /* StatsReporter.swift */,
 				AA1300000000000000000001 /* MelonThump.entitlements */,
+				C0DE84823A264EC109C72E57 /* ModelFile.swift */,
+				C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */,
 				5D54A61DDCC862BDB9951073 /* Assets.xcassets */,
 				658704F015387A0D3FB86881 /* Info.plist */,
 			);
@@ -157,6 +163,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4E7356890EE1B32CB2F8ABF3 /* Assets.xcassets in Resources */,
+				C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -178,6 +185,7 @@
 				AD6400000000000000000002 /* CreditWallet.swift in Sources */,
 				AA1100000000000000000002 /* AttestManager.swift in Sources */,
 				AA1200000000000000000002 /* StatsReporter.swift in Sources */,
+				C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
