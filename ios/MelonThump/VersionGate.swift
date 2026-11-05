@@ -24,6 +24,8 @@ struct VersionGateView: View {
     @State private var showSoftUpdate = false
     @State private var checkFinished = false
     @State private var splashElapsed = false
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
 
     private var stillLaunching: Bool { !(checkFinished && splashElapsed) }
 
@@ -46,18 +48,18 @@ struct VersionGateView: View {
                     .zIndex(1)
             }
         }
-        .alert("A new version is available", isPresented: $showSoftUpdate, presenting: softUpdatePolicy) { policy in
-            Button("Not Now") {
+        .alert(l.t("upd.softTitle"), isPresented: $showSoftUpdate, presenting: softUpdatePolicy) { policy in
+            Button(l.t("upd.notNow")) {
                 softUpdateDismissedVersion = policy.latestVersion
             }
-            Button("Update") {
+            Button(l.t("upd.update")) {
                 softUpdateDismissedVersion = policy.latestVersion
                 if let url = URL(string: policy.updateUrl) {
                     openURL(url)
                 }
             }
         } message: { policy in
-            Text("MelonThump \(policy.latestVersion) is ready. You can update now or keep thumping.")
+            Text(l.f("upd.softMessage", policy.latestVersion))
         }
         .task {
             await checkVersion()
@@ -96,6 +98,9 @@ struct VersionGateView: View {
             if let unitID = policy.rewardedAdUnitId, !unitID.isEmpty {
                 AdsManager.shared.applyServerRewardedUnitId(unitID)
             }
+            if effectiveEnvironment == .prod {
+                PolicyStore.shared.applyProdPolicy(policy)
+            }
             // Test mode: Xcode (Debug) builds are never blocked by
             // the gate. A tester pointing a local build at the dev
             // backend — whose latest version tracks the newest code —
@@ -120,6 +125,13 @@ struct VersionGateView: View {
         } catch {
             // Fail-open: no policy, no block.
         }
+        // 1.2.0 server-selector gate: evaluated on the prod policy. A
+        // build pointed at Dev (Xcode only) asks prod separately; any
+        // failure keeps the selector hidden.
+        if effectiveEnvironment != .prod {
+            let prodPolicy = try? await APIClient(environment: .prod).fetchClientVersion(currentVersion: current)
+            PolicyStore.shared.applyProdPolicy(prodPolicy)
+        }
         // Launch trigger for the usage-stats queue (design doc §6).
         await StatsReporter.shared.flush()
     }
@@ -129,6 +141,22 @@ struct VersionGateView: View {
 /// copied from the AppIcon set) centered and enlarged on the
 /// theme background. Shown while the version gate resolves.
 struct SplashView: View {
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
+
+    /// Role credits (design doc 1.2.0 §2, revised 2026-11-04): roles
+    /// localize, the names are never translated.
+    private var creditLines: [String] {
+        let sep = l.t("credit.separator")
+        return [
+            l.t("credit.uiDesigner") + sep + "Stephanie Gao",
+            l.t("credit.projectOwner") + sep + "Xuyang Gao",
+            l.t("credit.architecture") + sep + "Xuyang Gao",
+            l.t("credit.developer") + sep + "Claude",
+            l.t("credit.baqa") + sep + "Muse",
+        ]
+    }
+
     var body: some View {
         ZStack {
             MelonTheme.background.ignoresSafeArea()
@@ -143,15 +171,31 @@ struct SplashView: View {
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundColor(MelonTheme.ink)
                     .padding(.top, 22)
-                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-")")
+                Text(l.f("splash.version", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-"))
                     .font(.footnote)
                     .foregroundColor(MelonTheme.inkSoft)
                     .padding(.top, 6)
+                // Where the single "powered by" line used to be: an
+                // invisible line of the same metrics, so the centered
+                // icon artwork stays exactly where it was.
                 Text("powered by xgao&sgao")
                     .font(.footnote)
-                    .foregroundColor(MelonTheme.inkSoft)
                     .padding(.top, 2)
+                    .hidden()
+                    .accessibilityHidden(true)
             }
+            // Five role credits, low on the screen near the bottom and
+            // clear of the artwork (the icon art above stays centered,
+            // exactly where it was).
+            VStack(spacing: 3) {
+                ForEach(creditLines, id: \.self) { line in
+                    Text(line)
+                }
+            }
+            .font(.caption)
+            .foregroundColor(MelonTheme.inkSoft)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, 18)
         }
     }
 }
@@ -160,6 +204,8 @@ struct SplashView: View {
 struct UpdateRequiredView: View {
     let policy: ClientVersion
     @Environment(\.openURL) private var openURL
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
 
     var body: some View {
         ZStack {
@@ -171,18 +217,18 @@ struct UpdateRequiredView: View {
                     .frame(maxWidth: 220)
                     .padding(.top, 48)
 
-                Text("Time to update!")
+                Text(l.t("upd.title"))
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundColor(MelonTheme.ink)
                     .padding(.top, 24)
 
-                Text("A newer version of MelonThump is ready.\nPlease update to keep thumping.")
+                Text(l.t("upd.body"))
                     .font(.subheadline)
                     .foregroundColor(MelonTheme.inkSoft)
                     .multilineTextAlignment(.center)
                     .padding(.top, 10)
 
-                Text("Latest version: \(policy.latestVersion)")
+                Text(l.f("upd.latest", policy.latestVersion))
                     .font(.footnote.weight(.semibold))
                     .foregroundColor(MelonTheme.deepGreen)
                     .padding(.horizontal, 14)
@@ -198,7 +244,7 @@ struct UpdateRequiredView: View {
                         openURL(url)
                     }
                 } label: {
-                    Text("Get the Latest Version")
+                    Text(l.t("upd.get"))
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 17)
@@ -211,7 +257,7 @@ struct UpdateRequiredView: View {
                 .opacity(policy.updateUrl.isEmpty ? 0.5 : 1)
 
                 if policy.updateUrl.isEmpty {
-                    Text("The update link is not configured yet.")
+                    Text(l.t("upd.noLink"))
                         .font(.caption)
                         .foregroundColor(MelonTheme.inkSoft)
                         .padding(.top, 10)

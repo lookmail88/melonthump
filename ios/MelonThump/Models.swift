@@ -9,10 +9,12 @@ enum ServerEnvironment: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var displayName: String {
+    var displayName: String { displayName(L10n.current) }
+
+    func displayName(_ l: L10n) -> String {
         switch self {
-        case .prod: return "Prod Server"
-        case .dev: return "Dev Server"
+        case .prod: return l.t("server.prod")
+        case .dev: return l.t("server.dev")
         }
     }
 
@@ -47,6 +49,18 @@ struct ClientVersion: Decodable {
     /// the policy fetch carried a valid App Attest assertion. When
     /// absent, AdsManager keeps its existing fallback chain.
     let rewardedAdUnitId: String?
+    // 1.2.0 (sent only to clients reporting 1.2.0+; all optional so a
+    // server without them still decodes and the built-in defaults apply).
+    /// Initial free thumps after the promotion (default 2).
+    let initialFreeThumps: Int?
+    /// Session-unlock gate after the free thumps (default true; false =
+    /// no gate, unlimited use, no ads).
+    let sessionUnlockEnabled: Bool?
+    /// Credits to unlock one session without an ad (default 1).
+    let adFreeSessionCreditPrice: Int?
+    /// Server-published TestFlight / App Store versions (selector gate).
+    let testflightVersion: String?
+    let productVersion: String?
 }
 
 /// Response from POST /api/v1/tap/analyze
@@ -73,12 +87,12 @@ enum Ripeness: String {
         self = Ripeness(rawValue: verdict) ?? .unknown
     }
 
-    var displayName: String {
+    func displayName(_ l: L10n) -> String {
         switch self {
-        case .unripe: return "Not ripe yet"
-        case .ripe: return "Ripe — enjoy!"
-        case .overripe: return "Overripe"
-        case .unknown: return "Unknown"
+        case .unripe: return l.t("verdict.unripe")
+        case .ripe: return l.t("verdict.ripe")
+        case .overripe: return l.t("verdict.overripe")
+        case .unknown: return l.t("verdict.unknown")
         }
     }
 
@@ -131,12 +145,12 @@ enum Ripeness: String {
     }
 
     /// One-line encouragement under the verdict, per Stephanie's design tone.
-    var tagline: String {
+    func tagline(_ l: L10n) -> String {
         switch self {
-        case .unripe: return "That thump sounds too high and hollow.\nGive this melon a few more days."
-        case .ripe: return "Sweet, juicy and ready to cut.\nThe cats approve."
-        case .overripe: return "That thump sounds deep and dull.\nEat it today — or blend it into juice!"
-        case .unknown: return "That thump was hard to read.\nTry thumping again, a little closer."
+        case .unripe: return l.t("tagline.unripe")
+        case .ripe: return l.t("tagline.ripe")
+        case .overripe: return l.t("tagline.overripe")
+        case .unknown: return l.t("tagline.unknown")
         }
     }
 }

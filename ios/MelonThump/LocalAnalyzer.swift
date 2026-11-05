@@ -61,8 +61,8 @@ enum LocalAnalyzer {
 
         var errorDescription: String? {
             switch self {
-            case .unreadableRecording: return "Could not read the recording."
-            case .tooShort: return "Recording is too short — thump once more."
+            case .unreadableRecording: return L10n.current.t("error.unreadable")
+            case .tooShort: return L10n.current.t("error.tooShort")
             }
         }
     }
