@@ -36,7 +36,7 @@ and store-listing decisions. All figures from Apple's public store data.
 - Steal-worthy: a "details" view (dominant frequency / spectrogram).
   MelonThump already computes the dominant frequency on-device, so
   surfacing it is cheap credibility. Photo mode is their headline but
-  heavy and of doubtful accuracy — do not copy by default.
+  heavy and of doubtful accuracy — do not copy by default. (Parked as a validation-gated 2.0 candidate — see docs/roadmap.md.)
 
 ## Strategy notes (2026-11-04)
 
