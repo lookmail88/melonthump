@@ -65,6 +65,16 @@ python3 gen_pbxproj.py   # update SWIFT_FILES in the script first 先更新脚�
 - `CreditWallet` 在 v1 是**本地**钱包：分析扣 1（`UNKNOWN` 不扣）、
   看完广告按策略 `creditPerAd` 得、新装欢迎赠 5、每日得币上限 10。
   服务端账本是后续阶段。
+- **1.2.0 allowance (post-promotion)**: every user's first real
+  analysis is free, a one-time grant of `initialFreeThumps − 1` credits
+  (default 1) follows, then one rewarded ad — or `adFreeSessionCreditPrice`
+  credits (default 1) — unlocks unlimited thumps until the app exits.
+  Gate ads earn no credits; the v1 welcome grant of 5 is gone. All
+  numbers come from the server policy, defaults built in (fail-open).
+  Invites (+5 each side, cap 10) are claimed into the same wallet.
+- **1.2.0 额度（推广期后）**：首次分析免费，一次性赠 `initialFreeThumps − 1`
+  个 credit（默认 1），之后看一支激励广告或花 credit 解锁本次打开内无限
+  拍瓜；闸门广告不再得 credit；取消新装赠 5。全部数值走服务端策略。
 - **Launch promo 推广模式**: while the server policy carries a promo
   window, credits are bypassed — the first thump of each fresh launch
   costs one rewarded ad, the rest of the session is unlimited; relaunch

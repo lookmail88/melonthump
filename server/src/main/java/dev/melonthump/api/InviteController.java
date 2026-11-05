@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -117,7 +118,7 @@ public class InviteController {
                     + "409 self-invite, already attributed to another inviter, device already counted, "
                     + "or the install already completed an analysis.")
     @PostMapping("/attribute")
-    public AttributeResponse attribute(@RequestBody byte[] rawBody,
+    public ResponseEntity<AttributeResponse> attribute(@RequestBody byte[] rawBody,
                                        @RequestHeader(value = "X-Key-Id", required = false) String keyId,
                                        @RequestHeader(value = "X-Assertion", required = false) String assertion,
                                        @RequestHeader(value = "X-Challenge", required = false) String challenge,
@@ -132,15 +133,21 @@ public class InviteController {
         if (request.source() == null || !SOURCES.contains(request.source())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "source must be link or code");
         }
+        // Refusals carry their reason in the body ({"status": ...}) so the
+        // app can tell the user why (self-invite, already invited, ...).
         return switch (invites.attribute(caller.installId(), caller.keyId(), code, request.source())) {
-            case ATTRIBUTED -> new AttributeResponse("attributed");
-            case ALREADY_ATTRIBUTED -> new AttributeResponse("already_attributed");
-            case UNKNOWN_CODE -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "unknown_code");
-            case SELF_INVITE -> throw new ResponseStatusException(HttpStatus.CONFLICT, "self_invite");
-            case ATTRIBUTED_ELSEWHERE -> throw new ResponseStatusException(HttpStatus.CONFLICT, "already_invited");
-            case DEVICE_ALREADY_COUNTED -> throw new ResponseStatusException(HttpStatus.CONFLICT, "device_already_counted");
-            case ALREADY_ACTIVE -> throw new ResponseStatusException(HttpStatus.CONFLICT, "already_active");
+            case ATTRIBUTED -> ResponseEntity.ok(new AttributeResponse("attributed"));
+            case ALREADY_ATTRIBUTED -> ResponseEntity.ok(new AttributeResponse("already_attributed"));
+            case UNKNOWN_CODE -> refuse(HttpStatus.NOT_FOUND, "unknown_code");
+            case SELF_INVITE -> refuse(HttpStatus.CONFLICT, "self_invite");
+            case ATTRIBUTED_ELSEWHERE -> refuse(HttpStatus.CONFLICT, "already_invited");
+            case DEVICE_ALREADY_COUNTED -> refuse(HttpStatus.CONFLICT, "device_already_counted");
+            case ALREADY_ACTIVE -> refuse(HttpStatus.CONFLICT, "already_active");
         };
+    }
+
+    private static ResponseEntity<AttributeResponse> refuse(HttpStatus status, String reason) {
+        return ResponseEntity.status(status).body(new AttributeResponse(reason));
     }
 
     @Operation(summary = "Confirm the caller's invite after their first completed thump analysis (idempotent)")

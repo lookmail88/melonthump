@@ -26,6 +26,7 @@
 		C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */; };
 		C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */; };
 		C0DF9B83F3D3DEDDAD657CF9 /* PolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */; };
+		C0DF08FF7C067BF8A99A3DAE /* InviteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +52,7 @@
 		C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuViews.swift; sourceTree = "<group>"; };
 		C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolicyStore.swift; sourceTree = "<group>"; };
+		C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +106,7 @@
 				C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */,
 				C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */,
 				C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */,
+				C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */,
 				5D54A61DDCC862BDB9951073 /* Assets.xcassets */,
 				658704F015387A0D3FB86881 /* Info.plist */,
 			);
@@ -196,6 +199,7 @@
 				AD6400000000000000000002 /* CreditWallet.swift in Sources */,
 				AA1100000000000000000002 /* AttestManager.swift in Sources */,
 				AA1200000000000000000002 /* StatsReporter.swift in Sources */,
+				C0DF08FF7C067BF8A99A3DAE /* InviteManager.swift in Sources */,
 				C0DF9B83F3D3DEDDAD657CF9 /* PolicyStore.swift in Sources */,
 				C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */,
 				C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */,

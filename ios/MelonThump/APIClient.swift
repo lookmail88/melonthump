@@ -127,6 +127,26 @@ final class APIClient: Sendable {
         return http.statusCode
     }
 
+    /// POST /api/v1/invite/<path> (1.2.0) — one attested invite call.
+    /// Returns status and body rather than throwing on non-2xx: refusals
+    /// (404/409) carry their reason in the body.
+    func postInvite(path: String, body: Data, headers: [String: String]) async throws -> (Int, Data) {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/invite").appendingPathComponent(path))
+        applyIdentityHeaders(&request)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (name, value) in headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
+        request.httpBody = body
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.badResponse(status: -1)
+        }
+        return (http.statusCode, data)
+    }
+
     /// Every request identifies the client build (X-App-Version).
     private func applyIdentityHeaders(_ request: inout URLRequest) {
         request.setValue(AppIdentity.appVersion, forHTTPHeaderField: "X-App-Version")

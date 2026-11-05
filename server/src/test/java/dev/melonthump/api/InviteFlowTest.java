@@ -155,7 +155,8 @@ class InviteFlowTest {
         attribute(invitee, codeA, "link").andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("already_attributed"));
         // A second inviter can never claim the same install.
-        attribute(invitee, codeB, "code").andExpect(status().isConflict());
+        attribute(invitee, codeB, "code").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value("already_invited"));
 
         confirm(invitee);
         confirm(invitee);
@@ -167,7 +168,8 @@ class InviteFlowTest {
     void refusesSelfInviteUnknownAndMalformedCodes() throws Exception {
         UUID inviter = UUID.randomUUID();
         String code = codeOf(inviter);
-        attribute(inviter, code, "code").andExpect(status().isConflict());
+        attribute(inviter, code, "code").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value("self_invite"));
         attribute(UUID.randomUUID(), "ZZZZZZZZ", "code").andExpect(status().isNotFound());
         attribute(UUID.randomUUID(), "not a code!", "code").andExpect(status().isBadRequest());
         attribute(UUID.randomUUID(), code, "carrier_pigeon").andExpect(status().isBadRequest());
@@ -187,7 +189,8 @@ class InviteFlowTest {
                                 + "\"clientTs\":1790000000123,\"verdict\":\"RIPE\"}]}"))
                 .andExpect(status().isAccepted());
         attribute(existingUser, codeOf(UUID.randomUUID()), "code")
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value("already_active"));
     }
 
     @Test

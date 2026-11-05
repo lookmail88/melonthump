@@ -109,6 +109,7 @@ class InviteAttestTest {
         enroll(inviteeDevice, secondInstall);
         attested(inviteeDevice, "attribute",
                 "{\"installId\":\"" + secondInstall + "\",\"code\":\"" + code + "\",\"source\":\"code\"}")
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value("device_already_counted"));
     }
 }

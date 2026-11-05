@@ -32,7 +32,8 @@ public final class InviteDtos {
 
     @Schema(description = "Attribution outcome")
     public record AttributeResponse(
-            @Schema(description = "attributed / already_attributed")
+            @Schema(description = "attributed / already_attributed; on 404/409 the refusal reason: "
+                    + "unknown_code / self_invite / already_invited / device_already_counted / already_active")
             String status) {
     }
 

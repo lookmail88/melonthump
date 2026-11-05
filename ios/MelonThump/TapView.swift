@@ -7,13 +7,17 @@ import SwiftUI
 @MainActor
 struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
-    @StateObject private var wallet = CreditWallet()
+    @ObservedObject private var wallet = CreditWallet.shared
+    @ObservedObject private var invites = InviteManager.shared
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
     @State private var isAnalyzing = false
     @State private var recordingStartedAt: Date?
-    @State private var showOutOfCredits = false
+    /// Post-promotion session gate (ad, or credits for no ad).
+    @State private var showSessionGate = false
+    @State private var shareItem: ShareItem?
+    @State private var inviteNotice: String?
     @State private var showPromoGate = false
     @State private var menuOpen = false
     @State private var menuDestination: MenuDestination?
@@ -52,11 +56,38 @@ struct TapView: View {
         } message: {
             Text(errorMessage ?? "")
         }
-        .alert("Out of credits", isPresented: $showOutOfCredits) {
-            Button("Watch an ad (+\(wallet.creditPerAd))") { earnWithAd() }
-            Button("Not now", role: .cancel) {}
+        .alert(l.t("gate.title"), isPresented: $showSessionGate) {
+            Button(l.t("gate.watchAd")) { earnWithAd() }
+            if wallet.canPayAdFree {
+                Button(wallet.adFreeSessionCreditPrice == 1
+                       ? l.t("gate.useCredit") : l.f("gate.useCredits", wallet.adFreeSessionCreditPrice)) {
+                    wallet.unlockSessionWithCredits()
+                }
+            }
+            Button(l.t("common.notNow"), role: .cancel) {}
         } message: {
-            Text("Watch a short ad to earn credits for more thumps.")
+            Text(wallet.canPayAdFree ? l.f("gate.messageCredits", wallet.balance) : l.t("gate.messageAd"))
+        }
+        .sheet(isPresented: $showInviteSheet) { InviteSheet() }
+        .sheet(item: $shareItem) { item in ShareSheet(items: [item.text]) }
+        .alert(inviteNotice ?? "", isPresented: Binding(
+            get: { inviteNotice != nil },
+            set: { if !$0 { inviteNotice = nil } }
+        )) {
+            Button(l.t("common.ok"), role: .cancel) { inviteNotice = nil }
+        }
+        .onChange(of: invites.lastReward) { _, reward in
+            if let reward {
+                inviteNotice = l.f("invite.reward", reward)
+                invites.clearLastReward()
+            }
+        }
+        .onOpenURL { url in
+            Task {
+                if let outcome = await invites.handle(url: url) {
+                    inviteNotice = outcome == .applied ? l.t("invite.linkReceived") : InviteSheet.message(for: outcome, l: l)
+                }
+            }
         }
         .alert(l.t("promo.title"), isPresented: $showPromoGate) {
             Button(l.t("gate.watchAd")) { earnWithAd() }
@@ -67,6 +98,7 @@ struct TapView: View {
         .task {
             await recorder.prepareSession()
             await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: serverEnvironment))
+            await invites.onLaunch(wallet: wallet)
         }
         .onChange(of: serverEnvironment) { _, env in
             Task { await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: env)) }
@@ -202,7 +234,12 @@ struct TapView: View {
 
     @ViewBuilder
     private var creditsRow: some View {
-        if wallet.needsPromoAd {
+        if wallet.isFreeDay {
+            Text(l.t("credits.freeDay"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.needsPromoAd {
+            // Launch promo (1.1.0 behaviour, unchanged).
             Button {
                 earnWithAd()
             } label: {
@@ -210,41 +247,39 @@ struct TapView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundColor(MelonTheme.buttonGreen)
             }
-        } else if wallet.isPromoActive && wallet.promoUnlocked {
+        } else if wallet.isPromoActive {
             Text(l.t("credits.promoUnlocked"))
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
-        } else if wallet.isFreeDay {
-            Text(l.t("credits.freeDay"))
+        } else if wallet.sessionUnlocked {
+            Text(l.t("credits.sessionUnlocked"))
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
-        } else if wallet.balance > 0 {
-            Text(l.f("credits.balance", wallet.balance))
-                .font(.footnote)
-                .foregroundColor(MelonTheme.inkSoft)
-        } else if wallet.canEarnFromAd {
+        } else if wallet.nextThumpIsFirstFree {
+            Text(l.t("credits.firstFree"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if !wallet.sessionUnlockEnabled {
+            Text(l.t("credits.unlimited"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else {
             Button {
-                earnWithAd()
+                showSessionGate = true
             } label: {
-                Text("Out of credits — watch an ad to earn +\(wallet.creditPerAd)")
+                Text(wallet.canPayAdFree ? l.f("credits.gateWithBalance", wallet.balance) : l.t("credits.gate"))
                     .font(.footnote.weight(.semibold))
                     .foregroundColor(MelonTheme.buttonGreen)
             }
-        } else {
-            Text("Out of credits — daily ad limit reached, come back tomorrow")
-                .font(.footnote)
-                .foregroundColor(MelonTheme.inkSoft)
         }
     }
 
+    /// Plays one rewarded ad; on completion it unlocks this app session
+    /// (promo or post-promotion gate). Gate ads earn no credits.
     private func earnWithAd() {
         Task {
             if await AdsManager.shared.showRewarded() {
-                if wallet.needsPromoAd {
-                    wallet.unlockPromoForSession()
-                } else {
-                    wallet.grantFromAd()
-                }
+                wallet.unlockSessionWithAd()
             } else if !AdsManager.shared.rewardedReady {
                 errorMessage = l.t("ad.loading")
             }
@@ -263,7 +298,7 @@ struct TapView: View {
                 if wallet.needsPromoAd {
                     showPromoGate = true
                 } else {
-                    showOutOfCredits = true
+                    showSessionGate = true
                 }
                 return
             }
@@ -300,10 +335,12 @@ struct TapView: View {
                 // The model is the one picked in the hamburger menu
                 // (Baby 1.0 by default), effective from this analysis.
                 result = try ModelRegistry.shared.activeModel.analyze(audioURL: audioURL)
-                // One credit per completed analysis; an UNKNOWN (too
-                // noisy to judge) result is free.
-                if let verdict = result?.verdict, verdict != "UNKNOWN" {
-                    wallet.spendOne()
+                // 1.2.0 allowance: the first real (non-UNKNOWN) analysis
+                // uses up the free thump; it is also the invitee's
+                // confirmation event for an invite.
+                if let verdict = result?.verdict {
+                    wallet.recordAnalysis(verdict: verdict)
+                    Task { await invites.recordAnalysis(verdict: verdict, wallet: wallet) }
                 }
                 // Usage stats (1.1.0): only the verdict label is
                 // reported — never the recording or any audio data.
@@ -332,7 +369,8 @@ struct TapView: View {
             try? await Task.sleep(for: .seconds(RatingPolicy.settleDelaySeconds))
             guard result?.verdict == Ripeness.ripe.rawValue, !isAnalyzing, !recorder.isRecording,
                   !menuOpen, menuDestination == nil, errorMessage == nil,
-                  !showOutOfCredits, !showPromoGate, !ratingAskedThisSession else { return }
+                  !showSessionGate, !showPromoGate, !showInviteSheet, shareItem == nil,
+                  inviteNotice == nil, !ratingAskedThisSession else { return }
             ratingAskedThisSession = true
             requestReview()
         }
@@ -340,8 +378,20 @@ struct TapView: View {
 
     // MARK: - Invite
 
+    /// Before the first thump completes: the "Share my invite / I have
+    /// a code" choice. Afterwards: straight to the system share sheet.
     private func inviteTapped() {
-        // Wired in the Invite section (design doc §3).
+        if invites.offersCodeEntry {
+            showInviteSheet = true
+            return
+        }
+        Task {
+            guard let code = await invites.ensureCode() else {
+                errorMessage = l.t("invite.err.network")
+                return
+            }
+            shareItem = ShareItem(text: invites.shareText(code: code, l: l))
+        }
     }
 }
 
