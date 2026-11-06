@@ -61,15 +61,18 @@ enum ModelFormat {
     static let maxLabelLength = 64
 }
 
-// MARK: - heuristic-bands parameters (heuristic v2.2, complete set)
+// MARK: - heuristic-bands parameters (complete set; v2.4 keys optional)
 
 /// Every numeric tunable `LocalAnalyzer` uses. Field names are the JSON
-/// keys of the file's `parameters` object; all are required.
+/// keys of the file's `parameters` object. The v2.2 set is required;
+/// the persistent-spectrum keys added in analyzer v2.4 are optional in
+/// the file and fall back to the recipe defaults below, so model files
+/// written before v2.4 still load (see the Codable extension).
 ///
 /// Verdict bands (adjudicated 2026-11-05 — follow the v2.2 code, bit
 /// for bit): f < overripeBelowHz → OVERRIPE; overripeBelowHz ≤ f <
 /// ripeUpToHz → RIPE; f ≥ ripeUpToHz → UNRIPE (exactly 280 Hz is UNRIPE).
-struct HeuristicBandsParameters: Codable, Equatable, Sendable {
+struct HeuristicBandsParameters: Equatable, Sendable {
     // Verdict bands.
     var overripeBelowHz: Double
     var ripeUpToHz: Double
@@ -109,10 +112,22 @@ struct HeuristicBandsParameters: Codable, Equatable, Sendable {
     var ringMinOffsetMs: Double
     var ringSegmentMs: Double
     var ringTolerance: Double
+    // Persistent-spectrum fundamental estimator (analyzer v2.4).
+    // Optional in files; defaults are the validated recipe values.
+    var persistWindowStartMs: Double = 20
+    var persistWindowEndMs: Double = 400
+    var persistFrameSamples: Int = 2048
+    var persistHopSamples: Int = 512
+    var persistBandMaxHz: Double = 800
+    var strongPeakRatio: Double = 0.30
+    var fundamentalMinHz: Double = 140
+    var silenceGuardCrestDb: Double = 3.5
+    var silenceGuardPromDb: Double = 30
 
-    /// Compiled-in fallback: heuristic v2.2 exactly (the bundled
-    /// baby-1.0.ml carries the same values; a DEBUG launch check
-    /// asserts they agree).
+    /// Compiled-in fallback: the bundled baby-1.0.ml carries the same
+    /// values; a DEBUG launch check asserts they agree. (Named for the
+    /// heuristic version it originally froze; the v2.3 floor/width
+    /// values and the v2.4 estimator keys have since been folded in.)
     static let babyV22 = HeuristicBandsParameters(
         overripeBelowHz: 160,
         ripeUpToHz: 280,
@@ -145,7 +160,16 @@ struct HeuristicBandsParameters: Codable, Equatable, Sendable {
         noiseSegmentBeforeGapMs: 300,
         ringMinOffsetMs: 100,
         ringSegmentMs: 250,
-        ringTolerance: 0.15)
+        ringTolerance: 0.15,
+        persistWindowStartMs: 20,
+        persistWindowEndMs: 400,
+        persistFrameSamples: 2048,
+        persistHopSamples: 512,
+        persistBandMaxHz: 800,
+        strongPeakRatio: 0.30,
+        fundamentalMinHz: 140,
+        silenceGuardCrestDb: 3.5,
+        silenceGuardPromDb: 30)
 
     /// Range checks beyond the format doc's band rule, so that no file
     /// that validates can make the analyzer misbehave (division by
@@ -167,6 +191,10 @@ struct HeuristicBandsParameters: Codable, Equatable, Sendable {
             ("noiseSegmentAfterMs", noiseSegmentAfterMs), ("noiseSegmentBeforeGapMs", noiseSegmentBeforeGapMs),
             ("ringMinOffsetMs", ringMinOffsetMs), ("ringSegmentMs", ringSegmentMs),
             ("ringTolerance", ringTolerance),
+            ("persistWindowStartMs", persistWindowStartMs), ("persistWindowEndMs", persistWindowEndMs),
+            ("persistBandMaxHz", persistBandMaxHz), ("strongPeakRatio", strongPeakRatio),
+            ("fundamentalMinHz", fundamentalMinHz),
+            ("silenceGuardCrestDb", silenceGuardCrestDb), ("silenceGuardPromDb", silenceGuardPromDb),
         ]
         for (name, value) in doubles where !value.isFinite {
             return "\(name) is not finite"
@@ -195,7 +223,129 @@ struct HeuristicBandsParameters: Codable, Equatable, Sendable {
         guard crestNeighbourMinHz >= 0, crestNeighbourMinHz < crestNeighbourMaxHz else { return "crest neighbourhood" }
         guard noiseSegmentAfterMs >= 0, noiseSegmentBeforeGapMs >= 0, ringMinOffsetMs >= 0 else { return "offsets >= 0" }
         guard ringTolerance > 0 else { return "ringTolerance > 0" }
+        guard persistWindowStartMs >= 0, persistWindowStartMs < persistWindowEndMs,
+              persistWindowEndMs <= 2000 else { return "persist window in [0, 2000] ms" }
+        guard (256...8192).contains(persistFrameSamples),
+              (64...4096).contains(persistHopSamples),
+              persistHopSamples <= persistFrameSamples else { return "persist frame/hop ranges" }
+        guard persistBandMaxHz > bandMinHz, persistBandMaxHz <= 20000 else { return "persistBandMaxHz range" }
+        guard strongPeakRatio > 0, strongPeakRatio <= 1 else { return "peak ratios in (0, 1]" }
+        guard fundamentalMinHz > 0, fundamentalMinHz <= 2000 else { return "fundamentalMinHz in (0, 2000]" }
+        guard (0...30).contains(silenceGuardCrestDb), (0...60).contains(silenceGuardPromDb) else { return "silence guard ranges" }
         return nil
+    }
+}
+
+/// Codable with a hand-written decoder: the v2.2 keys are required
+/// (a file missing one is invalid, exactly as format v1 shipped),
+/// while the v2.4 persistent-spectrum keys fall back to their recipe
+/// defaults when absent, so pre-v2.4 files keep loading. Encoding
+/// writes every key; older readers ignore unknown keys per the
+/// format doc's forward-compatibility rule.
+extension HeuristicBandsParameters: Codable {
+    enum CodingKeys: String, CodingKey {
+        case overripeBelowHz, ripeUpToHz, confidenceBase, confidenceSpan, confidenceMax
+        case unripeConfidenceScaleHz, unknownConfidence, envelopeFramesPerSecond
+        case trimHeadMs, trimTailMs, minUsableWindowFrames, absoluteFloor
+        case peakWidthMinFrames, peakWidthLevelRatio, prominenceDbMin
+        case attackLevelRatio, attackMaxMs, decayMaxMs, sustainedEndLevelRatio
+        case segmentMs, segmentPrerollMs, bandMinHz, bandMaxHz
+        case crestNeighbourMinHz, crestNeighbourMaxHz, crestDbMin
+        case snrDbMin, noiseSegmentAfterMs, noiseSegmentBeforeGapMs
+        case ringMinOffsetMs, ringSegmentMs, ringTolerance
+        case persistWindowStartMs, persistWindowEndMs, persistFrameSamples, persistHopSamples
+        case persistBandMaxHz, strongPeakRatio, fundamentalMinHz
+        case silenceGuardCrestDb, silenceGuardPromDb
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        overripeBelowHz = try c.decode(Double.self, forKey: .overripeBelowHz)
+        ripeUpToHz = try c.decode(Double.self, forKey: .ripeUpToHz)
+        confidenceBase = try c.decode(Double.self, forKey: .confidenceBase)
+        confidenceSpan = try c.decode(Double.self, forKey: .confidenceSpan)
+        confidenceMax = try c.decode(Double.self, forKey: .confidenceMax)
+        unripeConfidenceScaleHz = try c.decode(Double.self, forKey: .unripeConfidenceScaleHz)
+        unknownConfidence = try c.decode(Double.self, forKey: .unknownConfidence)
+        envelopeFramesPerSecond = try c.decode(Int.self, forKey: .envelopeFramesPerSecond)
+        trimHeadMs = try c.decode(Double.self, forKey: .trimHeadMs)
+        trimTailMs = try c.decode(Double.self, forKey: .trimTailMs)
+        minUsableWindowFrames = try c.decode(Int.self, forKey: .minUsableWindowFrames)
+        absoluteFloor = try c.decode(Double.self, forKey: .absoluteFloor)
+        peakWidthMinFrames = try c.decode(Int.self, forKey: .peakWidthMinFrames)
+        peakWidthLevelRatio = try c.decode(Double.self, forKey: .peakWidthLevelRatio)
+        prominenceDbMin = try c.decode(Double.self, forKey: .prominenceDbMin)
+        attackLevelRatio = try c.decode(Double.self, forKey: .attackLevelRatio)
+        attackMaxMs = try c.decode(Double.self, forKey: .attackMaxMs)
+        decayMaxMs = try c.decode(Double.self, forKey: .decayMaxMs)
+        sustainedEndLevelRatio = try c.decode(Double.self, forKey: .sustainedEndLevelRatio)
+        segmentMs = try c.decode(Double.self, forKey: .segmentMs)
+        segmentPrerollMs = try c.decode(Double.self, forKey: .segmentPrerollMs)
+        bandMinHz = try c.decode(Double.self, forKey: .bandMinHz)
+        bandMaxHz = try c.decode(Double.self, forKey: .bandMaxHz)
+        crestNeighbourMinHz = try c.decode(Double.self, forKey: .crestNeighbourMinHz)
+        crestNeighbourMaxHz = try c.decode(Double.self, forKey: .crestNeighbourMaxHz)
+        crestDbMin = try c.decode(Double.self, forKey: .crestDbMin)
+        snrDbMin = try c.decode(Double.self, forKey: .snrDbMin)
+        noiseSegmentAfterMs = try c.decode(Double.self, forKey: .noiseSegmentAfterMs)
+        noiseSegmentBeforeGapMs = try c.decode(Double.self, forKey: .noiseSegmentBeforeGapMs)
+        ringMinOffsetMs = try c.decode(Double.self, forKey: .ringMinOffsetMs)
+        ringSegmentMs = try c.decode(Double.self, forKey: .ringSegmentMs)
+        ringTolerance = try c.decode(Double.self, forKey: .ringTolerance)
+        persistWindowStartMs = try c.decodeIfPresent(Double.self, forKey: .persistWindowStartMs) ?? 20
+        persistWindowEndMs = try c.decodeIfPresent(Double.self, forKey: .persistWindowEndMs) ?? 400
+        persistFrameSamples = try c.decodeIfPresent(Int.self, forKey: .persistFrameSamples) ?? 2048
+        persistHopSamples = try c.decodeIfPresent(Int.self, forKey: .persistHopSamples) ?? 512
+        persistBandMaxHz = try c.decodeIfPresent(Double.self, forKey: .persistBandMaxHz) ?? 800
+        strongPeakRatio = try c.decodeIfPresent(Double.self, forKey: .strongPeakRatio) ?? 0.30
+        fundamentalMinHz = try c.decodeIfPresent(Double.self, forKey: .fundamentalMinHz) ?? 140
+        silenceGuardCrestDb = try c.decodeIfPresent(Double.self, forKey: .silenceGuardCrestDb) ?? 3.5
+        silenceGuardPromDb = try c.decodeIfPresent(Double.self, forKey: .silenceGuardPromDb) ?? 30
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(overripeBelowHz, forKey: .overripeBelowHz)
+        try c.encode(ripeUpToHz, forKey: .ripeUpToHz)
+        try c.encode(confidenceBase, forKey: .confidenceBase)
+        try c.encode(confidenceSpan, forKey: .confidenceSpan)
+        try c.encode(confidenceMax, forKey: .confidenceMax)
+        try c.encode(unripeConfidenceScaleHz, forKey: .unripeConfidenceScaleHz)
+        try c.encode(unknownConfidence, forKey: .unknownConfidence)
+        try c.encode(envelopeFramesPerSecond, forKey: .envelopeFramesPerSecond)
+        try c.encode(trimHeadMs, forKey: .trimHeadMs)
+        try c.encode(trimTailMs, forKey: .trimTailMs)
+        try c.encode(minUsableWindowFrames, forKey: .minUsableWindowFrames)
+        try c.encode(absoluteFloor, forKey: .absoluteFloor)
+        try c.encode(peakWidthMinFrames, forKey: .peakWidthMinFrames)
+        try c.encode(peakWidthLevelRatio, forKey: .peakWidthLevelRatio)
+        try c.encode(prominenceDbMin, forKey: .prominenceDbMin)
+        try c.encode(attackLevelRatio, forKey: .attackLevelRatio)
+        try c.encode(attackMaxMs, forKey: .attackMaxMs)
+        try c.encode(decayMaxMs, forKey: .decayMaxMs)
+        try c.encode(sustainedEndLevelRatio, forKey: .sustainedEndLevelRatio)
+        try c.encode(segmentMs, forKey: .segmentMs)
+        try c.encode(segmentPrerollMs, forKey: .segmentPrerollMs)
+        try c.encode(bandMinHz, forKey: .bandMinHz)
+        try c.encode(bandMaxHz, forKey: .bandMaxHz)
+        try c.encode(crestNeighbourMinHz, forKey: .crestNeighbourMinHz)
+        try c.encode(crestNeighbourMaxHz, forKey: .crestNeighbourMaxHz)
+        try c.encode(crestDbMin, forKey: .crestDbMin)
+        try c.encode(snrDbMin, forKey: .snrDbMin)
+        try c.encode(noiseSegmentAfterMs, forKey: .noiseSegmentAfterMs)
+        try c.encode(noiseSegmentBeforeGapMs, forKey: .noiseSegmentBeforeGapMs)
+        try c.encode(ringMinOffsetMs, forKey: .ringMinOffsetMs)
+        try c.encode(ringSegmentMs, forKey: .ringSegmentMs)
+        try c.encode(ringTolerance, forKey: .ringTolerance)
+        try c.encode(persistWindowStartMs, forKey: .persistWindowStartMs)
+        try c.encode(persistWindowEndMs, forKey: .persistWindowEndMs)
+        try c.encode(persistFrameSamples, forKey: .persistFrameSamples)
+        try c.encode(persistHopSamples, forKey: .persistHopSamples)
+        try c.encode(persistBandMaxHz, forKey: .persistBandMaxHz)
+        try c.encode(strongPeakRatio, forKey: .strongPeakRatio)
+        try c.encode(fundamentalMinHz, forKey: .fundamentalMinHz)
+        try c.encode(silenceGuardCrestDb, forKey: .silenceGuardCrestDb)
+        try c.encode(silenceGuardPromDb, forKey: .silenceGuardPromDb)
     }
 }
 
@@ -323,7 +473,7 @@ enum ModelFileLoader {
            model.descriptor.modelId == ModelFormat.builtInModelId {
             #if DEBUG
             assert(model.parameters == .babyV22,
-                   "bundled baby-1.0.ml drifted from the compiled-in heuristic v2.2 constants")
+                   "bundled baby-1.0.ml drifted from the compiled-in Baby 1.0 constants")
             #endif
             return model
         }

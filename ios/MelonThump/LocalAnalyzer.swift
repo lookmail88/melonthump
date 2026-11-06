@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-/// On-device tap analysis, heuristic-v2.3 (gates parameterised by a model file).
+/// On-device tap analysis, heuristic-v2.4 (gates parameterised by a model file).
 ///
 /// v1 took the loudest spectral peak of the whole clip — with no
 /// thump at all it happily classified background noise, and the
@@ -59,6 +59,44 @@ import Foundation
 ///   absolute floor — lowered from ≈ −45 to ≈ −54 dBFS; the
 ///     prominence and crest gates still stand behind it, and the
 ///     silence control stays at 0 false positives.
+///
+/// v2.4 (field test of v2.3 on a real melon, 21 knocks: width now
+/// passes, but 19/21 still UNKNOWN at the crest/SNR gates, and one
+/// knock was confidently misread UNRIPE — a fixed ≈558 Hz contact
+/// resonance, present in every session and even in pre-knock
+/// handling noise, out-shouted the melon's true ≈213 Hz in the
+/// single 500 ms spectrum): the frequency estimator is replaced.
+///   persistent spectrum — STFT magnitudes (2048-sample frames,
+///     512 hop) averaged over 20–400 ms after the knock peak. The
+///     contact component lives in the first ≈25–50 ms; the body
+///     resonance persists, so time-averaging separates them (in the
+///     clean field sample the 220/560 band-energy ratio runs
+///     0.26 → 8.0 → 46.5 across the window).
+///   lowest strong peak — the fundamental is the lowest local peak
+///     reaching `strongPeakRatio` of the band maximum, at or above
+///     `fundamentalMinHz`. The floor is hard: a sub-floor exception
+///     was tried and removed the same day (it admitted exactly the
+///     low-frequency handling-burst false-positive class, and no
+///     field recording ever used it). A louder high component can
+///     no longer impersonate the fundamental. Offline on the 29
+///     field recordings: the same-melon 21 knocks answer 21/21,
+///     all in the RIPE band, median 210 Hz (single-window argmax:
+///     8/21, median 559 Hz).
+///   spectral gates demoted — crest and SNR are still computed (on
+///     the persistent spectrum) and shown in the debug summary, but
+///     they now price the confidence instead of rejecting the knock;
+///     the ring gate is gone (the persistent spectrum is itself the
+///     ring evidence). The time-domain thump gates stay hard: they
+///     are what keeps silent rooms at 0 false positives.
+///   silence guard — one spectral rejection survives the demotion,
+///     because demoting crest outright let 28% of harness silence
+///     clips (room noise + handling bumps) through: an event whose
+///     persistent-spectrum crest AND time-domain prominence are
+///     both weak is not a knock (`flat`). A real knock always
+///     clears at least one of the two bars.
+///   Estimator tunables live in the model file (the persist* keys);
+///   the confidence penalty factors (×0.75 weak crest, ×0.85 weak
+///   SNR or clipping) are structural.
 /// Validated with the recognition-diagnosis harness (synthetic
 /// phone-channel scenarios + the 4 captured device recordings).
 /// And every result now carries a debug summary of the gate values
@@ -77,12 +115,13 @@ import Foundation
 /// 1.2.0 (design doc §1): every tunable now comes from a loaded model
 /// (`HeuristicBandsParameters`, carried by a `.ml` file — see
 /// ModelFile.swift and docs/ml-format.md). Baby 1.0's parameters
-/// shipped as heuristic v2.2 exactly; the v2.3 gate changes above
-/// are structural and apply on top of the loaded parameters. What stays in code are
-/// only structural numerical guards, not tunables: the 16-sample
-/// minimum envelope frame, the 256-sample minimum FFT segment, the
-/// 3-frame lead an attack needs to be measurable, and e (the decay
-/// time is by definition the fall to 1/e).
+/// shipped as heuristic v2.2 exactly; the v2.3 gate changes and the
+/// v2.4 estimator above are structural and apply on top of the loaded
+/// parameters (the estimator's own tunables do live in the file).
+/// What stays in code are only structural numerical guards, not
+/// tunables: the 16-sample minimum envelope frame, the 256-sample
+/// minimum FFT segment, the 3-frame lead an attack needs to be
+/// measurable, and e (the decay time is by definition the fall to 1/e).
 enum LocalAnalyzer {
 
     enum AnalyzerError: Error, LocalizedError {
@@ -126,7 +165,7 @@ enum LocalAnalyzer {
             spectralCentroidHz: round2(features.centroidHz),
             decayTimeMs: round2(features.decayMs),
             verdict: verdict.verdict,
-            confidence: round2(verdict.confidence),
+            confidence: round2(min(p.confidenceMax, verdict.confidence * features.confidenceScale)),
             modelVersion: modelLabel,
             debugSummary: features.debug)
     }
@@ -175,6 +214,9 @@ enum LocalAnalyzer {
         let centroidHz: Double
         let decayMs: Double
         let debug: String
+        /// v2.4: product of the confidence penalties from the
+        /// demoted spectral annotations (1 = clean knock).
+        var confidenceScale: Double = 1
     }
 
     private static func extractFeatures(samples: [Double], sampleRate: Int,
@@ -330,92 +372,131 @@ enum LocalAnalyzer {
         }
         dbg += " · dec \(Int(decayMs))ms"
 
-        // Frequency: FFT of the 500 ms segment starting just before
-        // the thump, peak within the melon band.
-        let segStart = max(0, Int((onsetSec - p.segmentPrerollMs / 1000.0) * Double(sampleRate)))
-        guard let signalSpectrum = spectrum(samples: samples, start: segStart, sampleRate: sampleRate,
-                                            durationMs: p.segmentMs) else {
-            return reject("spec")
+        // Frequency (v2.4): persistent-spectrum lowest-strong-peak
+        // estimator — see the header for the evidence. The knock's
+        // sample-level peak anchors the averaging window.
+        var anchor = peakIdx * frameLen
+        var anchorVal = 0.0
+        let winLo = lo * frameLen
+        let winHi = min(samples.count, hi * frameLen)
+        for i in winLo..<winHi {
+            let v = abs(samples[i])
+            if v > anchorVal { anchorVal = v; anchor = i }
         }
-        earlyNote = ""  // real values follow; no would-be note needed
-        let binHz = Double(sampleRate) / Double(signalSpectrum.count * 2)
-        guard let main = bandPeak(spectrum: signalSpectrum, binHz: binHz, p: p) else { return reject("peak") }
-        let dominantHz = main.freq
-        let peakMag = main.mag
-        dbg += String(format: " · f %.0f crest %.1f", dominantHz, main.localCrestDb)
+        guard let persist = persistentSpectrum(samples: samples, anchorSample: anchor, sampleRate: sampleRate, p: p) else {
+            return reject("nofund")
+        }
+        let avg = persist.mags
+        let binHzP = persist.binHz
 
-        // Gate 4 — local spectral crest: the peak must tower over
-        // its own neighbourhood (see header). Broadband knocks fail.
-        // v2.3 rescue (see header): at or above the overripe
-        // boundary, the crest is also measured against a wider
-        // neighbourhood (40–120 Hz) on the same spectrum, outside
-        // a short burst's own skirt; below the boundary there is
-        // no rescue.
-        if main.localCrestDb < p.crestDbMin {
-            var rescued = false
-            if main.freq >= p.overripeBelowHz {
-                let idx = main.bin
-                if idx >= 1, idx < signalSpectrum.count {
-                    var neigh: [Double] = []
-                    for k4 in 1..<signalSpectrum.count {
-                        let f4 = Double(k4) * binHz
-                        guard inBand(f4, p) else { continue }
-                        let d = abs(f4 - main.freq)
-                        if d >= 40, d <= 120 { neigh.append(signalSpectrum[k4]) }
-                    }
-                    if !neigh.isEmpty {
-                        neigh.sort()
-                        let crestW = 20 * log10(signalSpectrum[idx] / neigh[neigh.count / 2])
-                        dbg += String(format: " · crestW %.1f", crestW)
-                        if crestW >= p.crestDbMin { rescued = true }
-                    }
+        // Reference maximum over the estimator band.
+        var refMax = 0.0
+        var refBin = -1
+        for k in 1..<avg.count {
+            let f = Double(k) * binHzP
+            guard f >= p.bandMinHz, f <= p.persistBandMaxHz else { continue }
+            if avg[k] > refMax { refMax = avg[k]; refBin = k }
+        }
+        guard refMax > 0 else { return reject("nofund") }
+
+        func isLocalMax(_ k: Int) -> Bool {
+            avg[k] >= avg[k - 1] && (k + 1 >= avg.count || avg[k] >= avg[k + 1])
+        }
+        func interpolatedFreq(_ k: Int) -> Double {
+            guard k >= 1, k + 1 < avg.count else { return Double(k) * binHzP }
+            let a = avg[k - 1], b = avg[k], c = avg[k + 1]
+            let denom = a - 2 * b + c
+            var d = 0.0
+            if denom != 0 { d = max(-0.5, min(0.5, 0.5 * (a - c) / denom)) }
+            return (Double(k) + d) * binHzP
+        }
+
+        // The fundamental is the lowest strong peak: the contact
+        // component can out-shout the body resonance, but it is
+        // never the lowest strong line in the persistent spectrum.
+        // The scan floor is hard — a sub-floor exception (accept a
+        // ≥60% peak below 140 Hz) was tried and removed the same
+        // day: every remaining silence false positive (25/300) came
+        // through it, all LF handling bursts, and no field recording
+        // ever used it. Sub-140 fundamentals stay UNKNOWN until a
+        // validation set with real sub-140 melons exists.
+        var chosenBin = -1
+        let strongBar = p.strongPeakRatio * refMax
+        for k in 1..<avg.count {
+            let f = Double(k) * binHzP
+            guard f >= p.fundamentalMinHz, f <= p.persistBandMaxHz else { continue }
+            if avg[k] >= strongBar, isLocalMax(k) { chosenBin = k; break }
+        }
+        guard chosenBin >= 0 else { return reject("nofund") }
+        let dominantHz = interpolatedFreq(chosenBin)
+        dbg += String(format: " · f %.0f", dominantHz)
+        if refBin > 0, abs(refBin - chosenBin) > 1 {
+            dbg += String(format: " · dom %.0f", Double(refBin) * binHzP)
+        }
+
+        // Annotation — local crest of the chosen peak on the
+        // persistent spectrum (the v2.2 neighbourhood rule). No
+        // longer a rejection: it prices the confidence.
+        let crestNeighbours = (1..<avg.count).filter { k in
+            let f = Double(k) * binHzP
+            return f >= p.bandMinHz && f <= p.persistBandMaxHz
+                && abs(f - dominantHz) >= p.crestNeighbourMinHz
+                && abs(f - dominantHz) <= p.crestNeighbourMaxHz
+        }.map { avg[$0] }
+        let crestRef = crestNeighbours.isEmpty ? 0 : median(crestNeighbours)
+        let crestDb = crestRef > 0 ? 20 * log10(avg[chosenBin] / crestRef) : 0
+        dbg += String(format: " · crest %.1f", crestDb)
+
+        var confidenceScale = 1.0
+        if crestDb < p.crestDbMin { confidenceScale *= 0.75 }
+        if anchorVal >= 0.999 {
+            confidenceScale *= 0.85
+            dbg += " · clip"
+        }
+
+        // Silence guard — the one spectral rejection v2.4 keeps.
+        // A non-event (room noise, a handling bump) shows neither a
+        // sharp line on the persistent spectrum nor real prominence
+        // over the room floor; a genuine knock always shows at
+        // least one of the two. Both weak together → not a knock.
+        // (Measured: harness silence false positives all sit at
+        // crest ≤ 3.0 dB and prominence ≤ 23.5 dB; field knocks
+        // clear at least one bar by a wide margin, except a
+        // −49 dBFS whisper tap that no shipped version has ever
+        // answered — it stays UNKNOWN.)
+        if crestDb < p.silenceGuardCrestDb, promDb < p.silenceGuardPromDb {
+            return reject("flat")
+        }
+
+        // Annotation — persistent-spectrum SNR against a noise
+        // window (same placement rule as the old segment SNR).
+        // Reported and priced into confidence, never a rejection.
+        if let noiseStart = noiseSegmentStart(onsetSec: onsetSec, totalSec: Double(samples.count) / Double(sampleRate), sampleRate: sampleRate, p: p),
+           let noiseAvg = averagedSpectrum(samples: samples, p: p,
+                                           fromSample: noiseStart,
+                                           toSample: noiseStart + Int((p.persistWindowEndMs - p.persistWindowStartMs) / 1000.0 * Double(sampleRate))) {
+            let bandNoise = (1..<noiseAvg.count).filter {
+                let f = Double($0) * binHzP
+                return f >= p.bandMinHz && f <= p.persistBandMaxHz
+            }.map { noiseAvg[$0] }
+            if !bandNoise.isEmpty {
+                let ref = max(noiseAvg[chosenBin], median(bandNoise))
+                if ref > 0 {
+                    let snrDb = 20 * log10(avg[chosenBin] / ref)
+                    dbg += String(format: " · snr %.1f", snrDb)
+                    if snrDb < p.snrDbMin { confidenceScale *= 0.85 }
                 }
             }
-            guard rescued else { return reject("crest") }
         }
 
+        // Centroid over the melon band, on the persistent spectrum.
         var weightedSum = 0.0
         var magSum = 0.0
-        for k2 in 1..<signalSpectrum.count {
-            let freq = Double(k2) * binHz
+        for k in 1..<avg.count {
+            let freq = Double(k) * binHzP
             guard inBand(freq, p) else { continue }
-            weightedSum += freq * signalSpectrum[k2]
-            magSum += signalSpectrum[k2]
-        }
-
-        // Gate 5 — spectral SNR: the peak must stand over a
-        // noise-only segment's spectrum (same FFT size). Prefer a
-        // segment well after the thump; fall back to one before it.
-        // Skipped when no clean segment exists — gates 1–4 passed.
-        if let noiseStart = noiseSegmentStart(onsetSec: onsetSec, totalSec: Double(samples.count) / Double(sampleRate), sampleRate: sampleRate, p: p),
-           let noiseSpectrum = spectrum(samples: samples, start: noiseStart, sampleRate: sampleRate, durationMs: p.segmentMs),
-           noiseSpectrum.count == signalSpectrum.count {
-            let bandMags = (1..<noiseSpectrum.count).filter { inBand(Double($0) * binHz, p) }.map { noiseSpectrum[$0] }
-            if !bandMags.isEmpty {
-                let ref = max(noiseSpectrum[main.bin], median(bandMags))
-                if ref > 0 {
-                    let snrDb = 20 * log10(peakMag / ref)
-                    dbg += String(format: " · snr %.1f", snrDb)
-                    guard snrDb >= p.snrDbMin else { return reject("snr") }
-                }
-            }
-        }
-
-        // Gate 6 — ring pitch consistency: if a clear tone is still
-        // audible later in the ring, it must be the same pitch.
-        // One-sided: an inaudible ring verifies nothing.
-        let ringOffsetSec = max(p.ringMinOffsetMs / 1000.0, decayMs / 1000.0)
-        let ringStart = Int((onsetSec + ringOffsetSec) * Double(sampleRate))
-        if ringStart + 256 <= samples.count,
-           let ringSpectrum = spectrum(samples: samples, start: ringStart, sampleRate: sampleRate, durationMs: p.ringSegmentMs) {
-            let ringBinHz = Double(sampleRate) / Double(ringSpectrum.count * 2)
-            if let ring = bandPeak(spectrum: ringSpectrum, binHz: ringBinHz, p: p),
-               ring.localCrestDb >= p.crestDbMin {
-                dbg += String(format: " · ring %.0f", ring.freq)
-                guard abs(ring.freq - dominantHz) / dominantHz <= p.ringTolerance else {
-                    return reject("ring")
-                }
-            }
+            weightedSum += freq * avg[k]
+            magSum += avg[k]
         }
 
         return Features(
@@ -423,7 +504,8 @@ enum LocalAnalyzer {
             dominantHz: dominantHz,
             centroidHz: magSum > 0 ? weightedSum / magSum : 0,
             decayMs: decayMs,
-            debug: dbg + " ✓")
+            debug: dbg + " ✓",
+            confidenceScale: confidenceScale)
     }
 
     private struct BandPeak {
@@ -480,6 +562,49 @@ enum LocalAnalyzer {
             return Int((onsetSec - gap - segSec) * Double(sampleRate))
         }
         return nil
+    }
+
+    /// Mean magnitude spectrum of the STFT frames whose centres lie
+    /// in [fromSample, toSample]. The frame grid starts at sample 0
+    /// with the model's hop — the same grid the offline recipe that
+    /// validated the estimator used. Nil when fewer than two frames
+    /// qualify (the averaging is the estimator; one frame is not it).
+    private static func averagedSpectrum(samples: [Double], p: HeuristicBandsParameters,
+                                         fromSample: Int, toSample: Int) -> [Double]? {
+        let frame = p.persistFrameSamples
+        let hop = p.persistHopSamples
+        guard frame >= 256, hop >= 1, samples.count >= frame else { return nil }
+        var acc: [Double]?
+        var used = 0
+        var start = 0
+        while start + frame <= samples.count {
+            let center = start + frame / 2
+            if center >= fromSample, center <= toSample {
+                var windowed = [Double](repeating: 0, count: frame)
+                for i in 0..<frame {
+                    let hann = 0.5 * (1 - cos(2 * Double.pi * Double(i) / Double(frame - 1)))
+                    windowed[i] = samples[start + i] * hann
+                }
+                let mags = fftMagnitudes(windowed)
+                if acc == nil { acc = [Double](repeating: 0, count: frame / 2 + 1) }
+                for k in 0...(frame / 2) { acc![k] += mags[k] }
+                used += 1
+            }
+            start += hop
+        }
+        guard used >= 2, var avg = acc else { return nil }
+        for k in avg.indices { avg[k] /= Double(used) }
+        return avg
+    }
+
+    /// The persistent spectrum itself: frames from
+    /// persistWindowStartMs to persistWindowEndMs after the anchor.
+    private static func persistentSpectrum(samples: [Double], anchorSample: Int, sampleRate: Int,
+                                           p: HeuristicBandsParameters) -> (mags: [Double], binHz: Double)? {
+        let from = anchorSample + Int(p.persistWindowStartMs / 1000.0 * Double(sampleRate))
+        let to = anchorSample + Int(p.persistWindowEndMs / 1000.0 * Double(sampleRate))
+        guard let mags = averagedSpectrum(samples: samples, p: p, fromSample: from, toSample: to) else { return nil }
+        return (mags, Double(sampleRate) / Double(p.persistFrameSamples))
     }
 
     /// Hann-windowed, zero-padded FFT magnitudes (first half) of

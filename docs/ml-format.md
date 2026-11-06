@@ -33,6 +33,9 @@
    As implemented (1.2.0) — all **required**; values shown are Baby 1.0 = v2.2. Integer-typed fields must be whole numbers. Beyond rule 4 below, the loader range-checks every field (finite, sensible ranges) so a file that validates can never make the analyzer misbehave.
    实现定稿（1.2.0）——全部**必填**；所示数值即 Baby 1.0 = v2.2。
 
+   Amendment (analyzer v2.4, 2026-11-06): the persistent-spectrum keys at the end of the table are **optional** — a file that omits them loads with the defaults shown, so pre-v2.4 files remain valid. All other keys stay required.
+   修订（分析器 v2.4，2026-11-06）：表中末尾的持久谱参数**可选**——文件省略时按所示默认值加载，v2.4 之前的文件继续有效。其余参数仍必填。
+
    | Parameter | v2.2 | Meaning |
    |---|---|---|
    | `overripeBelowHz` / `ripeUpToHz` | 160 / 280 | verdict bands (above) |
@@ -53,8 +56,14 @@
    | `crestNeighbourMinHz` / `crestNeighbourMaxHz` / `crestDbMin` | 15 / 75 / 18 | local spectral crest gate |
    | `snrDbMin` / `noiseSegmentAfterMs` / `noiseSegmentBeforeGapMs` | 6 / 1200 / 300 | spectral SNR against a noise segment |
    | `ringMinOffsetMs` / `ringSegmentMs` / `ringTolerance` | 100 / 250 / 0.15 | ring pitch consistency |
+   | `persistWindowStartMs` / `persistWindowEndMs` | 20 / 400 | persistent-spectrum averaging window after the knock peak (v2.4, optional) |
+   | `persistFrameSamples` (int) / `persistHopSamples` (int) | 2048 / 512 | STFT framing of the persistent spectrum (v2.4, optional) |
+   | `persistBandMaxHz` | 800 | top of the band the estimator's reference maximum is taken over (v2.4, optional) |
+   | `strongPeakRatio` | 0.30 | a local peak counts as strong at ≥ ratio × band maximum (v2.4, optional) |
+   | `fundamentalMinHz` | 140 | lowest frequency the main scan accepts as the fundamental — a hard floor (a sub-floor exception was tried and removed: it admitted the LF handling-burst false positives) (v2.4, optional) |
+   | `silenceGuardCrestDb` / `silenceGuardPromDb` | 3.5 / 30 | silence guard: an event failing **both** bars (persistent-spectrum crest, time-domain prominence) is rejected as not-a-knock (v2.4, optional) |
 
-   Structural numerical guards stay in code and are not tunables: the 16-sample minimum envelope frame, the 256-sample minimum FFT segment, the 3-frame lead an attack needs to be measurable, and e (decay is defined as the fall to 1/e). Analyzer v2.3 adds two more structural rules: the peak width is measured on a 2 ms fine envelope, and the crest gate has a wide-neighbourhood (40–120 Hz) rescue that applies only at or above `overripeBelowHz` (below it, low-frequency handling transients are the false-positive class and keep the strict crest).
+   Structural numerical guards stay in code and are not tunables: the 16-sample minimum envelope frame, the 256-sample minimum FFT segment, the 3-frame lead an attack needs to be measurable, and e (decay is defined as the fall to 1/e). Analyzer v2.3 adds two more structural rules: the peak width is measured on a 2 ms fine envelope, and the crest gate has a wide-neighbourhood (40–120 Hz) rescue that applies only at or above `overripeBelowHz` (below it, low-frequency handling transients are the false-positive class and keep the strict crest). Analyzer v2.4 supersedes the v2.3 spectral gates with a structural estimator: the dominant frequency is the lowest strong peak of the persistent spectrum (STFT magnitudes averaged over the window after the knock peak); crest and SNR are computed on that spectrum as confidence annotations rather than rejections, the ring check is dropped, and the confidence penalty factors (×0.75 / ×0.85 / ×0.7) are structural. One rejection survives: the silence guard — an event whose persistent-spectrum crest and time-domain prominence both fall below their bars is rejected, which is what keeps empty-room false positives at zero.
 
 4. **Validation — a file failing ANY rule is skipped whole** (never partially applied, never crashes the app):
    **校验——任一规则不过，整文件跳过**（绝不部分应用、绝不让 App 崩溃）：
