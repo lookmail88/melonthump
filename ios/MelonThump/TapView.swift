@@ -334,7 +334,24 @@ struct TapView: View {
                 // Analysis runs fully on-device; nothing is uploaded.
                 // The model is the one picked in the hamburger menu
                 // (Baby 1.0 by default), effective from this analysis.
-                result = try ModelRegistry.shared.activeModel.analyze(audioURL: audioURL)
+                let model = ModelRegistry.shared.activeModel
+                let analyzed = try model.analyze(audioURL: audioURL)
+                result = analyzed
+                // 1.2.0 recording retention (design doc §6): keep this
+                // exact input WAV + a metadata sidecar in
+                // Documents/Recordings (newest 20). Local only — never
+                // uploaded, excluded from backup.
+                let d = model.descriptor
+                RecordingArchive.save(.init(
+                    sourceURL: audioURL, analyzedAt: Date(),
+                    modelId: d.modelId, modelVersion: d.modelVersion,
+                    modelDisplayName: d.displayName,
+                    verdict: analyzed.verdict, confidence: analyzed.confidence,
+                    dominantFrequencyHz: analyzed.dominantFrequencyHz,
+                    spectralCentroidHz: analyzed.spectralCentroidHz,
+                    decayTimeMs: analyzed.decayTimeMs,
+                    analyzerLabel: analyzed.modelVersion,
+                    debugSummary: analyzed.debugSummary))
                 // 1.2.0 allowance: the first real (non-UNKNOWN) analysis
                 // uses up the free thump; it is also the invitee's
                 // confirmation event for an invite.
