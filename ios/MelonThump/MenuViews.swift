@@ -168,7 +168,7 @@ struct ModelPickerView: View {
                                 }
                                 Image(systemName: "checkmark")
                                     .font(.body.weight(.semibold))
-                                    .foregroundColor(MelonTheme.buttonGreen)
+                                    .foregroundColor(MelonTheme.buttonGreenAdaptive)
                                     .opacity(registry.activeModel.descriptor.modelId == model.modelId ? 1 : 0)
                             }
                         }
@@ -277,7 +277,7 @@ struct SettingsView: View {
                     Button(action: openFeedbackMail) {
                         HStack {
                             Image(systemName: "envelope")
-                                .foregroundColor(MelonTheme.buttonGreen)
+                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
                             Text(l.t("set.feedback"))
                                 .foregroundColor(.primary)
                             Spacer()
@@ -323,7 +323,7 @@ struct SettingsView: View {
                 Spacer()
                 if selected {
                     Image(systemName: "checkmark")
-                        .foregroundColor(MelonTheme.buttonGreen)
+                        .foregroundColor(MelonTheme.buttonGreenAdaptive)
                 }
             }
         }
