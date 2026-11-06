@@ -22,6 +22,9 @@ struct TapView: View {
     @State private var menuOpen = false
     @State private var menuDestination: MenuDestination?
     @State private var ratingAskedThisSession = false
+    /// The pending post-RIPE rating prompt (cancelled by "Thump Another
+    /// Melon", so it can never fire for a cleared result).
+    @State private var ratingPromptTask: Task<Void, Never>?
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
     @AppStorage(AppSettings.listeningDurationKey) private var listeningDuration = AppSettings.defaultListeningDuration
     @Environment(\.requestReview) private var requestReview
@@ -30,10 +33,23 @@ struct TapView: View {
     @State private var activeRecordingSeconds = AppSettings.defaultListeningDuration
     @State private var showInviteSheet = false
 
+    #if DEBUG
+    /// DEBUG stage only (-screenshot-next-melon-tap): press "Thump
+    /// Another Melon" after a delay.
+    private var debugAutoNextMelon = false
+    #endif
+
     init(startWithMenuOpen: Bool = false, startWithInviteSheet: Bool = false) {
         _menuOpen = State(initialValue: startWithMenuOpen)
         _showInviteSheet = State(initialValue: startWithInviteSheet)
     }
+
+    #if DEBUG
+    init(debugStartResult: TapResult, autoNextMelon: Bool) {
+        _result = State(initialValue: debugStartResult)
+        debugAutoNextMelon = autoNextMelon
+    }
+    #endif
 
     var body: some View {
         ZStack {
@@ -103,7 +119,38 @@ struct TapView: View {
         .onChange(of: serverEnvironment) { _, env in
             Task { await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: env)) }
         }
+        #if DEBUG
+        .task {
+            guard debugAutoNextMelon else { return }
+            // Leftovers a real thump can leave behind that are invisible
+            // on the result screen (the visible ones — alerts, sheets,
+            // the drawer — cover the button, so it can't be pressed).
+            recordingStartedAt = Date()
+            recorder.lastRecordingURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("tap-debug.wav")
+            ratingPromptTask = Task { try? await Task.sleep(for: .seconds(3600)) }
+            try? await Task.sleep(for: .seconds(2))
+            print("[next-melon] before: \(debugFlowState)")
+            startNextMelon()
+            print("[next-melon] after:  \(debugFlowState)")
+        }
+        #endif
     }
+
+    #if DEBUG
+    private var debugFlowState: String {
+        "screen=\(isAnalyzing ? "analyzing" : recorder.isRecording ? "recording" : result != nil ? "result" : "home")"
+        + " result=\(result?.verdict ?? "nil") errorMessage=\(errorMessage ?? "nil")"
+        + " isAnalyzing=\(isAnalyzing) recordingStartedAt=\(recordingStartedAt.map { "\($0)" } ?? "nil")"
+        + " isRecording=\(recorder.isRecording) lastRecordingURL=\(recorder.lastRecordingURL?.lastPathComponent ?? "nil")"
+        + " ratingPromptTask=\(ratingPromptTask == nil ? "nil" : "pending")"
+        + " showSessionGate=\(showSessionGate) showPromoGate=\(showPromoGate) menuOpen=\(menuOpen)"
+        + " menuDestination=\(menuDestination.map { "\($0)" } ?? "nil") showInviteSheet=\(showInviteSheet)"
+        + " shareItem=\(shareItem == nil ? "nil" : "set")"
+        + " | wallet versionCount=\(wallet.versionAnalyses) sessionUnlocked=\(wallet.sessionUnlocked)"
+        + " canThump=\(wallet.canThump) needsPromoAd=\(wallet.needsPromoAd) needsSessionUnlock=\(wallet.needsSessionUnlock)"
+    }
+    #endif
 
     private var backgroundColor: Color {
         if let result {
@@ -120,10 +167,7 @@ struct TapView: View {
             RecordingView(recorder: recorder, startedAt: recordingStartedAt ?? Date(),
                           durationSeconds: activeRecordingSeconds, onStop: toggleRecording)
         } else if let result {
-            ResultView(result: result, errorMessage: errorMessage) {
-                self.result = nil
-                self.errorMessage = nil
-            }
+            ResultView(result: result, errorMessage: errorMessage, onAgain: startNextMelon)
         } else {
             homeView
         }
@@ -292,6 +336,41 @@ struct TapView: View {
         }
     }
 
+    // MARK: - Result → next melon (design doc 1.2.0 §2)
+
+    /// "Thump Another Melon": one tap from the result straight back to
+    /// the start-recording screen, with every piece of per-thump screen
+    /// state reset — exactly as if the user had come back by hand.
+    ///
+    /// Deliberately touches NO session state: CreditWallet (per-version
+    /// count, session unlock, promo/session gates) and AdsManager are
+    /// not referenced here. The next thump goes through the normal
+    /// Start button → toggleRecording → wallet.canThump check, and the
+    /// count moves only when that next analysis completes
+    /// (recordAnalysis). ios/Tools/next-melon/run.sh checks this
+    /// function's body for exactly that.
+    private func startNextMelon() {
+        // The rating prompt belongs to the result being left.
+        ratingPromptTask?.cancel()
+        ratingPromptTask = nil
+        // Defensive: the result screen is only shown when not recording.
+        if recorder.isRecording { recorder.stopRecording() }
+        // Drop the reference to the analyzed take (its archived copy in
+        // Documents/Recordings stays — retention is by design).
+        recorder.clearLastRecording()
+        recordingStartedAt = nil
+        isAnalyzing = false
+        errorMessage = nil
+        showSessionGate = false
+        showPromoGate = false
+        menuOpen = false
+        menuDestination = nil
+        showInviteSheet = false
+        shareItem = nil
+        // Last: clearing the result switches content to homeView.
+        result = nil
+    }
+
     // MARK: - Actions (unchanged from v1)
 
     private func toggleRecording() {
@@ -390,9 +469,10 @@ struct TapView: View {
     /// decides whether anything is actually shown.
     private func scheduleRatingPrompt() {
         guard RatingPolicy.isEligible(launchCount: RatingPolicy.launchCount), !ratingAskedThisSession else { return }
-        Task {
+        ratingPromptTask?.cancel()
+        ratingPromptTask = Task {
             try? await Task.sleep(for: .seconds(RatingPolicy.settleDelaySeconds))
-            guard result?.verdict == Ripeness.ripe.rawValue, !isAnalyzing, !recorder.isRecording,
+            guard !Task.isCancelled, result?.verdict == Ripeness.ripe.rawValue, !isAnalyzing, !recorder.isRecording,
                   !menuOpen, menuDestination == nil, errorMessage == nil,
                   !showSessionGate, !showPromoGate, !showInviteSheet, shareItem == nil,
                   inviteNotice == nil, !ratingAskedThisSession else { return }
@@ -695,6 +775,7 @@ struct ResultView: View {
 
             Spacer()
 
+            // The one-tap way back to the start-recording screen.
             Button(action: onAgain) {
                 Text(l.t("res.again"))
                     .font(.headline)
@@ -705,6 +786,7 @@ struct ResultView: View {
                     .cornerRadius(999)
                     .shadow(color: MelonTheme.buttonGreen.opacity(0.35), radius: 10, y: 5)
             }
+            .accessibilityIdentifier("result.nextMelon")
         }
         .padding(.horizontal, 22)
         .padding(.bottom, 12)

@@ -92,6 +92,15 @@ final class AudioRecorder: NSObject, ObservableObject, @unchecked Sendable {
         audioLevel = 0
     }
 
+    /// Forgets the last take after its result is dismissed ("Thump
+    /// Another Melon"), so no stale recording is carried into the next
+    /// thump. Only the reference is dropped: the file is in tmp (purged
+    /// by the system) and RecordingArchive may still be copying it on
+    /// its own queue, so it is not deleted here.
+    func clearLastRecording() {
+        lastRecordingURL = nil
+    }
+
     /// Installs the recording tap. This MUST stay nonisolated and create
     /// the tap block here: a block literal formed inside the @MainActor
     /// startRecording() inherits MainActor isolation, so Swift inserts

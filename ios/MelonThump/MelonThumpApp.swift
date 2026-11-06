@@ -59,6 +59,10 @@ struct MelonThumpApp: App {
 private struct ScreenshotStage: View {
     let arg: String
 
+    static let sampleResult = TapResult(
+        dominantFrequencyHz: 212, spectralCentroidHz: 640, decayTimeMs: 180,
+        verdict: "RIPE", confidence: 0.86, modelVersion: "local-v2.2", debugSummary: nil)
+
     var body: some View {
         switch arg {
         case "-screenshot-recording":
@@ -77,6 +81,13 @@ private struct ScreenshotStage: View {
                 errorMessage: nil,
                 onAgain: {}
             )
+        case "-screenshot-next-melon":
+            // QA (1.2): the result screen inside the real TapView flow.
+            TapView(debugStartResult: Self.sampleResult, autoNextMelon: false)
+        case "-screenshot-next-melon-tap":
+            // QA (1.2): same, then "Thump Another Melon" is pressed after
+            // 2 s; before/after state is printed to the console.
+            TapView(debugStartResult: Self.sampleResult, autoNextMelon: true)
         case "-screenshot-splash":
             SplashView()
         case "-screenshot-menu":
