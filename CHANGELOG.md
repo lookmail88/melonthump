@@ -1,3 +1,27 @@
+# [1.13.0](https://github.com/lookmail88/melonthump/compare/v1.12.0...v1.13.0) (2026-11-06)
+
+
+### Bug Fixes
+
+* analyzer v2.3 — real-knock recognition (fine-envelope width, wide-neighbourhood crest rescue, lower floor) ([2f51add](https://github.com/lookmail88/melonthump/commit/2f51add90f45fa2be9bbc8afb525d953d3ffcc96))
+* change BA/QA credit from Muse to Pepper ([c8d1f09](https://github.com/lookmail88/melonthump/commit/c8d1f0998bf710f7655ab9dee8adef0f2fb071aa))
+* drop manual .ml install instructions from model picker footer ([6a315d5](https://github.com/lookmail88/melonthump/commit/6a315d5a86d88795815079288c5569da6076648e))
+* improve About title contrast in Dark Mode ([db7f3a0](https://github.com/lookmail88/melonthump/commit/db7f3a0eee4877938c3eab0819ffd3ef6020d556)), closes [#2E4420](https://github.com/lookmail88/melonthump/issues/2E4420) [#5A7350](https://github.com/lookmail88/melonthump/issues/5A7350) [#3E6B1E](https://github.com/lookmail88/melonthump/issues/3E6B1E) [#A8DA84](https://github.com/lookmail88/melonthump/issues/A8DA84) [#A9BFA0](https://github.com/lookmail88/melonthump/issues/A9BFA0) [#8CCB5E](https://github.com/lookmail88/melonthump/issues/8CCB5E)
+* localize Development Team role labels to match splash credits ([afc87f3](https://github.com/lookmail88/melonthump/commit/afc87f39c16a0c304bb65acb2eb325f785635cc2))
+* no rewarded-ad request after an earned unlock; coalesce preloads ([af2baaa](https://github.com/lookmail88/melonthump/commit/af2baaaafa1b73448706f06eb6fbf8dc7af6f990))
+* promo freebies are per app version, not lifetime ([e95d21a](https://github.com/lookmail88/melonthump/commit/e95d21a3ebd14a0b203dbab961e99681ed8abfb4))
+* use adaptive green for list icons in Settings and Model picker ([91d3936](https://github.com/lookmail88/melonthump/commit/91d3936e8555cfa907de6734940dce699dde0ded)), closes [#3E6B1E](https://github.com/lookmail88/melonthump/issues/3E6B1E) [#8CCB5E](https://github.com/lookmail88/melonthump/issues/8CCB5E)
+* use adaptive ink colors for model name/version in Model picker ([4351b8c](https://github.com/lookmail88/melonthump/commit/4351b8ce8862a266230868b1f6199c12d723261a))
+
+
+### Features
+
+* add Development Team page to Settings ([9bd5208](https://github.com/lookmail88/melonthump/commit/9bd5208882fa6f61796b5356428b43493132684f))
+* analyzer v2.4 — persistent-spectrum lowest-strong-peak estimator ([0d1c07e](https://github.com/lookmail88/melonthump/commit/0d1c07ee8a1c979c76c12e421f516f3d7c574036))
+* keep last 20 analyzed recordings with metadata in Documents/Recordings ([ec74e97](https://github.com/lookmail88/melonthump/commit/ec74e9713fba3ac8a13261b1d653b6401aff34dd))
+* promotion period — lifetime first two analyses skip the ad gate ([413210d](https://github.com/lookmail88/melonthump/commit/413210d84129d255c1bc6fc5d544efa0420a4d8f))
+* result → next melon in one tap, with full per-thump state reset ([224e198](https://github.com/lookmail88/melonthump/commit/224e198f5f4d7e72c724267461cca0352ba19a7f))
+
 # [1.12.0](https://github.com/lookmail88/melonthump/compare/v1.11.7...v1.12.0) (2026-11-05)
 
 
