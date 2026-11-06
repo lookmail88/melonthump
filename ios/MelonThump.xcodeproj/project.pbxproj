@@ -21,6 +21,13 @@
 		CB97A70F0F385EE701AD74CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B83D4865FD0ACC461F77CD92 /* APIClient.swift */; };
 		AA1100000000000000000002 /* AttestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1100000000000000000001 /* AttestManager.swift */; };
 		AA1200000000000000000002 /* StatsReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1200000000000000000001 /* StatsReporter.swift */; };
+		AB1200000000000000000002 /* RecordingArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1200000000000000000001 /* RecordingArchive.swift */; };
+		C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE84823A264EC109C72E57 /* ModelFile.swift */; };
+		C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */ = {isa = PBXBuildFile; fileRef = C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */; };
+		C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */; };
+		C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */; };
+		C0DF9B83F3D3DEDDAD657CF9 /* PolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */; };
+		C0DF08FF7C067BF8A99A3DAE /* InviteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,9 +45,16 @@
 		B83D4865FD0ACC461F77CD92 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		AA1100000000000000000001 /* AttestManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttestManager.swift; sourceTree = "<group>"; };
 		AA1200000000000000000001 /* StatsReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsReporter.swift; sourceTree = "<group>"; };
+		AB1200000000000000000001 /* RecordingArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingArchive.swift; sourceTree = "<group>"; };
 		AA1300000000000000000001 /* MelonThump.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MelonThump.entitlements; sourceTree = "<group>"; };
 		CF6100000000000000000001 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		D8620F32F2EB853B0DE3C574 /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0DE84823A264EC109C72E57 /* ModelFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFile.swift; sourceTree = "<group>"; };
+		C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Models/baby-1.0.ml"; sourceTree = "<group>"; };
+		C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuViews.swift; sourceTree = "<group>"; };
+		C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolicyStore.swift; sourceTree = "<group>"; };
+		C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,7 +102,14 @@
 				AD6400000000000000000001 /* CreditWallet.swift */,
 				AA1100000000000000000001 /* AttestManager.swift */,
 				AA1200000000000000000001 /* StatsReporter.swift */,
+				AB1200000000000000000001 /* RecordingArchive.swift */,
 				AA1300000000000000000001 /* MelonThump.entitlements */,
+				C0DE84823A264EC109C72E57 /* ModelFile.swift */,
+				C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */,
+				C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */,
+				C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */,
+				C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */,
+				C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */,
 				5D54A61DDCC862BDB9951073 /* Assets.xcassets */,
 				658704F015387A0D3FB86881 /* Info.plist */,
 			);
@@ -135,6 +156,8 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
+				es,
 				Base,
 			);
 			mainGroup = 020BCA3B1A548471D1889780;
@@ -157,6 +180,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4E7356890EE1B32CB2F8ABF3 /* Assets.xcassets in Resources */,
+				C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -178,6 +202,12 @@
 				AD6400000000000000000002 /* CreditWallet.swift in Sources */,
 				AA1100000000000000000002 /* AttestManager.swift in Sources */,
 				AA1200000000000000000002 /* StatsReporter.swift in Sources */,
+				AB1200000000000000000002 /* RecordingArchive.swift in Sources */,
+				C0DF08FF7C067BF8A99A3DAE /* InviteManager.swift in Sources */,
+				C0DF9B83F3D3DEDDAD657CF9 /* PolicyStore.swift in Sources */,
+				C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */,
+				C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */,
+				C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -201,7 +231,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -243,7 +273,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;

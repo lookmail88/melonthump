@@ -1,3 +1,43 @@
+# [1.13.0](https://github.com/lookmail88/melonthump/compare/v1.12.0...v1.13.0) (2026-11-06)
+
+
+### Bug Fixes
+
+* analyzer v2.3 — real-knock recognition (fine-envelope width, wide-neighbourhood crest rescue, lower floor) ([2f51add](https://github.com/lookmail88/melonthump/commit/2f51add90f45fa2be9bbc8afb525d953d3ffcc96))
+* change BA/QA credit from Muse to Pepper ([c8d1f09](https://github.com/lookmail88/melonthump/commit/c8d1f0998bf710f7655ab9dee8adef0f2fb071aa))
+* drop manual .ml install instructions from model picker footer ([6a315d5](https://github.com/lookmail88/melonthump/commit/6a315d5a86d88795815079288c5569da6076648e))
+* improve About title contrast in Dark Mode ([db7f3a0](https://github.com/lookmail88/melonthump/commit/db7f3a0eee4877938c3eab0819ffd3ef6020d556)), closes [#2E4420](https://github.com/lookmail88/melonthump/issues/2E4420) [#5A7350](https://github.com/lookmail88/melonthump/issues/5A7350) [#3E6B1E](https://github.com/lookmail88/melonthump/issues/3E6B1E) [#A8DA84](https://github.com/lookmail88/melonthump/issues/A8DA84) [#A9BFA0](https://github.com/lookmail88/melonthump/issues/A9BFA0) [#8CCB5E](https://github.com/lookmail88/melonthump/issues/8CCB5E)
+* localize Development Team role labels to match splash credits ([afc87f3](https://github.com/lookmail88/melonthump/commit/afc87f39c16a0c304bb65acb2eb325f785635cc2))
+* no rewarded-ad request after an earned unlock; coalesce preloads ([af2baaa](https://github.com/lookmail88/melonthump/commit/af2baaaafa1b73448706f06eb6fbf8dc7af6f990))
+* promo freebies are per app version, not lifetime ([e95d21a](https://github.com/lookmail88/melonthump/commit/e95d21a3ebd14a0b203dbab961e99681ed8abfb4))
+* use adaptive green for list icons in Settings and Model picker ([91d3936](https://github.com/lookmail88/melonthump/commit/91d3936e8555cfa907de6734940dce699dde0ded)), closes [#3E6B1E](https://github.com/lookmail88/melonthump/issues/3E6B1E) [#8CCB5E](https://github.com/lookmail88/melonthump/issues/8CCB5E)
+* use adaptive ink colors for model name/version in Model picker ([4351b8c](https://github.com/lookmail88/melonthump/commit/4351b8ce8862a266230868b1f6199c12d723261a))
+
+
+### Features
+
+* add Development Team page to Settings ([9bd5208](https://github.com/lookmail88/melonthump/commit/9bd5208882fa6f61796b5356428b43493132684f))
+* analyzer v2.4 — persistent-spectrum lowest-strong-peak estimator ([0d1c07e](https://github.com/lookmail88/melonthump/commit/0d1c07ee8a1c979c76c12e421f516f3d7c574036))
+* keep last 20 analyzed recordings with metadata in Documents/Recordings ([ec74e97](https://github.com/lookmail88/melonthump/commit/ec74e9713fba3ac8a13261b1d653b6401aff34dd))
+* promotion period — lifetime first two analyses skip the ad gate ([413210d](https://github.com/lookmail88/melonthump/commit/413210d84129d255c1bc6fc5d544efa0420a4d8f))
+* result → next melon in one tap, with full per-thump state reset ([224e198](https://github.com/lookmail88/melonthump/commit/224e198f5f4d7e72c724267461cca0352ba19a7f))
+
+# [1.12.0](https://github.com/lookmail88/melonthump/compare/v1.11.7...v1.12.0) (2026-11-05)
+
+
+### Bug Fixes
+
+* **server:** set the app store update url and enable the prod launch promo ([20dafb3](https://github.com/lookmail88/melonthump/commit/20dafb3adf58faf05de088552bf25a7f7aa9f817))
+
+
+### Features
+
+* **ios:** 1.2.0 UI — top bar, menu, model picker, Settings, About, i18n ([1728caa](https://github.com/lookmail88/melonthump/commit/1728caaf40a4dfbf4764c3d6c4a7c8053995ac00))
+* **ios:** analysis model as a .ml file (Baby 1.0) with external mounting ([864fbcb](https://github.com/lookmail88/melonthump/commit/864fbcbc1ac7ab0b1d38dbcad69b04c885c6a29e))
+* **ios:** post-promotion allowance, session gate and invites ([0529154](https://github.com/lookmail88/melonthump/commit/05291543be27ecc6dfe4836571100049ab07adfc))
+* **server:** App Attest gated invite attribution, confirmation and claims ([5b8b2da](https://github.com/lookmail88/melonthump/commit/5b8b2da52487e97d255f171656b6604a3d12721c))
+* **server:** server-tunable allowance policy fields for 1.2.0 clients ([7d4f4a6](https://github.com/lookmail88/melonthump/commit/7d4f4a67580e114bc3a24bfd4f8012cb0319a9cd))
+
 ## [1.11.7](https://github.com/lookmail88/melonthump/compare/v1.11.6...v1.11.7) (2026-11-04)
 
 

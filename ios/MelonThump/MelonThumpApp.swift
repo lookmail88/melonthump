@@ -3,6 +3,13 @@ import SwiftUI
 @main
 struct MelonThumpApp: App {
     init() {
+        // .ml models: Baby 1.0 plus a one-time, read-only scan of
+        // Documents/Models at launch (design doc 1.2.0 §1).
+        _ = ModelRegistry.shared
+        RatingPolicy.recordLaunch()
+        #if DEBUG
+        L10n.assertComplete()
+        #endif
         // AdMob: consent → ATT → SDK start → rewarded preload.
         // Skipped for DEBUG screenshot runs, so no consent form or ad
         // state can leak into store captures.
@@ -46,9 +53,15 @@ struct MelonThumpApp: App {
 #if DEBUG
 /// Store-screenshot stage (DEBUG only, never compiled into release
 /// archives): launch with -screenshot-home, -screenshot-recording or
-/// -screenshot-result to render that screen directly.
+/// -screenshot-result to render that screen directly; 1.2.0 adds
+/// -screenshot-splash / -menu / -models / -settings(-selector) /
+/// -about / -invite for the QA captures of the new UI.
 private struct ScreenshotStage: View {
     let arg: String
+
+    static let sampleResult = TapResult(
+        dominantFrequencyHz: 212, spectralCentroidHz: 640, decayTimeMs: 180,
+        verdict: "RIPE", confidence: 0.86, modelVersion: "local-v2.2", debugSummary: nil)
 
     var body: some View {
         switch arg {
@@ -68,6 +81,27 @@ private struct ScreenshotStage: View {
                 errorMessage: nil,
                 onAgain: {}
             )
+        case "-screenshot-next-melon":
+            // QA (1.2): the result screen inside the real TapView flow.
+            TapView(debugStartResult: Self.sampleResult, autoNextMelon: false)
+        case "-screenshot-next-melon-tap":
+            // QA (1.2): same, then "Thump Another Melon" is pressed after
+            // 2 s; before/after state is printed to the console.
+            TapView(debugStartResult: Self.sampleResult, autoNextMelon: true)
+        case "-screenshot-splash":
+            SplashView()
+        case "-screenshot-menu":
+            TapView(startWithMenuOpen: true)
+        case "-screenshot-models":
+            ModelPickerView()
+        case "-screenshot-settings":
+            SettingsView()
+        case "-screenshot-settings-selector":
+            SettingsView().onAppear { PolicyStore.shared.debugForceSelector() }
+        case "-screenshot-about":
+            AboutView()
+        case "-screenshot-invite":
+            TapView(startWithInviteSheet: true)
         default:
             TapView()
         }

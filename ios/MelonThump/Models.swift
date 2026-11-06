@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Backend environments the app can talk to. The UI shows only the
 /// display name ("Prod Server" / "Dev Server"), never the raw domain.
@@ -9,10 +10,12 @@ enum ServerEnvironment: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var displayName: String {
+    var displayName: String { displayName(L10n.current) }
+
+    func displayName(_ l: L10n) -> String {
         switch self {
-        case .prod: return "Prod Server"
-        case .dev: return "Dev Server"
+        case .prod: return l.t("server.prod")
+        case .dev: return l.t("server.dev")
         }
     }
 
@@ -47,6 +50,18 @@ struct ClientVersion: Decodable {
     /// the policy fetch carried a valid App Attest assertion. When
     /// absent, AdsManager keeps its existing fallback chain.
     let rewardedAdUnitId: String?
+    // 1.2.0 (sent only to clients reporting 1.2.0+; all optional so a
+    // server without them still decodes and the built-in defaults apply).
+    /// Initial free thumps after the promotion (default 2).
+    let initialFreeThumps: Int?
+    /// Session-unlock gate after the free thumps (default true; false =
+    /// no gate, unlimited use, no ads).
+    let sessionUnlockEnabled: Bool?
+    /// Credits to unlock one session without an ad (default 1).
+    let adFreeSessionCreditPrice: Int?
+    /// Server-published TestFlight / App Store versions (selector gate).
+    let testflightVersion: String?
+    let productVersion: String?
 }
 
 /// Response from POST /api/v1/tap/analyze
@@ -73,12 +88,12 @@ enum Ripeness: String {
         self = Ripeness(rawValue: verdict) ?? .unknown
     }
 
-    var displayName: String {
+    func displayName(_ l: L10n) -> String {
         switch self {
-        case .unripe: return "Not ripe yet"
-        case .ripe: return "Ripe — enjoy!"
-        case .overripe: return "Overripe"
-        case .unknown: return "Unknown"
+        case .unripe: return l.t("verdict.unripe")
+        case .ripe: return l.t("verdict.ripe")
+        case .overripe: return l.t("verdict.overripe")
+        case .unknown: return l.t("verdict.unknown")
         }
     }
 
@@ -131,12 +146,12 @@ enum Ripeness: String {
     }
 
     /// One-line encouragement under the verdict, per Stephanie's design tone.
-    var tagline: String {
+    func tagline(_ l: L10n) -> String {
         switch self {
-        case .unripe: return "That thump sounds too high and hollow.\nGive this melon a few more days."
-        case .ripe: return "Sweet, juicy and ready to cut.\nThe cats approve."
-        case .overripe: return "That thump sounds deep and dull.\nEat it today — or blend it into juice!"
-        case .unknown: return "That thump was hard to read.\nTry thumping again, a little closer."
+        case .unripe: return l.t("tagline.unripe")
+        case .ripe: return l.t("tagline.ripe")
+        case .overripe: return l.t("tagline.overripe")
+        case .unknown: return l.t("tagline.unknown")
         }
     }
 }
@@ -150,4 +165,22 @@ enum MelonTheme {
     static let ink = Color(red: 0.18, green: 0.27, blue: 0.13)           // #2E4420
     static let inkSoft = Color(red: 0.35, green: 0.45, blue: 0.31)       // #5A7350
     static let recordRed = Color(red: 0.89, green: 0.28, blue: 0.24)     // #E2483D
+
+    // Appearance-adaptive variants for text/icons that sit on *system*
+    // backgrounds (List / grouped cells), which turn dark gray in Dark Mode.
+    // Light mode returns the exact static value above; Dark Mode returns a
+    // lifted tint of the same hue so it stays legible on #1C1C1E / #2C2C2E.
+    // (The static colors stay fixed for the cream/green custom surfaces,
+    // which don't change with appearance.)
+    static let inkAdaptive = adaptive(light: ink,
+        dark: UIColor(red: 0.66, green: 0.85, blue: 0.52, alpha: 1))     // #A8DA84
+    static let inkSoftAdaptive = adaptive(light: inkSoft,
+        dark: UIColor(red: 0.66, green: 0.75, blue: 0.63, alpha: 1))     // #A9BFA0
+    static let buttonGreenAdaptive = adaptive(light: buttonGreen,
+        dark: UIColor(red: 0.55, green: 0.80, blue: 0.37, alpha: 1))     // #8CCB5E
+
+    private static func adaptive(light: Color, dark: UIColor) -> Color {
+        let lightUI = UIColor(light)
+        return Color(UIColor { $0.userInterfaceStyle == .dark ? dark : lightUI })
+    }
 }

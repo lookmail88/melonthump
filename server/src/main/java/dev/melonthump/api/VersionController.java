@@ -25,7 +25,17 @@ public class VersionController {
     private final int creditPerAd;
     private final Long promoEndsAtEpochMillis;
     private final String rewardedAdUnitId;
+    private final int initialFreeThumps;
+    private final boolean sessionUnlockEnabled;
+    private final int adFreeSessionCreditPrice;
+    private final String testflightVersion;
+    private final String productVersion;
     private final AssertionService assertions;
+
+    /** Design values (1.2.0 §3, decided 2026-11-05) — also the fallback for invalid config. */
+    static final int DEFAULT_INITIAL_FREE_THUMPS = 2;
+    static final boolean DEFAULT_SESSION_UNLOCK_ENABLED = true;
+    static final int DEFAULT_AD_FREE_SESSION_CREDIT_PRICE = 1;
 
     public VersionController(
             @Value("${melonthump.client.platform:ios}") String platform,
@@ -35,6 +45,11 @@ public class VersionController {
             @Value("${melonthump.client.credit-per-ad:1}") int creditPerAd,
             @Value("${melonthump.client.promo-ends-at-epoch-millis:}") String promoEndsAtRaw,
             @Value("${melonthump.client.rewarded-ad-unit-id:}") String rewardedAdUnitId,
+            @Value("${melonthump.client.initial-free-thumps:2}") String initialFreeThumpsRaw,
+            @Value("${melonthump.client.session-unlock-enabled:true}") String sessionUnlockRaw,
+            @Value("${melonthump.client.ad-free-session-credit-price:1}") String adFreePriceRaw,
+            @Value("${melonthump.client.testflight-version:}") String testflightVersion,
+            @Value("${melonthump.client.product-version:}") String productVersion,
             AssertionService assertions) {
         this.platform = platform;
         this.latestVersion = latestVersion;
@@ -43,7 +58,46 @@ public class VersionController {
         this.creditPerAd = creditPerAd;
         this.promoEndsAtEpochMillis = parseEpochMillis(promoEndsAtRaw);
         this.rewardedAdUnitId = rewardedAdUnitId;
+        this.initialFreeThumps = parseInt(initialFreeThumpsRaw, 0, DEFAULT_INITIAL_FREE_THUMPS);
+        this.sessionUnlockEnabled = parseBoolean(sessionUnlockRaw, DEFAULT_SESSION_UNLOCK_ENABLED);
+        this.adFreeSessionCreditPrice = parseInt(adFreePriceRaw, 1, DEFAULT_AD_FREE_SESSION_CREDIT_PRICE);
+        this.testflightVersion = blankToNull(testflightVersion);
+        this.productVersion = blankToNull(productVersion);
         this.assertions = assertions;
+    }
+
+    /**
+     * Malformed or out-of-range allowance config falls back to the design
+     * value — a typo in a manifest must never break the policy endpoint.
+     */
+    static int parseInt(String raw, int min, int fallback) {
+        if (raw == null || raw.isBlank()) {
+            return fallback;
+        }
+        try {
+            int value = Integer.parseInt(raw.trim());
+            return value >= min ? value : fallback;
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    static boolean parseBoolean(String raw, boolean fallback) {
+        if (raw == null) {
+            return fallback;
+        }
+        String v = raw.trim().toLowerCase(java.util.Locale.ROOT);
+        if (v.equals("true")) {
+            return true;
+        }
+        if (v.equals("false")) {
+            return false;
+        }
+        return fallback;
+    }
+
+    private static String blankToNull(String raw) {
+        return raw == null || raw.isBlank() ? null : raw.trim();
     }
 
     /**
@@ -82,10 +136,20 @@ public class VersionController {
                 && compareVersions(currentVersion, latestVersion) < 0;
         boolean forceUpdate = currentVersion != null
                 && compareVersions(currentVersion, minSupportedVersion) < 0;
+        // 1.2.0 fields go only to clients that declare 1.2.0+; legacy
+        // clients (and requests without currentVersion) get exactly the
+        // 1.1.0 response — the new fields are null and omitted.
+        boolean modern = currentVersion != null
+                && compareVersions(currentVersion, ClientVersionResponse.ALLOWANCE_FIELDS_SINCE) >= 0;
         return new ClientVersionResponse(
                 platform, latestVersion, minSupportedVersion, updateAvailable, forceUpdate, updateUrl,
                 creditPerAd, promoEndsAtEpochMillis,
-                attestedRewardedAdUnitId(currentVersion, keyId, assertion, challenge, bypass));
+                attestedRewardedAdUnitId(currentVersion, keyId, assertion, challenge, bypass),
+                modern ? initialFreeThumps : null,
+                modern ? sessionUnlockEnabled : null,
+                modern ? adFreeSessionCreditPrice : null,
+                modern ? testflightVersion : null,
+                modern ? productVersion : null);
     }
 
     /**
