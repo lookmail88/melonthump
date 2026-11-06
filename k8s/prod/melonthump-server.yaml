@@ -32,6 +32,18 @@ spec:
             # silent. Dev runs DEBUG instead.
             - name: MELONTHUMP_LOG_LEVEL
               value: "ERROR"
+            # SpringDoc/Swagger disabled in prod (2026-11-06):
+            # /v3/api-docs and /swagger-ui must not be public.
+            # Both env spellings listed (dash-removed and
+            # dash-to-underscore forms) so one always binds.
+            - name: SPRINGDOC_APIDOCS_ENABLED
+              value: "false"
+            - name: SPRINGDOC_API_DOCS_ENABLED
+              value: "false"
+            - name: SPRINGDOC_SWAGGERUI_ENABLED
+              value: "false"
+            - name: SPRINGDOC_SWAGGER_UI_ENABLED
+              value: "false"
             # Launch promo on prod (set at App Store launch):
             # window runs until the end of 2026 - 2027-01-01
             # 00:00 America/Los_Angeles (epoch ms), same as dev.
