@@ -137,6 +137,31 @@ struct VersionGateView: View {
     }
 }
 
+/// Role credits (design doc 1.2.0 §2, revised 2026-11-04): roles
+/// localize, the names are never translated. Single source shared by
+/// the launch screen (SplashView) and Settings > Development Team
+/// (TeamView), so both show identical lines in every UI language.
+enum Credits {
+    static let members: [(roleKey: String, name: String)] = [
+        ("credit.uiDesigner", "Stephanie Gao"),
+        ("credit.projectOwner", "Xuyang Gao"),
+        ("credit.architecture", "Xuyang Gao"),
+        ("credit.developer", "Claude"),
+        ("credit.baqa", "Pepper"),
+    ]
+
+    static func role(_ member: (roleKey: String, name: String), _ l: L10n) -> String {
+        l.t(member.roleKey)
+    }
+
+    /// "<role><separator><name>", e.g. "UI 设计：Stephanie Gao".
+    static func line(_ member: (roleKey: String, name: String), _ l: L10n) -> String {
+        role(member, l) + l.t("credit.separator") + member.name
+    }
+
+    static func lines(_ l: L10n) -> [String] { members.map { line($0, l) } }
+}
+
 /// Full-screen launch image: the app icon artwork (SplashIcon,
 /// copied from the AppIcon set) centered and enlarged on the
 /// theme background. Shown while the version gate resolves.
@@ -144,18 +169,7 @@ struct SplashView: View {
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
     private var l: L10n { L10n(preference: languagePref) }
 
-    /// Role credits (design doc 1.2.0 §2, revised 2026-11-04): roles
-    /// localize, the names are never translated.
-    private var creditLines: [String] {
-        let sep = l.t("credit.separator")
-        return [
-            l.t("credit.uiDesigner") + sep + "Stephanie Gao",
-            l.t("credit.projectOwner") + sep + "Xuyang Gao",
-            l.t("credit.architecture") + sep + "Xuyang Gao",
-            l.t("credit.developer") + sep + "Claude",
-            l.t("credit.baqa") + sep + "Pepper",
-        ]
-    }
+    private var creditLines: [String] { Credits.lines(l) }
 
     var body: some View {
         ZStack {

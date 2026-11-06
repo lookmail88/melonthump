@@ -366,34 +366,24 @@ struct SettingsView: View {
 
 // MARK: - Development Team
 
-/// The five launch-screen credits (SplashView.creditLines), verbatim and
-/// in the same order. Labels stay in the English original in every UI
-/// language; only the page title localizes.
+/// The five launch-screen credits, from the same source (Credits) with
+/// the same localized credit.* labels and the same "<role><separator>
+/// <name>" joining as SplashView, so each row matches the splash line
+/// verbatim in every UI language.
 struct TeamView: View {
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
     private var l: L10n { L10n(preference: languagePref) }
 
-    static let members: [(role: String, name: String)] = [
-        ("UI Designer", "Stephanie Gao"),
-        ("Project Owner", "Xuyang Gao"),
-        ("Architecture", "Xuyang Gao"),
-        ("Developer", "Claude"),
-        ("BA/QA", "Pepper"),
-    ]
-
     var body: some View {
         List {
             Section {
-                ForEach(Self.members, id: \.role) { member in
-                    HStack {
-                        Text(member.role)
-                            .foregroundColor(MelonTheme.inkSoftAdaptive)
-                        Spacer()
-                        Text(member.name)
-                            .font(.body.weight(.semibold))
-                            .foregroundColor(MelonTheme.inkAdaptive)
-                    }
-                    .accessibilityElement(children: .combine)
+                ForEach(Credits.members, id: \.roleKey) { member in
+                    (Text(Credits.role(member, l) + l.t("credit.separator"))
+                        .foregroundColor(MelonTheme.inkSoftAdaptive)
+                     + Text(member.name)
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(MelonTheme.inkAdaptive))
+                    .accessibilityLabel(Credits.line(member, l))
                 }
             }
         }
