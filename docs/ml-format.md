@@ -42,8 +42,8 @@
    | `envelopeFramesPerSecond` (int) | 100 | RMS envelope frame rate (10 ms frames) |
    | `trimHeadMs` / `trimTailMs` | 300 / 200 | usable window trimmed off the clip edges |
    | `minUsableWindowFrames` (int) | 10 | below this the whole clip is used |
-   | `absoluteFloor` | 0.0056 | peak floor (≈ −45 dBFS) |
-   | `peakWidthMinFrames` (int) / `peakWidthLevelRatio` | 2 / 0.5 | peak must hold ≥ ratio × peak this many frames |
+   | `absoluteFloor` | 0.002 | peak floor (≈ −54 dBFS; lowered in analyzer v2.3 — real knocks were rejected at the old −45 dBFS floor) |
+   | `peakWidthMinFrames` (int) / `peakWidthLevelRatio` | 2 / 0.5 | peak must hold ≥ ratio × peak this many frames (v2.3: counted on a 2 ms fine envelope, so 2 frames ≈ 4 ms) |
    | `prominenceDbMin` | 10 | peak over the median envelope floor |
    | `attackLevelRatio` / `attackMaxMs` | 0.5 / 80 | rise from ratio × peak to peak |
    | `decayMaxMs` | 800 | fall to 1/e |
@@ -54,7 +54,7 @@
    | `snrDbMin` / `noiseSegmentAfterMs` / `noiseSegmentBeforeGapMs` | 6 / 1200 / 300 | spectral SNR against a noise segment |
    | `ringMinOffsetMs` / `ringSegmentMs` / `ringTolerance` | 100 / 250 / 0.15 | ring pitch consistency |
 
-   Structural numerical guards stay in code and are not tunables: the 16-sample minimum envelope frame, the 256-sample minimum FFT segment, the 3-frame lead an attack needs to be measurable, and e (decay is defined as the fall to 1/e).
+   Structural numerical guards stay in code and are not tunables: the 16-sample minimum envelope frame, the 256-sample minimum FFT segment, the 3-frame lead an attack needs to be measurable, and e (decay is defined as the fall to 1/e). Analyzer v2.3 adds two more structural rules: the peak width is measured on a 2 ms fine envelope, and the crest gate has a wide-neighbourhood (40–120 Hz) rescue that applies only at or above `overripeBelowHz` (below it, low-frequency handling transients are the false-positive class and keep the strict crest).
 
 4. **Validation — a file failing ANY rule is skipped whole** (never partially applied, never crashes the app):
    **校验——任一规则不过，整文件跳过**（绝不部分应用、绝不让 App 崩溃）：

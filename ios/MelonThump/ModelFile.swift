@@ -125,7 +125,7 @@ struct HeuristicBandsParameters: Codable, Equatable, Sendable {
         trimHeadMs: 300,
         trimTailMs: 200,
         minUsableWindowFrames: 10,
-        absoluteFloor: 0.0056,
+        absoluteFloor: 0.002,
         peakWidthMinFrames: 2,
         peakWidthLevelRatio: 0.5,
         prominenceDbMin: 10,

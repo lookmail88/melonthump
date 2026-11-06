@@ -4,7 +4,7 @@
   "modelVersion": "1.0",
   "displayName": "Baby 1.0",
   "kind": "heuristic-bands",
-  "notes": "Heuristic v2.2 migrated into a model file, parameter for parameter. Bands: f < 160 Hz OVERRIPE; 160 <= f < 280 Hz RIPE; f >= 280 Hz UNRIPE.",
+  "notes": "Heuristic v2.2 migrated into a model file, parameter for parameter. Bands: f < 160 Hz OVERRIPE; 160 <= f < 280 Hz RIPE; f >= 280 Hz UNRIPE. v2.3 (2026-11-06): absoluteFloor lowered to 0.002 (≈ −54 dBFS) after field recordings showed real knocks rejected at the −45 dBFS floor; the v2.3 width/crest gate changes are structural in LocalAnalyzer and apply on top of these parameters.",
   "parameters": {
     "overripeBelowHz": 160,
     "ripeUpToHz": 280,
@@ -17,7 +17,7 @@
     "trimHeadMs": 300,
     "trimTailMs": 200,
     "minUsableWindowFrames": 10,
-    "absoluteFloor": 0.0056,
+    "absoluteFloor": 0.002,
     "peakWidthMinFrames": 2,
     "peakWidthLevelRatio": 0.5,
     "prominenceDbMin": 10,

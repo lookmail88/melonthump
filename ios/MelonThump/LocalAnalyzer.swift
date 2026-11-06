@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-/// On-device tap analysis, heuristic-v2.2.
+/// On-device tap analysis, heuristic-v2.3 (gates parameterised by a model file).
 ///
 /// v1 took the loudest spectral peak of the whole clip — with no
 /// thump at all it happily classified background noise, and the
@@ -32,6 +32,35 @@ import Foundation
 ///     knocks.
 ///   absolute floor — a peak under ≈ −45 dBFS is room micro-noise
 ///     no matter how far it towers over an even quieter floor.
+///
+/// v2.3 (field failure of v2.2: every real-world analysis came back
+/// UNKNOWN — prod 17/17, and all 4 captured device recordings were
+/// rejected): three gates were calibrated on long synthetic tones
+/// and misfire on real knocks, which are short (τ ≈ 10–25 ms),
+/// dull and quiet:
+///   peak width — a real 10 ms knock is exactly one frame wide on
+///     the 10 ms envelope and could never pass; the width is now
+///     measured on a 2 ms envelope with the same minimum frame
+///     count (≈4 ms above half-peak). Single-sample clicks still
+///     fail; real knocks pass.
+///   crest rescue — a short burst's own spectral skirt fills the
+///     15–75 Hz neighbourhood the crest gate measures against, so
+///     its local crest collapses even when it is a clean resonance
+///     (a τ=10 ms burst's skirt is only ≈17 dB down 40 Hz away).
+///     When the dominant frequency is at or above the overripe
+///     boundary (≥ 160 Hz), the same spectrum is re-measured
+///     against a wider neighbourhood (40–120 Hz away, outside the
+///     skirt) at the same threshold; passing either measurement
+///     passes the gate. Broadband events stay broad at any
+///     neighbourhood width and still fail. Below 160 Hz nothing
+///     is rescued: every silent-room false positive on record is
+///     a low-frequency handling transient (30–90 Hz), and that
+///     band keeps the strict close-neighbourhood crest.
+///   absolute floor — lowered from ≈ −45 to ≈ −54 dBFS; the
+///     prominence and crest gates still stand behind it, and the
+///     silence control stays at 0 false positives.
+/// Validated with the recognition-diagnosis harness (synthetic
+/// phone-channel scenarios + the 4 captured device recordings).
 /// And every result now carries a debug summary of the gate values
 /// (shown on the result screen) so a false verdict can be traced
 /// to the exact gate that leaked. Validated on synthetic signals
@@ -47,8 +76,9 @@ import Foundation
 ///
 /// 1.2.0 (design doc §1): every tunable now comes from a loaded model
 /// (`HeuristicBandsParameters`, carried by a `.ml` file — see
-/// ModelFile.swift and docs/ml-format.md). With Baby 1.0's parameters
-/// the analysis is bit-for-bit heuristic v2.2. What stays in code are
+/// ModelFile.swift and docs/ml-format.md). Baby 1.0's parameters
+/// shipped as heuristic v2.2 exactly; the v2.3 gate changes above
+/// are structural and apply on top of the loaded parameters. What stays in code are
 /// only structural numerical guards, not tunables: the 16-sample
 /// minimum envelope frame, the 256-sample minimum FFT segment, the
 /// 3-frame lead an attack needs to be measurable, and e (the decay
@@ -223,11 +253,48 @@ enum LocalAnalyzer {
         guard peak >= p.absoluteFloor else { return reject("absfloor") }
 
         // Gate — peak width: single-frame clicks are not knocks.
+        // Measured on a 2 ms envelope (v2.3 — see header): on the
+        // 10 ms envelope a real short knock is one frame wide no
+        // matter what. The coarse peak's own frame span locates the
+        // fine peak; the walk counts fine frames above half-peak.
+        let fineLen = max(16, sampleRate / 500)
+        let fineCount = samples.count / fineLen
+        // The fine envelope is smoothed over 3 frames (6 ms) in
+        // the power domain: the raw 2 ms RMS envelope of a low
+        // tone (110 Hz period ≈ 9 ms) ripples at 2f0 and would
+        // fake a 1-frame width; a burst's edge moves by only
+        // ~±2 ms under the same smoothing.
+        var finePow = [Double](repeating: 0, count: fineCount)
+        for w in 0..<fineCount {
+            var sum = 0.0
+            let base = w * fineLen
+            for i in 0..<fineLen {
+                let s = samples[base + i]
+                sum += s * s
+            }
+            finePow[w] = sum / Double(fineLen)
+        }
+        func fineEnv(_ w: Int) -> Double {
+            var acc = 0.0
+            var cnt = 0
+            for j in (w - 1)...(w + 1) {
+                if j >= 0, j < fineCount { acc += finePow[j]; cnt += 1 }
+            }
+            return (acc / Double(cnt)).squareRoot()
+        }
+        var finePeak = 0.0
+        var fineIdx = 0
+        let fineLo = peakIdx * frameLen / fineLen
+        let fineHi = min(fineCount, (peakIdx + 1) * frameLen / fineLen)
+        for w in fineLo..<fineHi {
+            let r = fineEnv(w)
+            if r > finePeak { finePeak = r; fineIdx = w }
+        }
         var width = 1
-        var k = peakIdx - 1
-        while k >= 0, env[k] >= peak * p.peakWidthLevelRatio { width += 1; k -= 1 }
-        k = peakIdx + 1
-        while k < frameCount, env[k] >= peak * p.peakWidthLevelRatio { width += 1; k += 1 }
+        var k = fineIdx - 1
+        while k >= 0, fineEnv(k) >= finePeak * p.peakWidthLevelRatio { width += 1; k -= 1 }
+        k = fineIdx + 1
+        while k < fineCount, fineEnv(k) >= finePeak * p.peakWidthLevelRatio { width += 1; k += 1 }
         guard width >= p.peakWidthMinFrames else { return reject("width \(width)f") }
         dbg += " · w \(width)f"
 
@@ -279,7 +346,33 @@ enum LocalAnalyzer {
 
         // Gate 4 — local spectral crest: the peak must tower over
         // its own neighbourhood (see header). Broadband knocks fail.
-        guard main.localCrestDb >= p.crestDbMin else { return reject("crest") }
+        // v2.3 rescue (see header): at or above the overripe
+        // boundary, the crest is also measured against a wider
+        // neighbourhood (40–120 Hz) on the same spectrum, outside
+        // a short burst's own skirt; below the boundary there is
+        // no rescue.
+        if main.localCrestDb < p.crestDbMin {
+            var rescued = false
+            if main.freq >= p.overripeBelowHz {
+                let idx = main.bin
+                if idx >= 1, idx < signalSpectrum.count {
+                    var neigh: [Double] = []
+                    for k4 in 1..<signalSpectrum.count {
+                        let f4 = Double(k4) * binHz
+                        guard inBand(f4, p) else { continue }
+                        let d = abs(f4 - main.freq)
+                        if d >= 40, d <= 120 { neigh.append(signalSpectrum[k4]) }
+                    }
+                    if !neigh.isEmpty {
+                        neigh.sort()
+                        let crestW = 20 * log10(signalSpectrum[idx] / neigh[neigh.count / 2])
+                        dbg += String(format: " · crestW %.1f", crestW)
+                        if crestW >= p.crestDbMin { rescued = true }
+                    }
+                }
+            }
+            guard rescued else { return reject("crest") }
+        }
 
         var weightedSum = 0.0
         var magSum = 0.0
