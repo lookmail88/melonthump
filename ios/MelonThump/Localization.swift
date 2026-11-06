@@ -310,8 +310,12 @@ struct L10n {
         "server.dev": [.zh: "开发服务器", .en: "Dev Server", .es: "Servidor de desarrollo"],
         "set.feedback": [.zh: "意见与建议", .en: "Feedback & Suggestions", .es: "Comentarios y sugerencias"],
         "set.feedbackSubject": [.zh: "MelonThump 意见反馈", .en: "MelonThump Feedback", .es: "Comentarios sobre MelonThump"],
+        "set.team": [.zh: "开发团队", .en: "Development Team", .es: "Equipo de desarrollo"],
         "set.about": [.zh: "关于", .en: "About", .es: "Acerca de"],
         "set.version": [.zh: "版本", .en: "Version", .es: "Versión"],
+
+        // MARK: Development Team
+        "team.title": [.zh: "开发团队", .en: "Development Team", .es: "Equipo de desarrollo"],
 
         // MARK: About
         "about.title": [.zh: "关于", .en: "About", .es: "Acerca de"],

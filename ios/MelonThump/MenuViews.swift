@@ -288,6 +288,20 @@ struct SettingsView: View {
                     }
                 }
 
+                // Development Team — after Feedback, above About.
+                Section {
+                    NavigationLink {
+                        TeamView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "person.3.fill")
+                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
+                            Text(l.t("set.team"))
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+
                 // About — below Feedback, as in Retax.
                 Section {
                     NavigationLink {
@@ -347,6 +361,44 @@ struct SettingsView: View {
             URLQueryItem(name: "body", value: "\n\n\u{2014}\nMelonThump " + version),
         ]
         return components.url
+    }
+}
+
+// MARK: - Development Team
+
+/// The five launch-screen credits (SplashView.creditLines), verbatim and
+/// in the same order. Labels stay in the English original in every UI
+/// language; only the page title localizes.
+struct TeamView: View {
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    private var l: L10n { L10n(preference: languagePref) }
+
+    static let members: [(role: String, name: String)] = [
+        ("UI Designer", "Stephanie Gao"),
+        ("Project Owner", "Xuyang Gao"),
+        ("Architecture", "Xuyang Gao"),
+        ("Developer", "Claude"),
+        ("BA/QA", "Muse"),
+    ]
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(Self.members, id: \.role) { member in
+                    HStack {
+                        Text(member.role)
+                            .foregroundColor(MelonTheme.inkSoftAdaptive)
+                        Spacer()
+                        Text(member.name)
+                            .font(.body.weight(.semibold))
+                            .foregroundColor(MelonTheme.inkAdaptive)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .navigationTitle(l.t("team.title"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
