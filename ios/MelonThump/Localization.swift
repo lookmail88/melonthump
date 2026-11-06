@@ -109,6 +109,16 @@ struct L10n {
             .en: "Your first thump is free — no ad",
             .es: "Tu primer golpe es gratis, sin anuncios",
         ],
+        "credits.promoFreeMany": [
+            .zh: "还有 %d 次免费拍瓜，无需看广告",
+            .en: "%d free thumps left — no ad",
+            .es: "Te quedan %d golpes gratis, sin anuncios",
+        ],
+        "credits.promoFreeOne": [
+            .zh: "还有 1 次免费拍瓜，无需看广告",
+            .en: "1 free thump left — no ad",
+            .es: "Te queda 1 golpe gratis, sin anuncios",
+        ],
         "credits.sessionUnlocked": [
             .zh: "已解锁——退出 App 前无限次拍瓜",
             .en: "Unlocked — unlimited thumps until you leave the app",

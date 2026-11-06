@@ -238,8 +238,14 @@ struct TapView: View {
             Text(l.t("credits.freeDay"))
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.nextThumpIsPromoFree {
+            // Launch promo, lifetime first thumps: no ad (2026-11-06).
+            Text(wallet.promoFreeRemaining == 1
+                 ? l.t("credits.promoFreeOne") : l.f("credits.promoFreeMany", wallet.promoFreeRemaining))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
         } else if wallet.needsPromoAd {
-            // Launch promo (1.1.0 behaviour, unchanged).
+            // Launch promo, past the free thumps (1.1.0 session gate).
             Button {
                 earnWithAd()
             } label: {
@@ -352,8 +358,9 @@ struct TapView: View {
                     decayTimeMs: analyzed.decayTimeMs,
                     analyzerLabel: analyzed.modelVersion,
                     debugSummary: analyzed.debugSummary))
-                // 1.2.0 allowance: the first real (non-UNKNOWN) analysis
-                // uses up the free thump; it is also the invitee's
+                // 1.2.0 allowance: every real (non-UNKNOWN) analysis
+                // bumps the lifetime count (promo freebies), the first
+                // one uses up the free thump; it is also the invitee's
                 // confirmation event for an invite.
                 if let verdict = result?.verdict {
                     wallet.recordAnalysis(verdict: verdict)
