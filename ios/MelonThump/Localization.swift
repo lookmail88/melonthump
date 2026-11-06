@@ -283,9 +283,9 @@ struct L10n {
         "models.purchased": [.zh: "已购买", .en: "Purchased", .es: "Comprado"],
         "models.version": [.zh: "版本 %@", .en: "Version %@", .es: "Versión %@"],
         "models.footer": [
-            .zh: "所选模型从下一次拍瓜起生效。添加模型：把 .ml 文件放进“文件”App › 我的 iPhone › MelonThump › Models，下次启动 App 后会出现在这里。",
-            .en: "Your choice applies from the next thump. To add a model, put its .ml file in Files › On My iPhone › MelonThump › Models; it appears here after the next launch.",
-            .es: "Tu elección se aplica desde el próximo golpe. Para añadir un modelo, coloca su archivo .ml en Archivos › En mi iPhone › MelonThump › Models; aparecerá aquí tras el próximo inicio.",
+            .zh: "所选模型从下一次拍瓜起生效。",
+            .en: "Your choice applies from the next thump.",
+            .es: "Tu elección se aplica desde el próximo golpe.",
         ],
 
         // MARK: Settings
