@@ -19,6 +19,16 @@ final class AdsManager: NSObject, ObservableObject {
     private var rewardedAd: RewardedAd?
     private var rewardContinuation: CheckedContinuation<Bool, Never>?
     private var bootstrapped = false
+    /// The preload in flight, if any: concurrent callers join it instead
+    /// of firing a second ad request.
+    private var preloadTask: Task<Void, Never>?
+    /// Unit the current `rewardedAd` was loaded from.
+    private var loadedUnitID: String?
+    /// The ad being presented paid out its reward. Every rewarded ad in
+    /// this app is a session-unlock ad and nothing re-arms the gate
+    /// before the process exits, so after an earned reward no further ad
+    /// is needed this launch — the next launch preloads at bootstrap.
+    private var presentationEarned = false
 
     /// Rewarded unit issued by the server on the attested version
     /// policy fetch (1.1.0). Wins over the Info.plist value when set;
@@ -58,7 +68,13 @@ final class AdsManager: NSObject, ObservableObject {
         guard !unitID.isEmpty, unitID != serverRewardedUnitID else { return }
         serverRewardedUnitID = unitID
         if bootstrapped {
-            Task { await preloadRewarded() }
+            // First call joins any load already in flight (started with
+            // the old unit); the second then loads the new unit unless
+            // an ad from it is already loaded.
+            Task {
+                await preloadRewarded()
+                await preloadRewarded()
+            }
         }
     }
 
@@ -96,7 +112,25 @@ final class AdsManager: NSObject, ObservableObject {
 
     // MARK: - Rewarded
 
+    /// Loads a rewarded ad unless one for the current unit is already
+    /// loaded; joins a load already in flight rather than requesting twice.
     func preloadRewarded() async {
+        if let preloadTask {
+            await preloadTask.value
+            return
+        }
+        guard rewardedAd == nil || loadedUnitID != rewardedUnitID else { return }
+        let task = Task {
+            await runPreload()
+            // Cleared before the task completes, so whoever awaited it
+            // resumes with no stale in-flight task left behind.
+            preloadTask = nil
+        }
+        preloadTask = task
+        await task.value
+    }
+
+    private func runPreload() async {
         if await loadRewarded(unitID: rewardedUnitID) { return }
         // Configured unit failed (reason logged in loadRewarded). Fall
         // back to the Google test unit so there is almost always an ad
@@ -113,11 +147,13 @@ final class AdsManager: NSObject, ObservableObject {
             let ad = try await RewardedAd.load(with: unitID, request: Request())
             ad.fullScreenContentDelegate = self
             rewardedAd = ad
+            loadedUnitID = unitID
             rewardedReady = true
             Task { await StatsReporter.shared.recordAdLoaded() }
             return true
         } catch {
             rewardedAd = nil
+            loadedUnitID = nil
             rewardedReady = false
             print("[AdsManager] Rewarded load failed (unit \(unitID)): \(error)")
             Task { await StatsReporter.shared.recordAdLoadFailed(errorCode: (error as NSError).code) }
@@ -134,11 +170,14 @@ final class AdsManager: NSObject, ObservableObject {
             return false
         }
         rewardedAd = nil
+        loadedUnitID = nil
         rewardedReady = false
+        presentationEarned = false
         return await withCheckedContinuation { continuation in
             rewardContinuation = continuation
             ad.present(from: vc) { [weak self] in
                 Task { await StatsReporter.shared.recordAdRewarded() }
+                self?.presentationEarned = true
                 self?.resolveReward(true)
             }
         }
@@ -170,6 +209,12 @@ extension AdsManager: FullScreenContentDelegate {
         Task { @MainActor in
             // Closed without earning → the pending show resolves false.
             if rewardContinuation != nil { resolveReward(false) }
+            // Earned → the session is unlocked and no gate can ask for
+            // another ad this launch: requesting one here was the
+            // ad_requested seen right after ad_dismissed (2026-11-06),
+            // an ad that would never be shown. Not earned → the gate is
+            // still closed, so have the next ad ready.
+            guard !presentationEarned else { return }
             await preloadRewarded()
         }
     }
