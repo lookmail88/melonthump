@@ -381,10 +381,10 @@ struct AboutContent: View {
                 VStack(spacing: 6) {
                     Text("MelonThump")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundColor(MelonTheme.ink)
+                        .foregroundColor(MelonTheme.inkAdaptive)
                     Text(l.t("about.blurb"))
                         .font(.subheadline)
-                        .foregroundColor(MelonTheme.inkSoft)
+                        .foregroundColor(MelonTheme.inkSoftAdaptive)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
@@ -412,7 +412,7 @@ struct AboutContent: View {
         Link(destination: url) {
             HStack {
                 Image(systemName: icon)
-                    .foregroundColor(MelonTheme.buttonGreen)
+                    .foregroundColor(MelonTheme.buttonGreenAdaptive)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).foregroundColor(.primary)

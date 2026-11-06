@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Backend environments the app can talk to. The UI shows only the
 /// display name ("Prod Server" / "Dev Server"), never the raw domain.
@@ -164,4 +165,22 @@ enum MelonTheme {
     static let ink = Color(red: 0.18, green: 0.27, blue: 0.13)           // #2E4420
     static let inkSoft = Color(red: 0.35, green: 0.45, blue: 0.31)       // #5A7350
     static let recordRed = Color(red: 0.89, green: 0.28, blue: 0.24)     // #E2483D
+
+    // Appearance-adaptive variants for text/icons that sit on *system*
+    // backgrounds (List / grouped cells), which turn dark gray in Dark Mode.
+    // Light mode returns the exact static value above; Dark Mode returns a
+    // lifted tint of the same hue so it stays legible on #1C1C1E / #2C2C2E.
+    // (The static colors stay fixed for the cream/green custom surfaces,
+    // which don't change with appearance.)
+    static let inkAdaptive = adaptive(light: ink,
+        dark: UIColor(red: 0.66, green: 0.85, blue: 0.52, alpha: 1))     // #A8DA84
+    static let inkSoftAdaptive = adaptive(light: inkSoft,
+        dark: UIColor(red: 0.66, green: 0.75, blue: 0.63, alpha: 1))     // #A9BFA0
+    static let buttonGreenAdaptive = adaptive(light: buttonGreen,
+        dark: UIColor(red: 0.55, green: 0.80, blue: 0.37, alpha: 1))     // #8CCB5E
+
+    private static func adaptive(light: Color, dark: UIColor) -> Color {
+        let lightUI = UIColor(light)
+        return Color(UIColor { $0.userInterfaceStyle == .dark ? dark : lightUI })
+    }
 }
