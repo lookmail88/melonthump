@@ -3,8 +3,10 @@ import Foundation
 // the PRODUCTION CreditWallet.swift; state persists in this tool's own
 // UserDefaults domain between runs, exactly as across a real relaunch.
 //   harness reset                      wipe the domain (fresh install)
-//   harness seed key=bool ...          pre-set legacy flags (upgrade)
-//   POLICY=promo|post|freeday|fail harness launch t[:watch] ...
+//   harness seed key=value ...         pre-set keys (true/false → Bool,
+//                                      digits → Int, else String)
+//   harness dump                       print the wallet's counter keys
+//   [APP_VERSION=x.y.z] [FREE=N] POLICY=promo|post|freeday|fail harness launch t[:watch] ...
 // Each t = one thump attempt that, if allowed, completes with a RIPE
 // verdict (u = UNKNOWN verdict). ":watch" = if gated, watch the ad
 // (completes) then thump; ":credit" = if gated, pay the ad-free price. Prints the TapView-equivalent decision.
@@ -17,21 +19,31 @@ case "reset":
 case "seed":
     for kv in args.dropFirst() {
         let p = kv.split(separator: "=")
-        UserDefaults.standard.set(p[1] == "true", forKey: String(p[0]))
+        let k = String(p[0]), v = String(p[1])
+        if v == "true" || v == "false" { UserDefaults.standard.set(v == "true", forKey: k) }
+        else if let i = Int(v) { UserDefaults.standard.set(i, forKey: k) }
+        else { UserDefaults.standard.set(v, forKey: k) }
     }
     print("seeded \(args.dropFirst().joined(separator: " "))")
+case "dump":
+    let d = UserDefaults.standard
+    for k in ["analysis.countVersion", "analysis.versionCount", "analysis.lifetimeCount",
+              "allowance.promoFreebiesUsed", "allowance.firstFreeUsed", "allowance.granted", "credit.balance"] {
+        print("  \(k) = \(d.object(forKey: k).map { "\($0)" } ?? "<absent>")")
+    }
 case "launch":
     let sem = DispatchSemaphore(value: 0)
     Task { @MainActor in
         let w = CreditWallet.shared
         await w.refreshPolicy(environment: .prod)
-        print("launch POLICY=\(ProcessInfo.processInfo.environment["POLICY"] ?? "promo") lifetime=\(w.lifetimeAnalyses) balance=\(w.balance) firstFreeUsed=\(w.firstFreeUsed)")
+        let env = ProcessInfo.processInfo.environment
+        print("launch v\(w.countedVersion) POLICY=\(env["POLICY"] ?? "promo") N=\(w.initialFreeThumps) versionCount=\(w.versionAnalyses) balance=\(w.balance) firstFreeUsed=\(w.firstFreeUsed)")
         for (i, a) in args.dropFirst().enumerated() {
             let parts = a.split(separator: ":")
             let verdict = parts[0] == "u" ? "UNKNOWN" : "RIPE"
             let action = parts.count > 1 ? String(parts[1]) : ""
-            let before = w.lifetimeAnalyses
-            var line = "  thump#\(i + 1) (lifetime before=\(before)) "
+            let before = w.versionAnalyses
+            var line = "  thump#\(i + 1) (versionCount before=\(before)) "
             if !w.canThump {
                 // TapView.toggleRecording: promo gate vs session gate alert.
                 line += w.needsPromoAd ? "→ PROMO AD GATE" : "→ SESSION GATE"
@@ -45,7 +57,7 @@ case "launch":
                 line += w.nextThumpIsPromoFree ? "→ no gate (promo freebie)" : "→ no gate"
             }
             w.recordAnalysis(verdict: verdict)
-            print(line + " → \(verdict) recorded, lifetime=\(w.lifetimeAnalyses)")
+            print(line + " → \(verdict) recorded, versionCount=\(w.versionAnalyses)")
         }
         print("  end: balance=\(w.balance) firstFreeUsed=\(w.firstFreeUsed) sessionUnlocked=\(w.sessionUnlocked)")
         sem.signal()

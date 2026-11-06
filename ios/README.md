@@ -76,15 +76,17 @@ python3 gen_pbxproj.py   # update SWIFT_FILES in the script first 先更新脚�
   个 credit（默认 1），之后看一支激励广告或花 credit 解锁本次打开内无限
   拍瓜；闸门广告不再得 credit；取消新装赠 5。全部数值走服务端策略。
 - **Launch promo 推广模式**: while the server policy carries a promo
-  window, credits are bypassed — a user's lifetime first two real
-  (non-UNKNOWN) analyses need no ad (2026-11-06; they use up the
-  post-promotion allowance, not add to it); after that the first thump
-  of each fresh launch costs one rewarded ad, the rest of the session is
-  unlimited; relaunch and you watch again. A -1 free day overrides the
-  promo gate. See docs/1.2.0-design.md §3.
-- 服务端策略带推广期时 credit 经济暂停——终身前两次真实（非 UNKNOWN）
-  分析免广告（2026-11-06，消耗而非叠加推广期后额度）；之后每次新开
-  App 第一次拍瓜看一支广告、本次打开内无限用，退出重开重新看。免费日
+  window, credits are bypassed — the first N real (non-UNKNOWN) analyses
+  of each app version need no ad (N = policy `initialFreeThumps`,
+  default 2; an upgrade resets the count to 0; 2026-11-06, per version,
+  independent of the post-promotion allowance); after that the first
+  thump of each fresh launch costs one rewarded ad, the rest of the
+  session is unlimited; relaunch and you watch again. A -1 free day
+  overrides the promo gate. See docs/1.2.0-design.md §3.
+  服务端策略带推广期时 credit 经济暂停——每个 App 版本的前 N 次真实
+  （非 UNKNOWN）分析免广告（N = 策略 `initialFreeThumps`，默认 2；升级后
+  计数归零；2026-11-06 定，按版本计，与推广期后额度互不影响）；之后每次
+  新开 App 第一次拍瓜看一支广告、本次打开内无限用，退出重开重新看。免费日
   （-1）优先于推广门。
 - If a rewarded ad fails to load, AdsManager logs the error and retries
   with Google's official test unit (shipped behaviour since commit

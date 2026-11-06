@@ -239,7 +239,7 @@ struct TapView: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
         } else if wallet.nextThumpIsPromoFree {
-            // Launch promo, lifetime first thumps: no ad (2026-11-06).
+            // Launch promo, this version's first thumps: no ad (2026-11-06).
             Text(wallet.promoFreeRemaining == 1
                  ? l.t("credits.promoFreeOne") : l.f("credits.promoFreeMany", wallet.promoFreeRemaining))
                 .font(.footnote.weight(.semibold))
@@ -359,8 +359,9 @@ struct TapView: View {
                     analyzerLabel: analyzed.modelVersion,
                     debugSummary: analyzed.debugSummary))
                 // 1.2.0 allowance: every real (non-UNKNOWN) analysis
-                // bumps the lifetime count (promo freebies), the first
-                // one uses up the free thump; it is also the invitee's
+                // bumps this app version's count (promo freebies); in the
+                // post-promotion economy the first one uses up the free
+                // thump; it is also the invitee's
                 // confirmation event for an invite.
                 if let verdict = result?.verdict {
                     wallet.recordAnalysis(verdict: verdict)
