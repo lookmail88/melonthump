@@ -151,10 +151,10 @@ struct ModelPickerView: View {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(model.displayName)
                                         .font(.headline)
-                                        .foregroundColor(MelonTheme.ink)
+                                        .foregroundColor(MelonTheme.inkAdaptive)
                                     Text(l.f("models.version", model.modelVersion))
                                         .font(.caption)
-                                        .foregroundColor(MelonTheme.inkSoft)
+                                        .foregroundColor(MelonTheme.inkSoftAdaptive)
                                 }
                                 Spacer()
                                 ForEach(badges(for: model), id: \.self) { badge in
