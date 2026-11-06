@@ -153,7 +153,7 @@ struct SplashView: View {
             l.t("credit.projectOwner") + sep + "Xuyang Gao",
             l.t("credit.architecture") + sep + "Xuyang Gao",
             l.t("credit.developer") + sep + "Claude",
-            l.t("credit.baqa") + sep + "Muse",
+            l.t("credit.baqa") + sep + "Pepper",
         ]
     }
 

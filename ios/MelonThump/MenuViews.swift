@@ -378,7 +378,7 @@ struct TeamView: View {
         ("Project Owner", "Xuyang Gao"),
         ("Architecture", "Xuyang Gao"),
         ("Developer", "Claude"),
-        ("BA/QA", "Muse"),
+        ("BA/QA", "Pepper"),
     ]
 
     var body: some View {
