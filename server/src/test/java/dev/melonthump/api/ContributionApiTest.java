@@ -52,6 +52,7 @@ class ContributionApiTest {
 
     private ResultActions apply(String body) throws Exception {
         return mvc.perform(post("/api/v1/contributions/applications")
+                        .header("X-Attest-Bypass", "simulator")
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
@@ -133,7 +134,8 @@ class ContributionApiTest {
     void statusReturnsStandingAndZeroBalance() throws Exception {
         UUID id = UUID.randomUUID();
         apply(body(id, "note")).andExpect(status().isCreated());
-        mvc.perform(get("/api/v1/contributions/status").param("contributorId", id.toString()))
+        mvc.perform(get("/api/v1/contributions/status")
+                        .header("X-Attest-Bypass", "simulator").param("contributorId", id.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contributorId").value(id.toString()))
                 .andExpect(jsonPath("$.status").value("PENDING"))
@@ -149,21 +151,25 @@ class ContributionApiTest {
             ledger.save(new AdFreeLedgerEntry(id, 5, LedgerReason.SAMPLE_APPROVED, "2"));
             ledger.save(new AdFreeLedgerEntry(id, -3, LedgerReason.VOID_CLAWBACK, "2"));
         });
-        mvc.perform(get("/api/v1/contributions/status").param("contributorId", id.toString()))
+        mvc.perform(get("/api/v1/contributions/status")
+                        .header("X-Attest-Bypass", "simulator").param("contributorId", id.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.adFreeBalance").value(7));
     }
 
     @Test
     void statusOfUnknownContributorIs404() throws Exception {
-        mvc.perform(get("/api/v1/contributions/status").param("contributorId", UUID.randomUUID().toString()))
+        mvc.perform(get("/api/v1/contributions/status")
+                        .header("X-Attest-Bypass", "simulator").param("contributorId", UUID.randomUUID().toString()))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void statusWithMalformedOrMissingIdIs400() throws Exception {
-        mvc.perform(get("/api/v1/contributions/status").param("contributorId", "nope"))
+        mvc.perform(get("/api/v1/contributions/status")
+                        .header("X-Attest-Bypass", "simulator").param("contributorId", "nope"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/v1/contributions/status")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/contributions/status")
+                        .header("X-Attest-Bypass", "simulator")).andExpect(status().isBadRequest());
     }
 }

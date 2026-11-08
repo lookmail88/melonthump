@@ -18,11 +18,12 @@ import java.util.UUID;
 
 /**
  * A contributed sample: the server mirror of one melon record (design
- * doc 2.0 §2 item 8, §7 items 3/7/8/10). Tables only in this package —
- * the sample APIs come later. {@code complete} is derived from the four
- * part flags on every write (and the schema CHECK enforces the same).
- * Removal is void-marking ({@link SampleStatus#VOIDED}); there is no
- * delete path.
+ * doc 2.0 §2 item 8, §7 items 3/7/8/10). {@code complete} is derived
+ * from the four part flags on every write (and the schema CHECK enforces
+ * the same). Owner-side removal is void-marking
+ * ({@link SampleStatus#VOIDED}); the only physical delete is the
+ * contributor's own withdrawal of a not-yet-approved sample
+ * ({@link SampleService#withdraw}).
  */
 @Entity
 @Table(name = "samples")
@@ -125,6 +126,11 @@ public class Sample {
         this.hasCutOpen = cutOpen;
         this.hasFeedback = feedback;
         this.complete = isComplete(appearance, recording, cutOpen, feedback);
+    }
+
+    /** Marks the row changed (an append that only adds files leaves no other field dirty). */
+    public void touch() {
+        this.updatedAt = Instant.now();
     }
 
     public void setScore(Integer score) {

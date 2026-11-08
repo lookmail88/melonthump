@@ -46,7 +46,8 @@ class AdminApiTest {
 
     private UUID applicant(String note) throws Exception {
         UUID id = UUID.randomUUID();
-        mvc.perform(post("/api/v1/contributions/applications").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/contributions/applications")
+                        .header("X-Attest-Bypass", "simulator").contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("contributorId", id.toString(), "note", note))))
                 .andExpect(status().isCreated());
         return id;
@@ -103,7 +104,8 @@ class AdminApiTest {
         assertEquals("PENDING", json.readTree((String) row.get("before_json")).get("status").asText());
         assertEquals("APPROVED", json.readTree((String) row.get("after_json")).get("status").asText());
 
-        mvc.perform(get("/api/v1/contributions/status").param("contributorId", id.toString()))
+        mvc.perform(get("/api/v1/contributions/status")
+                        .header("X-Attest-Bypass", "simulator").param("contributorId", id.toString()))
                 .andExpect(jsonPath("$.status").value("APPROVED"));
     }
 

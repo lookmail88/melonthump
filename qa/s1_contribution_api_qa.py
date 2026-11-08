@@ -43,6 +43,10 @@ def req(method, path, body=None, raw=None, headers=None):
     url = BASE + path
     data = raw
     hdrs = {"Content-Type": "application/json"}
+    # 2.0 S2: /api/v1/contributions/** is App Attest gated; the qa profile
+    # honours the simulator bypass header.
+    if path.startswith("/api/v1/contributions"):
+        hdrs["X-Attest-Bypass"] = "simulator"
     if headers:
         hdrs.update(headers)
     if body is not None:
