@@ -49,6 +49,12 @@ spec:
             # 00:00 America/Los_Angeles (epoch ms), same as dev.
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
               value: "1798790400000"
+            # Force-upgrade floor (set 2026-11-07 at the 1.2.0
+            # release): the version policy endpoint computes
+            # forceUpdate = currentVersion < min-supported, so
+            # every client below 1.2.0 is hard-blocked to update.
+            - name: MELONTHUMP_CLIENT_MIN_SUPPORTED_VERSION
+              value: "1.2.0"
             - name: SPRING_DATASOURCE_URL
               valueFrom:
                 secretKeyRef:
