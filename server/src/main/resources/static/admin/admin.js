@@ -42,6 +42,8 @@
       'filter.status': 'Status',
       'filter.contributor': 'Contributor',
       'filter.all': 'All',
+      'filter.note': 'Note',
+      'filter.notePh': 'Filter by enrollment note…',
       'filter.PENDING': 'Pending',
       'filter.APPROVED': 'Approved',
       'filter.DECLINED': 'Declined',
@@ -262,6 +264,8 @@
       'filter.status': '状态',
       'filter.contributor': '贡献者',
       'filter.all': '全部',
+      'filter.note': '申请留言',
+      'filter.notePh': '按申请留言筛选…',
       'filter.PENDING': '待审核',
       'filter.APPROVED': '已批准',
       'filter.DECLINED': '已拒绝',
@@ -512,7 +516,8 @@
   const state = {
     disabled: false,
     contributors: [], // last full contributor list (for names in filters)
-    contribFilter: '',
+    contribFilter: '', // status, applied server-side
+    contribNoteFilter: '', // enrollment-note text, applied client-side to the loaded list
     sampleFilter: { status: '', contributorId: '' },
     drawer: null, // { kind: 'contributor'|'sample', id }
   };
@@ -927,8 +932,19 @@
     return h('div', { class: 'actions' }, buttons);
   }
 
+  /**
+   * Note filter: case-insensitive "contains" on the enrollment note, input trimmed.
+   * Empty input keeps everyone; otherwise a contributor without a note is excluded.
+   */
+  function matchesNoteFilter(c) {
+    const needle = state.contribNoteFilter.trim().toLowerCase();
+    if (!needle) return true;
+    return typeof c.note === 'string' && c.note.toLowerCase().indexOf(needle) >= 0;
+  }
+
   async function loadContributors() {
     $('contrib-status').value = state.contribFilter;
+    $('contrib-note-filter').value = state.contribNoteFilter;
     try {
       const list = await fetchContributors(state.contribFilter);
       if (!state.contribFilter) {
@@ -941,7 +957,9 @@
     }
   }
 
-  function renderContributorList(list) {
+  function renderContributorList(all) {
+    // Status was applied by the server; the note filter narrows the same loaded list (AND).
+    const list = all.filter(matchesNoteFilter);
     const rows = list.map(function (c) {
       return h('tr', { class: 'clickable', onclick: function () { openContributor(c.contributorId); } },
         h('td', { class: 'mono nowrap', title: c.contributorId }, shortId(c.contributorId)),
@@ -1538,6 +1556,11 @@
     $('contrib-status').addEventListener('change', function (ev) {
       state.contribFilter = ev.target.value;
       loadContributors();
+    });
+    $('contrib-note-filter').addEventListener('input', function (ev) {
+      state.contribNoteFilter = ev.target.value;
+      // Re-render the already loaded list; no request while typing.
+      if (painters['contrib-body']) paint('contrib-body', painters['contrib-body']);
     });
     $('sample-status').addEventListener('change', function (ev) {
       state.sampleFilter.status = ev.target.value;

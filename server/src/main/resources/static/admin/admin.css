@@ -191,7 +191,7 @@ body.drawer-open { overflow: hidden; }
   .topbar { gap: .5rem; }
   .filters { width: 100%; }
   .filters label { flex: 1 1 8rem; }
-  .filters select { width: 100%; }
+  .filters select, .filters input { width: 100%; }
   .inline-form label { flex: 1 1 100%; }
   .inline-form input { width: 100%; }
   dl.kv { grid-template-columns: 1fr; }
