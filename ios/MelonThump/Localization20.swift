@@ -70,6 +70,9 @@ extension L10n {
         "capture.removePhoto": [.zh: "删除照片", .en: "Remove photo", .es: "Quitar foto"],
         "capture.rind": [.zh: "纹理", .en: "Rind", .es: "Cáscara"],
         "capture.whole": [.zh: "整瓜", .en: "Whole", .es: "Entera"],
+        // FIX10: the journey photo sheet's kind choice
+        "capture.kindRind": [.zh: "瓜皮近摄", .en: "Rind close-up", .es: "Primer plano de la cáscara"],
+        "capture.kindWhole": [.zh: "整瓜", .en: "Whole melon", .es: "Sandía entera"],
         "capture.cut": [.zh: "切开", .en: "Cut open", .es: "Abierta"],
         "capture.addCut": [.zh: "拍切开图", .en: "Cut-open photo", .es: "Foto de la sandía abierta"],
         "capture.replaceCut": [.zh: "重拍切开图", .en: "Replace cut-open photo", .es: "Cambiar foto de la sandía abierta"],

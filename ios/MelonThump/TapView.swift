@@ -24,6 +24,9 @@ struct TapView: View {
     /// FIX2 photo gate: the record a start was refused for (it lacks its
     /// appearance photos); its capture sheet is open while this is set.
     @State private var photoGateRecordId: UUID?
+    /// FIX10: the journey photo sheet saved its photo — once the sheet has
+    /// gone, the 开始验瓜 journey carries on into recording by itself.
+    @State private var resumeJourneyAfterPhoto = false
     /// FIX2: the record the photo gate passed for the running recording,
     /// so the analysis is filed exactly where the gate looked.
     @State private var gatedRecordId: UUID?
@@ -102,11 +105,18 @@ struct TapView: View {
             get: { photoGateRecordId != nil },
             set: { if !$0 { photoGateRecordId = nil } }
         ), onDismiss: photoGateDismissed) {
-            // FIX2: a start refused by the photo gate lands here — the
-            // same capture sheet, Step 1 on top with the photos-first
-            // notice; its "Thump this melon" unlocks with both photos.
+            // FIX2/FIX10: a start refused by the photo gate lands here —
+            // NOT the record page (that stays in My Melons): a direct
+            // camera sheet; on save the journey resumes into recording,
+            // on cancel it aborts.
             if let id = photoGateRecordId {
-                recordSheet(id) { photoGateRecordId = nil }
+                JourneyPhotoSheet(recordId: id, onSaved: {
+                    resumeJourneyAfterPhoto = true
+                    photoGateRecordId = nil
+                }, onCancel: {
+                    resumeJourneyAfterPhoto = false
+                    photoGateRecordId = nil
+                })
             }
         }
         .alert(l.t("error.title"), isPresented: Binding(
@@ -573,9 +583,9 @@ struct TapView: View {
 
     /// FIX2: binds the start to its record exactly as filing will
     /// (armed target, else the open UNKNOWN-only home record, else a new
-    /// record) and returns it when it has both appearance photos. If not,
+    /// record) and returns it when it has an appearance photo. If not,
     /// recording does not start: the record (created now for a new melon)
-    /// is armed and its capture sheet opens on Step 1.
+    /// is armed and the FIX10 journey photo sheet (camera first) opens.
     private func passPhotoGate() -> UUID? {
         let store = MelonRecordStore.shared
         let id = store.boundRecordId(target: continuingRecordId) ?? store.createRecord(fromHomeThump: true).id
@@ -590,6 +600,15 @@ struct TapView: View {
     /// removed again (no empty rows in My Melons); one with a photo stays
     /// armed so the next tap comes back to the same melon.
     private func photoGateDismissed() {
+        // FIX10: photo saved → straight on into recording (the record is
+        // armed in continuingRecordId, so toggleRecording binds to it and
+        // the gate now passes). Same resume semantics as the ad unlock.
+        if resumeJourneyAfterPhoto {
+            resumeJourneyAfterPhoto = false
+            guard !recorder.isRecording, !isAnalyzing else { return }
+            toggleRecording()
+            return
+        }
         guard let id = continuingRecordId, let record = MelonRecordStore.shared.record(id: id),
               record.isBlank else { return }
         MelonRecordStore.shared.delete(id)

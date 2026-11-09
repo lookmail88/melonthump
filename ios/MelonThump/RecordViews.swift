@@ -601,7 +601,7 @@ struct PhotoAddButton: View {
     @State private var libraryItem: PhotosPickerItem?
     private var l: L10n { L10n(preference: languagePref) }
 
-    static let acceptedTypes = ["image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"]
+    static let acceptedTypes = PhotoCapture.acceptedTypes
 
     var body: some View {
         Button {
@@ -625,7 +625,7 @@ struct PhotoAddButton: View {
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in
-                if let data = image.jpegData(compressionQuality: 1.0) {
+                if let data = PhotoCapture.cameraJPEG(image) {
                     onPhoto(data, "image/jpeg")
                 }
             }
@@ -636,15 +636,148 @@ struct PhotoAddButton: View {
             guard let item else { return }
             libraryItem = nil
             Task {
-                guard let data = try? await item.loadTransferable(type: Data.self) else { return }
-                let mime = item.supportedContentTypes.first?.preferredMIMEType?.lowercased()
-                if let mime, Self.acceptedTypes.contains(mime) {
-                    onPhoto(data, mime)
-                } else if let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 1.0) {
-                    onPhoto(jpeg, "image/jpeg")
+                if let (data, mime) = await PhotoCapture.libraryPhoto(item) { onPhoto(data, mime) }
+            }
+        }
+    }
+}
+
+/// The capture encoding shared by PhotoAddButton (record page) and
+/// JourneyPhotoSheet (FIX10 journey gate): camera shots become
+/// full-resolution JPEG; library picks keep their original bytes when
+/// the server accepts the format, else a full-quality JPEG re-encode.
+/// Both callers then store through MelonRecordStore.addPhoto — one path.
+enum PhotoCapture {
+    static let acceptedTypes = ["image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"]
+
+    static func cameraJPEG(_ image: UIImage) -> Data? {
+        image.jpegData(compressionQuality: 1.0)
+    }
+
+    static func libraryPhoto(_ item: PhotosPickerItem) async -> (Data, String)? {
+        guard let data = try? await item.loadTransferable(type: Data.self) else { return nil }
+        let mime = item.supportedContentTypes.first?.preferredMIMEType?.lowercased()
+        if let mime, acceptedTypes.contains(mime) { return (data, mime) }
+        if let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 1.0) {
+            return (jpeg, "image/jpeg")
+        }
+        return nil
+    }
+}
+
+// MARK: - FIX10: the journey's photo gate (camera first, then recording)
+
+/// Opened by 开始验瓜 when the bound record has no appearance photo yet.
+/// Not the record page: just the camera (opened on appear), a rind /
+/// whole-melon choice (rind by default; whole shows the bank-card
+/// guidance) and a library fallback. ONE photo of either kind passes
+/// the FIX2 gate. `onSaved` fires once the photo is stored in the record
+/// and any camera / picker UI has gone, so the caller can dismiss and
+/// carry the journey on into recording; `onCancel` aborts the journey.
+struct JourneyPhotoSheet: View {
+    let recordId: UUID
+    let onSaved: () -> Void
+    let onCancel: () -> Void
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    @State private var kind: PhotoKind = .rindCloseUp
+    @State private var showCamera = false
+    @State private var showLibrary = false
+    @State private var libraryItem: PhotosPickerItem?
+    @State private var cameraOpenedOnAppear = false
+    @State private var saved = false
+    @State private var saving = false
+    @State private var message: String?
+    private var l: L10n { L10n(preference: languagePref) }
+    private var cameraAvailable: Bool { UIImagePickerController.isSourceTypeAvailable(.camera) }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Label(l.t("capture.photosFirst"), systemImage: "camera.badge.ellipsis")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(MelonTheme.inkAdaptive)
+                    Picker(l.t("capture.step1"), selection: $kind) {
+                        Text(l.t("capture.kindRind")).tag(PhotoKind.rindCloseUp)
+                        Text(l.t("capture.kindWhole")).tag(PhotoKind.wholeMelon)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("journeyPhoto.kind")
+                    if kind == .wholeMelon {
+                        Text(l.t("capture.cardGuide"))
+                            .font(.caption)
+                            .foregroundColor(MelonTheme.inkSoftAdaptive)
+                    }
+                }
+                Section {
+                    if cameraAvailable {
+                        Button { showCamera = true } label: {
+                            Label(l.t("capture.camera"), systemImage: kind == .rindCloseUp ? "camera.macro" : "camera")
+                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
+                        }
+                        .accessibilityIdentifier("journeyPhoto.camera")
+                    }
+                    Button { showLibrary = true } label: {
+                        Label(l.t("capture.library"), systemImage: "photo.on.rectangle")
+                            .foregroundColor(MelonTheme.buttonGreenAdaptive)
+                    }
+                    .accessibilityIdentifier("journeyPhoto.library")
+                }
+                .disabled(saving || saved)
+            }
+            .navigationTitle(l.t("capture.step1"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(l.t("common.cancel")) { onCancel() }
                 }
             }
         }
+        .interactiveDismissDisabled(saving)
+        .onAppear {
+            // Camera first: the journey goes straight to the viewfinder.
+            guard !cameraOpenedOnAppear else { return }
+            cameraOpenedOnAppear = true
+            if cameraAvailable { showCamera = true }
+        }
+        .fullScreenCover(isPresented: $showCamera, onDismiss: finishIfSaved) {
+            CameraPicker { image in
+                if let data = PhotoCapture.cameraJPEG(image) { save(data, "image/jpeg") }
+            }
+            .ignoresSafeArea()
+        }
+        .photosPicker(isPresented: $showLibrary, selection: $libraryItem, matching: .images)
+        .onChange(of: libraryItem) { _, item in
+            guard let item else { return }
+            libraryItem = nil
+            saving = true
+            Task {
+                defer { saving = false }
+                // Library picks count for the gate, exactly as on the record page.
+                if let (data, mime) = await PhotoCapture.libraryPhoto(item) { save(data, mime) }
+                finishIfSaved()
+            }
+        }
+        .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button(l.t("common.ok"), role: .cancel) { message = nil }
+        }
+    }
+
+    /// The same storage path as the record page (RecordDetailView.save).
+    private func save(_ data: Data, _ contentType: String) {
+        do {
+            try MelonRecordStore.shared.addPhoto(data, contentType: contentType, kind: kind, to: recordId)
+            saved = true
+        } catch {
+            message = l.t("capture.saveFailed")
+        }
+    }
+
+    /// Hands back only once the camera / picker is gone, so the sheet's
+    /// own dismissal never races another presentation.
+    private func finishIfSaved() {
+        guard saved, !showCamera, !showLibrary else { return }
+        onSaved()
     }
 }
 
