@@ -1,3 +1,14 @@
+# [1.14.0](https://github.com/lookmail88/melonthump/compare/v1.13.0...v1.14.0) (2026-11-09)
+
+
+### Features
+
+* **ios:** 2.0 melon records, unified capture, contributor program, adExempt ([2fa7f8b](https://github.com/lookmail88/melonthump/commit/2fa7f8b6242e9f720da4f62fb8f0c0bfcba165fb))
+* **server:** 2.0 contributor data layer, application flow, admin API and audit log ([2eb7e0f](https://github.com/lookmail88/melonthump/commit/2eb7e0fdf145ddd9045798e011035f07c41c6ca5))
+* **server:** 2.0 S2 sample submission, material storage, self-service, attest-gated contributions ([8ea7eb1](https://github.com/lookmail88/melonthump/commit/8ea7eb1487187034c8adc0d0e7238ecbb473b89d))
+* **server:** 2.0 S3 sample review, ad-free ledger wiring, exemptions and adExempt policy ([9674ac5](https://github.com/lookmail88/melonthump/commit/9674ac5268efc1874ab319ab7da6bd8cfbf289af))
+* **server:** 2.0 S4 admin web page, runtime settings, Access actor, preliminary review ([62d3e0b](https://github.com/lookmail88/melonthump/commit/62d3e0b0fe6bc26a7a2f6a8d6c2b10a009d9a494))
+
 # [1.13.0](https://github.com/lookmail88/melonthump/compare/v1.12.0...v1.13.0) (2026-11-06)
 
 
