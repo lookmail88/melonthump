@@ -79,6 +79,7 @@ struct TapView: View {
             switch destination {
             case .models: ModelPickerView()
             case .records: RecordsListView(onThump: thumpForRecord)
+            case .program: ProgramMenuSheet()
             case .settings: SettingsView()
             case .about: AboutView()
             }

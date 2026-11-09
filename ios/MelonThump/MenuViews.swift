@@ -55,16 +55,19 @@ struct TopBarButton: View {
 // MARK: - Hamburger drawer
 
 enum MenuDestination: String, Identifiable {
-    case models, records, settings, about
+    case models, records, program, settings, about
     var id: String { rawValue }
 }
 
 /// Slide-in drawer from the left. 1.2.0 had exactly three entries
 /// (decided 2026-11-04, no History); 2.0 adds My Melons — the melon
-/// records, which are the thump history (design doc 2.0 §2 item 8).
+/// records, which are the thump history (design doc 2.0 §2 item 8),
+/// and the Model Improvement Program (FIX3, 2026-11-08) — the same
+/// destination Settings links to; the Settings entry stays.
 struct MenuDrawer: View {
     @Binding var isOpen: Bool
     let onSelect: (MenuDestination) -> Void
+    @ObservedObject private var program = ContributorProgram.shared
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
     private var l: L10n { L10n(preference: languagePref) }
 
@@ -83,6 +86,9 @@ struct MenuDrawer: View {
                         .padding(.bottom, 22)
                     row(.models, icon: "waveform.badge.magnifyingglass", title: l.t("menu.models"))
                     row(.records, icon: "list.bullet.rectangle", title: l.t("menu.records"))
+                    // Same icon and title logic as the Settings entry.
+                    row(.program, icon: "leaf",
+                        title: program.phase == .notEnrolled ? l.t("set.joinProgram") : l.t("program.title"))
                     row(.settings, icon: "gearshape", title: l.t("menu.settings"))
                     row(.about, icon: "info.circle", title: l.t("menu.about"))
                     Spacer()
@@ -126,6 +132,28 @@ struct MenuDrawer: View {
     }
 
     private func close() { isOpen = false }
+}
+
+// MARK: - Model Improvement Program (drawer entry)
+
+/// The drawer's door into the program: the same ProgramEntryView the
+/// Settings entry pushes, in a sheet with its own NavigationStack and
+/// the Done button the other drawer sheets use.
+struct ProgramMenuSheet: View {
+    @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
+    @Environment(\.dismiss) private var dismiss
+    private var l: L10n { L10n(preference: languagePref) }
+
+    var body: some View {
+        NavigationStack {
+            ProgramEntryView()
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(l.t("common.done")) { dismiss() }
+                    }
+                }
+        }
+    }
 }
 
 // MARK: - Model picker
