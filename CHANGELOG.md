@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/lookmail88/melonthump/compare/v1.15.0...v1.16.0) (2026-11-09)
+
+
+### Features
+
+* Vision watermelon check — capture hint and sample annotation ([1b1e1fc](https://github.com/lookmail88/melonthump/commit/1b1e1fce97b7928bbde463d7b41b35c3a6f32b3a))
+
 # [1.15.0](https://github.com/lookmail88/melonthump/compare/v1.14.0...v1.15.0) (2026-11-09)
 
 
