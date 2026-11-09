@@ -15,6 +15,12 @@ struct TapView: View {
     /// chose "Thump this melon" in a record; nil = the home flow, which
     /// files the thump into a record in the background.
     @State private var continuingRecordId: UUID?
+    /// FIX1: the record the shown result was filed into (attachThump's
+    /// record id), for the result's "Photograph this melon" button; nil =
+    /// not attached, and the button is simply absent.
+    @State private var resultRecordId: UUID?
+    /// FIX1: that record's detail (Step 1 = appearance photos) is open.
+    @State private var showResultRecord = false
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
@@ -69,6 +75,23 @@ struct TapView: View {
             case .records: RecordsListView(onThump: thumpForRecord)
             case .settings: SettingsView()
             case .about: AboutView()
+            }
+        }
+        .sheet(isPresented: $showResultRecord) {
+            // FIX1: the same RecordDetailView My Melons pushes, in a sheet
+            // with its own NavigationStack and the list's Done button.
+            if let id = resultRecordId {
+                NavigationStack {
+                    RecordDetailView(recordId: id, onThump: {
+                        showResultRecord = false
+                        thumpForRecord(id)
+                    })
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(l.t("common.done")) { showResultRecord = false }
+                        }
+                    }
+                }
             }
         }
         .alert(l.t("error.title"), isPresented: Binding(
@@ -186,6 +209,9 @@ struct TapView: View {
                           durationSeconds: activeRecordingSeconds, onStop: toggleRecording)
         } else if let result {
             ResultView(result: result, errorMessage: errorMessage, onAgain: startNextMelon)
+                .photographAction(resultRecordId.flatMap { id in
+                    MelonRecordStore.shared.record(id: id) == nil ? nil : { showResultRecord = true }
+                })
         } else {
             homeView
         }
@@ -435,6 +461,9 @@ struct TapView: View {
         menuDestination = nil
         showInviteSheet = false
         shareItem = nil
+        // FIX1: the result's record link belongs to the result being left.
+        showResultRecord = false
+        resultRecordId = nil
         // 2.0: another melon — the next thump starts a new record.
         continuingRecordId = nil
         // Last: clearing the result switches content to homeView.
@@ -483,6 +512,7 @@ struct TapView: View {
         }
         isAnalyzing = true
         errorMessage = nil
+        resultRecordId = nil
         Task {
             defer { isAnalyzing = false }
             do {
@@ -500,8 +530,10 @@ struct TapView: View {
                 // 2.0 melon record: file this thump into its record (the
                 // chosen one, or a background home-flow record) and link
                 // the archive copy once it is written — no second copy.
-                let (_, thumpId) = MelonRecordStore.shared.attachThump(
+                let (recordId, thumpId) = MelonRecordStore.shared.attachThump(
                     analyzed, modelId: d.modelId, modelVersion: d.modelVersion, target: continuingRecordId)
+                // FIX1: the result's "Photograph this melon" opens this record.
+                resultRecordId = recordId
                 RecordingArchive.save(.init(
                     sourceURL: audioURL, analyzedAt: Date(),
                     modelId: d.modelId, modelVersion: d.modelVersion,
@@ -551,7 +583,7 @@ struct TapView: View {
             try? await Task.sleep(for: .seconds(RatingPolicy.settleDelaySeconds))
             guard !Task.isCancelled, result?.verdict == Ripeness.ripe.rawValue, !isAnalyzing, !recorder.isRecording,
                   !menuOpen, menuDestination == nil, errorMessage == nil,
-                  !showSessionGate, !showPromoGate, !showInviteSheet, shareItem == nil,
+                  !showSessionGate, !showPromoGate, !showInviteSheet, shareItem == nil, !showResultRecord,
                   inviteNotice == nil, !ratingAskedThisSession else { return }
             ratingAskedThisSession = true
             requestReview()
@@ -786,6 +818,17 @@ struct ResultView: View {
     let result: TapResult
     let errorMessage: String?
     let onAgain: () -> Void
+    /// FIX1: opens the melon record this thump was filed into (its Step 1
+    /// is the appearance photos). nil = no record → no button.
+    var onPhotograph: (() -> Void)? = nil
+
+    /// Sets `onPhotograph` (a chained call, so the primary
+    /// `ResultView(…, onAgain: startNextMelon)` wiring stays as it is).
+    func photographAction(_ action: (() -> Void)?) -> ResultView {
+        var view = self
+        view.onPhotograph = action
+        return view
+    }
 
     private var ripeness: Ripeness { Ripeness(verdict: result.verdict) }
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
@@ -851,6 +894,22 @@ struct ResultView: View {
             }
 
             Spacer()
+
+            // FIX1: the melon is in hand right now — photos one tap away.
+            if let onPhotograph {
+                Button(action: onPhotograph) {
+                    Label(l.t("res.photograph"), systemImage: "camera.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(MelonTheme.cream)
+                        .foregroundColor(MelonTheme.buttonGreen)
+                        .cornerRadius(999)
+                        .overlay(Capsule().stroke(MelonTheme.buttonGreen, lineWidth: 2))
+                }
+                .accessibilityIdentifier("result.photograph")
+                .padding(.bottom, 12)
+            }
 
             // The one-tap way back to the start-recording screen.
             Button(action: onAgain) {

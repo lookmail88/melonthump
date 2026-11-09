@@ -44,6 +44,9 @@ extension L10n {
             .es: "El próximo golpe va a la sandía del %@",
         ],
 
+        // MARK: Result (verdict) → this thump's record
+        "res.photograph": [.zh: "给这只瓜拍照", .en: "Photograph this melon", .es: "Fotografiar esta sandía"],
+
         // MARK: Capture steps
         "capture.step1": [.zh: "① 外观照片", .en: "1 · Appearance photos", .es: "1 · Fotos del exterior"],
         "capture.step2": [.zh: "② 拍瓜", .en: "2 · Thump", .es: "2 · Golpe"],
