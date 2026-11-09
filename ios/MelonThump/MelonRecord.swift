@@ -157,6 +157,18 @@ struct MelonRecord: Codable, Identifiable, Equatable, Sendable {
         thumps.last(where: { $0.verdict != Ripeness.unknown.rawValue })?.verdict ?? thumps.last?.verdict
     }
 
+    /// FIX2: the photos-first rule (owner-amended 2026-11-08) — a thump
+    /// may be recorded for this melon only once it has at least ONE
+    /// appearance photo: a rind close-up OR a whole-melon photo, either
+    /// kind alone suffices (camera or library, same slots).
+    var hasRequiredPhotos: Bool {
+        photos.contains { $0.kind == .rindCloseUp || $0.kind == .wholeMelon }
+    }
+
+    /// FIX2: a record that holds nothing at all (e.g. created by the
+    /// photo gate and then left without a photo).
+    var isBlank: Bool { thumps.isEmpty && !hasUserContent }
+
     var thumbnailPhoto: RecordPhoto? {
         photos.first(where: { $0.kind == .rindCloseUp }) ?? photos.first
     }
@@ -237,20 +249,26 @@ final class MelonRecordStore: ObservableObject {
             id: UUID(), analyzedAt: date, archiveStem: nil, verdict: result.verdict,
             confidence: result.confidence, dominantFrequencyHz: result.dominantFrequencyHz,
             decayTimeMs: result.decayTimeMs, modelId: modelId, modelVersion: modelVersion)
-        let recordId: UUID
+        let recordId = boundRecordId(target: target, at: date) ?? createRecord(fromHomeThump: true).id
+        update(recordId) { $0.thumps.append(thump) }
+        return (recordId, thump.id)
+    }
+
+    /// The existing record a thump binds to: the target record if it still
+    /// exists, else the open UNKNOWN-only home record (recent, not
+    /// contributed); nil = a new record. FIX2: the photo gate checks the
+    /// same binding before recording starts.
+    func boundRecordId(target: UUID?, at date: Date = Date()) -> UUID? {
         if let target, record(id: target) != nil {
-            recordId = target
+            return target
         } else if let open = records.first(where: { $0.fromHomeThump }),
                   !open.thumps.isEmpty,
                   open.thumps.allSatisfy({ $0.verdict == Ripeness.unknown.rawValue }),
                   date.timeIntervalSince(open.updatedAt) < Self.homeContinueWindow,
                   open.submission == nil {
-            recordId = open.id
-        } else {
-            recordId = createRecord(fromHomeThump: true).id
+            return open.id
         }
-        update(recordId) { $0.thumps.append(thump) }
-        return (recordId, thump.id)
+        return nil
     }
 
     /// Links the archive copy once RecordingArchive has written it.

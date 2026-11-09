@@ -200,6 +200,14 @@ struct RecordDetailView: View {
         List {
             // 1. Appearance photos
             Section {
+                if !record.hasRequiredPhotos {
+                    // FIX2: photos first — the thump stays locked until
+                    // one appearance photo (rind or whole melon) is in.
+                    Label(l.t("capture.photosFirst"), systemImage: "camera.badge.ellipsis")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(MelonTheme.inkAdaptive)
+                        .accessibilityIdentifier("record.photosFirst")
+                }
                 PhotoStrip(recordId: recordId, photos: record.photos) { photo in
                     store.removePhoto(photo, from: recordId)
                 }
@@ -228,6 +236,10 @@ struct RecordDetailView: View {
                           systemImage: "waveform")
                         .foregroundColor(MelonTheme.buttonGreenAdaptive)
                 }
+                // FIX2: locked (dimmed) until one appearance photo exists;
+                // enables the moment it is saved.
+                .disabled(!record.hasRequiredPhotos)
+                .opacity(record.hasRequiredPhotos ? 1 : 0.4)
                 .accessibilityIdentifier("record.thump")
             } header: {
                 Text(l.t("capture.step2"))

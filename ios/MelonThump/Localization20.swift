@@ -81,6 +81,11 @@ extension L10n {
             .en: "Records and analyzes on the home screen; the result is saved to this melon. Knocking at the equator works best.",
             .es: "Graba y analiza en la pantalla principal; el resultado se guarda en esta sandía. Golpear en el ecuador funciona mejor.",
         ],
+        "capture.photosFirst": [
+            .zh: "先给这只瓜拍张照（整瓜或瓜皮特写都行），拍完才能拍瓜",
+            .en: "Take a photo of this melon first (whole melon or rind close-up, either is fine). Thumping unlocks once it's in.",
+            .es: "Primero haz una foto de esta sandía (entera o un primer plano de la cáscara, cualquiera vale). El golpe se desbloquea cuando esté.",
+        ],
         "capture.recordingGone": [.zh: "录音已清理", .en: "Recording removed", .es: "Grabación borrada"],
 
         // MARK: Weight

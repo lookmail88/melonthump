@@ -21,6 +21,12 @@ struct TapView: View {
     @State private var resultRecordId: UUID?
     /// FIX1: that record's detail (Step 1 = appearance photos) is open.
     @State private var showResultRecord = false
+    /// FIX2 photo gate: the record a start was refused for (it lacks its
+    /// appearance photos); its capture sheet is open while this is set.
+    @State private var photoGateRecordId: UUID?
+    /// FIX2: the record the photo gate passed for the running recording,
+    /// so the analysis is filed exactly where the gate looked.
+    @State private var gatedRecordId: UUID?
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
@@ -81,17 +87,18 @@ struct TapView: View {
             // FIX1: the same RecordDetailView My Melons pushes, in a sheet
             // with its own NavigationStack and the list's Done button.
             if let id = resultRecordId {
-                NavigationStack {
-                    RecordDetailView(recordId: id, onThump: {
-                        showResultRecord = false
-                        thumpForRecord(id)
-                    })
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button(l.t("common.done")) { showResultRecord = false }
-                        }
-                    }
-                }
+                recordSheet(id) { showResultRecord = false }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { photoGateRecordId != nil },
+            set: { if !$0 { photoGateRecordId = nil } }
+        ), onDismiss: photoGateDismissed) {
+            // FIX2: a start refused by the photo gate lands here — the
+            // same capture sheet, Step 1 on top with the photos-first
+            // notice; its "Thump this melon" unlocks with both photos.
+            if let id = photoGateRecordId {
+                recordSheet(id) { photoGateRecordId = nil }
             }
         }
         .alert(l.t("error.title"), isPresented: Binding(
@@ -214,6 +221,23 @@ struct TapView: View {
                 })
         } else {
             homeView
+        }
+    }
+
+    /// FIX1/FIX2: a record's capture view in its own sheet, with the
+    /// list's Done button; its "Thump this melon" closes the sheet and
+    /// arms the record (thumpForRecord).
+    private func recordSheet(_ id: UUID, close: @escaping () -> Void) -> some View {
+        NavigationStack {
+            RecordDetailView(recordId: id, onThump: {
+                close()
+                thumpForRecord(id)
+            })
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(l.t("common.done")) { close() }
+                }
+            }
         }
     }
 
@@ -478,6 +502,12 @@ struct TapView: View {
             recordingStartedAt = nil
             analyze()
         } else {
+            // FIX2 photo gate — on the recording-start path itself, so
+            // every route (home tap, a record's "Thump this melon", an
+            // armed target) passes it. Checked BEFORE the wallet gates:
+            // a refused start never shows, spends or skips an ad/credit;
+            // those are evaluated when recording actually starts.
+            guard let boundId = passPhotoGate() else { return }
             guard wallet.canThump else {
                 if wallet.needsPromoAd {
                     showPromoGate = true
@@ -498,11 +528,37 @@ struct TapView: View {
                     activeRecordingSeconds = AppSettings.sanitizedDuration(listeningDuration)
                     try recorder.startRecording()
                     recordingStartedAt = Date()
+                    gatedRecordId = boundId
                 } catch {
                     errorMessage = l.f("error.startRecording", error.localizedDescription)
                 }
             }
         }
+    }
+
+    /// FIX2: binds the start to its record exactly as filing will
+    /// (armed target, else the open UNKNOWN-only home record, else a new
+    /// record) and returns it when it has both appearance photos. If not,
+    /// recording does not start: the record (created now for a new melon)
+    /// is armed and its capture sheet opens on Step 1.
+    private func passPhotoGate() -> UUID? {
+        let store = MelonRecordStore.shared
+        let id = store.boundRecordId(target: continuingRecordId) ?? store.createRecord(fromHomeThump: true).id
+        if store.record(id: id)?.hasRequiredPhotos == true { return id }
+        continuingRecordId = id
+        menuDestination = nil
+        photoGateRecordId = id
+        return nil
+    }
+
+    /// FIX2: a gate-created record left without anything in it is
+    /// removed again (no empty rows in My Melons); one with a photo stays
+    /// armed so the next tap comes back to the same melon.
+    private func photoGateDismissed() {
+        guard let id = continuingRecordId, let record = MelonRecordStore.shared.record(id: id),
+              record.isBlank else { return }
+        MelonRecordStore.shared.delete(id)
+        continuingRecordId = nil
     }
 
     private func analyze() {
@@ -513,6 +569,9 @@ struct TapView: View {
         isAnalyzing = true
         errorMessage = nil
         resultRecordId = nil
+        // FIX2: file into the record the photo gate passed for this take.
+        let target = gatedRecordId ?? continuingRecordId
+        gatedRecordId = nil
         Task {
             defer { isAnalyzing = false }
             do {
@@ -531,7 +590,7 @@ struct TapView: View {
                 // chosen one, or a background home-flow record) and link
                 // the archive copy once it is written — no second copy.
                 let (recordId, thumpId) = MelonRecordStore.shared.attachThump(
-                    analyzed, modelId: d.modelId, modelVersion: d.modelVersion, target: continuingRecordId)
+                    analyzed, modelId: d.modelId, modelVersion: d.modelVersion, target: target)
                 // FIX1: the result's "Photograph this melon" opens this record.
                 resultRecordId = recordId
                 RecordingArchive.save(.init(
