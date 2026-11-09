@@ -1,6 +1,7 @@
 package dev.melonthump.contrib;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.repository.Repository;
 
 /**
@@ -10,6 +11,8 @@ import org.springframework.data.repository.Repository;
 public interface SampleFileRepository extends Repository<SampleFile, Long> {
 
     SampleFile save(SampleFile file);
+
+    Optional<SampleFile> findById(Long id);
 
     List<SampleFile> findBySampleIdOrderByIdAsc(Long sampleId);
 

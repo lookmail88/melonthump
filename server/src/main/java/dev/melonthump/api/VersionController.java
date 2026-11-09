@@ -2,9 +2,12 @@ package dev.melonthump.api;
 
 import dev.melonthump.attest.AssertionService;
 import dev.melonthump.attest.AttestException;
+import dev.melonthump.contrib.AdExemptionService;
 import dev.melonthump.dto.ClientVersionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import java.nio.charset.StandardCharsets;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/version")
 @Tag(name = "version", description = "Client version policy (forced-update gate)")
 public class VersionController {
+
+    private static final Logger log = LoggerFactory.getLogger(VersionController.class);
+
+    /** 2.0 optional request header carrying the client's install id (design doc 2.0 §2 item 6). */
+    static final String INSTALL_ID_HEADER = "X-Install-Id";
 
     private final String platform;
     private final String latestVersion;
@@ -31,6 +39,7 @@ public class VersionController {
     private final String testflightVersion;
     private final String productVersion;
     private final AssertionService assertions;
+    private final AdExemptionService exemptions;
 
     /** Design values (1.2.0 §3, decided 2026-11-05) — also the fallback for invalid config. */
     static final int DEFAULT_INITIAL_FREE_THUMPS = 2;
@@ -50,7 +59,8 @@ public class VersionController {
             @Value("${melonthump.client.ad-free-session-credit-price:1}") String adFreePriceRaw,
             @Value("${melonthump.client.testflight-version:}") String testflightVersion,
             @Value("${melonthump.client.product-version:}") String productVersion,
-            AssertionService assertions) {
+            AssertionService assertions,
+            AdExemptionService exemptions) {
         this.platform = platform;
         this.latestVersion = latestVersion;
         this.minSupportedVersion = minSupportedVersion;
@@ -64,6 +74,7 @@ public class VersionController {
         this.testflightVersion = blankToNull(testflightVersion);
         this.productVersion = blankToNull(productVersion);
         this.assertions = assertions;
+        this.exemptions = exemptions;
     }
 
     /**
@@ -131,7 +142,8 @@ public class VersionController {
             @RequestHeader(value = "X-Key-Id", required = false) String keyId,
             @RequestHeader(value = "X-Assertion", required = false) String assertion,
             @RequestHeader(value = "X-Challenge", required = false) String challenge,
-            @RequestHeader(value = AssertionService.BYPASS_HEADER, required = false) String bypass) {
+            @RequestHeader(value = AssertionService.BYPASS_HEADER, required = false) String bypass,
+            @RequestHeader(value = INSTALL_ID_HEADER, required = false) String installId) {
         boolean updateAvailable = currentVersion != null
                 && compareVersions(currentVersion, latestVersion) < 0;
         boolean forceUpdate = currentVersion != null
@@ -149,7 +161,28 @@ public class VersionController {
                 modern ? sessionUnlockEnabled : null,
                 modern ? adFreeSessionCreditPrice : null,
                 modern ? testflightVersion : null,
-                modern ? productVersion : null);
+                modern ? productVersion : null,
+                adExempt(currentVersion, installId));
+    }
+
+    /**
+     * 2.0 adExempt (design doc 2.0 §2 item 6): only for clients reporting
+     * 2.0.0+, whose X-Install-Id is looked up in the owner allowlist; for
+     * older clients (and requests without currentVersion) the header is
+     * ignored, nothing is looked up, and the field stays absent. A lookup
+     * failure answers false — it never breaks the policy.
+     */
+    private Boolean adExempt(String currentVersion, String installId) {
+        if (currentVersion == null
+                || compareVersions(currentVersion, ClientVersionResponse.AD_EXEMPT_SINCE) < 0) {
+            return null;
+        }
+        try {
+            return exemptions.isExempt(installId);
+        } catch (RuntimeException e) {
+            log.warn("adExempt lookup failed; answering false", e);
+            return false;
+        }
     }
 
     /**

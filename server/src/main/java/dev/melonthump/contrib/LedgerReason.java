@@ -5,5 +5,7 @@ public enum LedgerReason {
     SAMPLE_APPROVED,
     VOID_CLAWBACK,
     ADMIN_GRANT,
-    ADMIN_REVOKE
+    ADMIN_REVOKE,
+    /** A contributor spent one unit to unlock an app session without an ad (S3). */
+    SESSION_UNLOCK
 }

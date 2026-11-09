@@ -36,6 +36,10 @@ public class Contributor implements Persistable<UUID> {
     @Column(name = "status", nullable = false, length = 16)
     private ContributorStatus status;
 
+    /** Permanent ad exemption granted by the owner (V6, design doc 2.0 §2 items 6-7). */
+    @Column(name = "ad_exempt_permanent", nullable = false)
+    private boolean adExemptPermanent;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -98,6 +102,14 @@ public class Contributor implements Persistable<UUID> {
 
     public void setStatus(ContributorStatus status) {
         this.status = status;
+    }
+
+    public boolean isAdExemptPermanent() {
+        return adExemptPermanent;
+    }
+
+    public void setAdExemptPermanent(boolean adExemptPermanent) {
+        this.adExemptPermanent = adExemptPermanent;
     }
 
     public Instant getCreatedAt() {

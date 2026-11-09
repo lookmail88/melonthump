@@ -1,5 +1,6 @@
 package dev.melonthump.api;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,5 +33,21 @@ class AdminDisabledTest {
                 .andExpect(status().isNotFound());
         mvc.perform(post("/api/admin/contributors/" + UUID.randomUUID() + "/revoke"))
                 .andExpect(status().isNotFound());
+        // S3 admin surface is behind the same switch.
+        mvc.perform(get("/api/admin/samples")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/admin/samples/1")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/admin/samples/1/files/1")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/admin/samples/1/approve")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/admin/samples/1/return")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/admin/samples/1/void")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/admin/contributors/" + UUID.randomUUID() + "/adfree")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/admin/contributors/" + UUID.randomUUID() + "/adfree/grants"))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/admin/contributors/" + UUID.randomUUID() + "/exemption"))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/admin/exemptions")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/admin/exemptions")).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/admin/exemptions/x")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/admin/audit")).andExpect(status().isNotFound());
     }
 }

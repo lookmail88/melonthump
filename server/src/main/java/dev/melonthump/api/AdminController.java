@@ -1,15 +1,19 @@
 package dev.melonthump.api;
 
+import dev.melonthump.contrib.AuditLogEntry;
+import dev.melonthump.contrib.AuditLogRepository;
 import dev.melonthump.contrib.ContributionService;
 import dev.melonthump.contrib.Contributor;
 import dev.melonthump.contrib.ContributorStatus;
 import dev.melonthump.dto.ContributionDtos.AdminApplicationView;
+import dev.melonthump.dto.ContributionDtos.AuditEntryView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,9 +50,11 @@ public class AdminController {
     static final String ACTOR = "owner";
 
     private final ContributionService service;
+    private final AuditLogRepository auditLog;
 
-    public AdminController(ContributionService service) {
+    public AdminController(ContributionService service, AuditLogRepository auditLog) {
         this.service = service;
+        this.auditLog = auditLog;
     }
 
     @Operation(summary = "List contributor applications, oldest first; optional status filter",
@@ -83,6 +89,27 @@ public class AdminController {
     @PostMapping("/contributors/{contributorId}/revoke")
     public AdminApplicationView revoke(@PathVariable UUID contributorId) {
         return view(service.revoke(contributorId, ACTOR));
+    }
+
+    @Operation(summary = "Read the audit log, newest first",
+            description = "Optional exact-match filters objectType (e.g. CONTRIBUTOR, SAMPLE, AD_EXEMPTION) and "
+                    + "objectId. limit: default 50, values above 200 are capped at 200.")
+    @GetMapping("/audit")
+    public List<AuditEntryView> audit(@RequestParam(required = false) String objectType,
+                                      @RequestParam(required = false) String objectId,
+                                      @RequestParam(required = false) String limit) {
+        int n = AdminParams.limit(limit);
+        return auditLog.search(blankToNull(objectType), blankToNull(objectId), Limit.of(n)).stream()
+                .map(AdminController::auditView).toList();
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.strip();
+    }
+
+    private static AuditEntryView auditView(AuditLogEntry e) {
+        return new AuditEntryView(e.getId(), e.getActor(), e.getAction(), e.getObjectType(), e.getObjectId(),
+                e.getBeforeJson(), e.getAfterJson(), e.getCreatedAt().toString());
     }
 
     private static AdminApplicationView view(Contributor c) {
