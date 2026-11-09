@@ -64,6 +64,8 @@ h4 { font-size: .95rem; margin: 1.25rem 0 .5rem; }
 }
 .tabs a:hover { background: var(--chip); }
 .tabs a.active { background: var(--accent); color: var(--accent-text); }
+/* language switcher: pushed to the far right of the top bar */
+.lang-switch { margin-left: auto; min-height: 2rem; padding: .25rem .5rem; font-size: .9rem; cursor: pointer; }
 
 .banner {
   margin: 1rem; padding: .75rem 1rem; border-radius: 8px;
