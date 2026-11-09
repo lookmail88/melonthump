@@ -4,7 +4,10 @@ import dev.melonthump.contrib.SampleService.SampleStateException;
 import dev.melonthump.contrib.SampleService.SampleWithFiles;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +39,10 @@ public class SampleReviewService {
     public static final String ACTION_APPROVED = "SAMPLE_APPROVED";
     public static final String ACTION_RETURNED = "SAMPLE_RETURNED";
     public static final String ACTION_VOIDED = "SAMPLE_VOIDED";
+    public static final String ACTION_PRELIMINARY_REVIEW = "PRELIMINARY_REVIEW";
+
+    /** Longest preliminary-review note (characters, after trimming). */
+    public static final int MAX_PEPPER_NOTE_LENGTH = 1000;
 
     /** Longest return reason (characters, after trimming). */
     public static final int MAX_RETURN_REASON_LENGTH = 500;
@@ -169,6 +176,36 @@ public class SampleReviewService {
         after.put("clawedBackUnits", clawback.clawedBack());
         audit.record(actor, ACTION_VOIDED, SampleService.OBJECT_SAMPLE, s.getId().toString(), before, after);
         return new SampleWithFiles(s, fileRows);
+    }
+
+    /**
+     * Pepper's preliminary review (§7 item 10): records an advisory
+     * recommendation (and optional note) on any sample, replacing an
+     * earlier one. It never changes the sample's status — the final call
+     * is the owner's. {@code note} must already be validated (trimmed,
+     * at most 1000 chars) or null.
+     */
+    @Transactional
+    public SampleWithFiles preliminaryReview(long sampleId, PepperRecommendation recommendation, String note,
+                                             String actor) {
+        Sample s = lock(sampleId);
+        Map<String, Object> before = pepperSnapshot(s.getPepperRecommendation(), s.getPepperNote(),
+                s.getPepperReviewedAt());
+        Instant at = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        samples.setPreliminaryReview(sampleId, recommendation, note, at);
+        Sample updated = samples.findById(sampleId).orElseThrow(() -> new SampleNotFoundException(sampleId));
+        audit.record(actor, ACTION_PRELIMINARY_REVIEW, SampleService.OBJECT_SAMPLE, Long.toString(sampleId), before,
+                pepperSnapshot(updated.getPepperRecommendation(), updated.getPepperNote(),
+                        updated.getPepperReviewedAt()));
+        return withFiles(updated);
+    }
+
+    private static Map<String, Object> pepperSnapshot(PepperRecommendation r, String note, Instant at) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("pepperRecommendation", r == null ? null : r.name());
+        m.put("pepperNote", note);
+        m.put("pepperReviewedAt", at == null ? null : at.toString());
+        return m;
     }
 
     private Sample lock(long sampleId) {

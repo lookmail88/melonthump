@@ -28,4 +28,6 @@ public interface ContributorRepository extends Repository<Contributor, UUID> {
     List<Contributor> findByStatusOrderByCreatedAtAscContributorIdAsc(ContributorStatus status);
 
     long count();
+
+    long countByStatus(ContributorStatus status);
 }

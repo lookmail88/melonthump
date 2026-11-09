@@ -22,4 +22,8 @@ public interface AdFreeLedgerRepository extends Repository<AdFreeLedgerEntry, Lo
     /** Current balance = sum of all deltas; 0 when the contributor has no rows. */
     @Query("select coalesce(sum(e.delta), 0) from AdFreeLedgerEntry e where e.contributorId = :id")
     long balanceOf(@Param("id") UUID contributorId);
+
+    /** Sum of all deltas across every contributor (S4 overview: ad-free units outstanding). */
+    @Query("select coalesce(sum(e.delta), 0) from AdFreeLedgerEntry e")
+    long totalBalance();
 }

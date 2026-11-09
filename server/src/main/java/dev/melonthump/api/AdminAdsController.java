@@ -72,7 +72,7 @@ public class AdminAdsController {
             throw AdminParams.bad("delta magnitude must be at most " + IncentiveService.MAX_GRANT_MAGNITUDE);
         }
         String reason = AdminParams.requiredText(json, "reason", IncentiveService.MAX_GRANT_REASON_LENGTH);
-        IncentiveService.GrantResult r = incentives.grant(id, delta, reason, AdminController.ACTOR);
+        IncentiveService.GrantResult r = incentives.grant(id, delta, reason, AdminActor.current());
         return new AdFreeGrantResponse(r.contributorId(), r.requestedDelta(), r.appliedDelta(), r.balance());
     }
 
@@ -95,7 +95,7 @@ public class AdminAdsController {
         if (p == null || !p.isBoolean()) {
             throw AdminParams.bad("permanent must be true or false");
         }
-        Contributor c = incentives.setPermanentExemption(id, p.booleanValue(), AdminController.ACTOR);
+        Contributor c = incentives.setPermanentExemption(id, p.booleanValue(), AdminActor.current());
         return new ContributorExemptionView(c.getContributorId(), c.getStatus().name(), c.isAdExemptPermanent());
     }
 
@@ -128,7 +128,7 @@ public class AdminAdsController {
                 throw AdminParams.bad("note must be at most " + AdExemptionService.MAX_NOTE_LENGTH + " characters");
             }
         }
-        AdExemptionService.SetResult r = exemptions.set(installId, note, AdminController.ACTOR);
+        AdExemptionService.SetResult r = exemptions.set(installId, note, AdminActor.current());
         return ResponseEntity.status(r.created() ? HttpStatus.CREATED : HttpStatus.OK).body(view(r.exemption()));
     }
 
@@ -139,7 +139,7 @@ public class AdminAdsController {
         if (id == null || id.length() > AdExemptionService.MAX_INSTALL_ID_LENGTH) {
             throw AdminParams.bad("installId must be 1-" + AdExemptionService.MAX_INSTALL_ID_LENGTH + " characters");
         }
-        exemptions.remove(id, AdminController.ACTOR);
+        exemptions.remove(id, AdminActor.current());
         return ResponseEntity.noContent().build();
     }
 

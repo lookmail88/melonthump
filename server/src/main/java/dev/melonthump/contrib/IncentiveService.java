@@ -6,7 +6,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -41,17 +40,19 @@ public class IncentiveService {
     private final ContributorRepository contributors;
     private final AdFreeLedgerRepository ledger;
     private final AuditLogService audit;
-    private final int unitsPerApprovedSample;
+    private final AdminSettingsService settings;
 
+    /**
+     * The per-sample unit count is the effective {@code adfree_per_approved_sample}
+     * setting (S4): the admin override when present, else
+     * {@code melonthump.contrib.adfree-per-approved-sample} (default 5).
+     */
     public IncentiveService(ContributorRepository contributors, AdFreeLedgerRepository ledger, AuditLogService audit,
-                            @Value("${melonthump.contrib.adfree-per-approved-sample:5}") int unitsPerApprovedSample) {
-        if (unitsPerApprovedSample < 0) {
-            throw new IllegalArgumentException("melonthump.contrib.adfree-per-approved-sample must be >= 0");
-        }
+                            AdminSettingsService settings) {
         this.contributors = contributors;
         this.ledger = ledger;
         this.audit = audit;
-        this.unitsPerApprovedSample = unitsPerApprovedSample;
+        this.settings = settings;
     }
 
     public record GrantResult(UUID contributorId, int requestedDelta, int appliedDelta, long balance) {
@@ -70,7 +71,7 @@ public class IncentiveService {
     }
 
     public int unitsPerApprovedSample() {
-        return unitsPerApprovedSample;
+        return settings.adfreePerApprovedSample();
     }
 
     // ---- sample review hooks (join the review transaction) ----------------------
@@ -82,7 +83,8 @@ public class IncentiveService {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public int earnForApprovedSample(Sample sample) {
-        if (!sample.isComplete() || unitsPerApprovedSample == 0) {
+        int units = unitsPerApprovedSample();
+        if (!sample.isComplete() || units == 0) {
             return 0;
         }
         String ref = sample.getId().toString();
@@ -90,9 +92,9 @@ public class IncentiveService {
             return 0;
         }
         lockContributor(sample.getContributorId());
-        ledger.save(new AdFreeLedgerEntry(sample.getContributorId(), unitsPerApprovedSample,
+        ledger.save(new AdFreeLedgerEntry(sample.getContributorId(), units,
                 LedgerReason.SAMPLE_APPROVED, ref));
-        return unitsPerApprovedSample;
+        return units;
     }
 
     /** Outcome of a void clawback, for the audit snapshot. */
@@ -161,6 +163,12 @@ public class IncentiveService {
         a.put("ledgerEntryId", entryId);
         audit.record(actor, ACTION_GRANT, AuditLogService.OBJECT_CONTRIBUTOR, contributorId.toString(), b, a);
         return new GrantResult(contributorId, delta, applied, after);
+    }
+
+    /** Sum of every contributor's current balance (each is floored at zero, so this is the total ledger sum). */
+    @Transactional(readOnly = true)
+    public long outstandingBalance() {
+        return ledger.totalBalance();
     }
 
     @Transactional(readOnly = true)

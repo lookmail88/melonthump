@@ -37,17 +37,15 @@ import org.springframework.web.server.ResponseStatusException;
  * environment only once the Access policy covers {@code /api/admin/**}
  * on that host. While disabled, every /api/admin path is a plain 404.
  *
- * <p>Audit actor is the fixed string {@value #ACTOR} for now; recording
- * the Cloudflare Access identity (Cf-Access-Authenticated-User-Email)
- * is a later refinement.
+ * <p>Audit actor (S4): the Cloudflare Access identity from the
+ * {@code Cf-Access-Authenticated-User-Email} header when present, else
+ * {@code owner} — see {@link AdminActor}.
  */
 @RestController
 @RequestMapping("/api/admin")
 @ConditionalOnProperty(name = "melonthump.admin.enabled", havingValue = "true")
 @Tag(name = "admin", description = "Owner console API (behind Cloudflare Access in production)")
 public class AdminController {
-
-    static final String ACTOR = "owner";
 
     private final ContributionService service;
     private final AuditLogRepository auditLog;
@@ -76,19 +74,19 @@ public class AdminController {
     @Operation(summary = "Approve an application (PENDING / DECLINED / REVOKED -> APPROVED)")
     @PostMapping("/applications/{contributorId}/approve")
     public AdminApplicationView approve(@PathVariable UUID contributorId) {
-        return view(service.approve(contributorId, ACTOR));
+        return view(service.approve(contributorId, AdminActor.current()));
     }
 
     @Operation(summary = "Decline an application (PENDING -> DECLINED)")
     @PostMapping("/applications/{contributorId}/decline")
     public AdminApplicationView decline(@PathVariable UUID contributorId) {
-        return view(service.decline(contributorId, ACTOR));
+        return view(service.decline(contributorId, AdminActor.current()));
     }
 
     @Operation(summary = "Revoke an approved contributor (APPROVED -> REVOKED)")
     @PostMapping("/contributors/{contributorId}/revoke")
     public AdminApplicationView revoke(@PathVariable UUID contributorId) {
-        return view(service.revoke(contributorId, ACTOR));
+        return view(service.revoke(contributorId, AdminActor.current()));
     }
 
     @Operation(summary = "Read the audit log, newest first",

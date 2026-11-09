@@ -1,6 +1,7 @@
 package dev.melonthump.api;
 
 import dev.melonthump.contrib.AdExemptionService.ExemptionNotFoundException;
+import dev.melonthump.contrib.AdminSettingsService.SettingNotOverriddenException;
 import dev.melonthump.contrib.ContributionService.ContributorNotFoundException;
 import dev.melonthump.contrib.ContributionService.IllegalTransitionException;
 import dev.melonthump.contrib.IncentiveService.InsufficientBalanceException;
@@ -25,10 +26,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * foreign sample → 403, sample in a terminal state → 409, request that
  * conflicts with the stored sample's limits → 400. S3 adds: unknown
  * sample / material file / exemption (admin) → 404, ad-free spend with
- * an empty balance → 409.
+ * an empty balance → 409. S4 adds: resetting a setting without an
+ * override → 404.
  */
 @RestControllerAdvice(assignableTypes = {ContributionController.class, AdminController.class,
-        SampleController.class, AdminReviewController.class, AdminAdsController.class})
+        SampleController.class, AdminReviewController.class, AdminAdsController.class,
+        AdminConsoleController.class})
 public class ContributionExceptionHandler {
 
     @ExceptionHandler(ContributorNotFoundException.class)
@@ -86,6 +89,11 @@ public class ContributionExceptionHandler {
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<Map<String, String>> insufficient(InsufficientBalanceException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body("insufficient_balance", e.getMessage()));
+    }
+
+    @ExceptionHandler(SettingNotOverriddenException.class)
+    public ResponseEntity<Map<String, String>> settingNotOverridden(SettingNotOverriddenException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body("setting_not_overridden", e.getMessage()));
     }
 
     /** Fixed key order (error, detail) so the body is byte-stable across JVM runs. */

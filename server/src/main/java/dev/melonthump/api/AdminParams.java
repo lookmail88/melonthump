@@ -98,4 +98,26 @@ final class AdminParams {
         }
         return v;
     }
+
+    /**
+     * An optional string field: absent / null / blank → null; otherwise
+     * trimmed and at most {@code max} characters; a non-string → 400.
+     */
+    static String optionalText(JsonNode body, String field, int max) {
+        JsonNode n = body.get(field);
+        if (n == null || n.isNull()) {
+            return null;
+        }
+        if (!n.isTextual()) {
+            throw bad(field + " must be a string");
+        }
+        String v = n.asText().strip();
+        if (v.isEmpty()) {
+            return null;
+        }
+        if (v.length() > max) {
+            throw bad(field + " must be at most " + max + " characters");
+        }
+        return v;
+    }
 }

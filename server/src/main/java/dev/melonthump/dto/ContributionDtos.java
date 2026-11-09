@@ -120,7 +120,15 @@ public final class ContributionDtos {
             @Schema(description = "Owner's note when RETURNED; null otherwise") String returnReason,
             String variety,
             String createdAt,
-            String updatedAt) {
+            String updatedAt,
+            @Schema(description = "S4: Pepper's preliminary recommendation (SUGGEST_APPROVE / SUGGEST_RETURN / "
+                    + "FLAG_OWNER); null until reviewed", nullable = true)
+            String pepperRecommendation,
+            @Schema(description = "S4: Pepper's note (e.g. a drafted return reason); may be null", nullable = true)
+            String pepperNote,
+            @Schema(description = "S4: ISO-8601 UTC instant of the preliminary review; null until reviewed",
+                    nullable = true)
+            String pepperReviewedAt) {
     }
 
     @Schema(description = "One stored material file in the admin detail: the S2 file view plus the row id "
@@ -149,7 +157,13 @@ public final class ContributionDtos {
             FeedbackView feedback,
             List<AdminSampleFileView> files,
             String createdAt,
-            String updatedAt) {
+            String updatedAt,
+            @Schema(description = "S4: Pepper's preliminary recommendation; null until reviewed", nullable = true)
+            String pepperRecommendation,
+            @Schema(description = "S4: Pepper's note; may be null", nullable = true)
+            String pepperNote,
+            @Schema(description = "S4: ISO-8601 UTC instant of the preliminary review", nullable = true)
+            String pepperReviewedAt) {
     }
 
     @Schema(description = "Result of a manual ad-free grant / revocation")

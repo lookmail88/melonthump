@@ -1,6 +1,8 @@
 package dev.melonthump.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.melonthump.contrib.PepperRecommendation;
 import dev.melonthump.contrib.Sample;
 import dev.melonthump.contrib.SampleService.SampleWithFiles;
 import dev.melonthump.contrib.SampleReviewService;
@@ -13,6 +15,7 @@ import dev.melonthump.dto.ContributionDtos.SampleDetail;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.FileSystemResource;
@@ -86,7 +89,7 @@ public class AdminReviewController {
     @PostMapping("/{sampleId}/approve")
     public AdminSampleDetail approve(@PathVariable String sampleId) {
         return view(review.approve(AdminParams.positiveId(sampleId, "sampleId"),
-                AdminController.ACTOR));
+                AdminActor.current()));
     }
 
     @Operation(summary = "Return with a reason (SUBMITTED -> RETURNED)",
@@ -98,7 +101,7 @@ public class AdminReviewController {
         long id = AdminParams.positiveId(sampleId, "sampleId");
         String reason = AdminParams.requiredText(AdminParams.object(objectMapper, body), "reason",
                 SampleReviewService.MAX_RETURN_REASON_LENGTH);
-        return view(review.returnSample(id, reason, AdminController.ACTOR));
+        return view(review.returnSample(id, reason, AdminActor.current()));
     }
 
     @Operation(summary = "Void-mark (SUBMITTED / RETURNED / APPROVED -> VOIDED); earned units are clawed back",
@@ -106,7 +109,31 @@ public class AdminReviewController {
     @PostMapping("/{sampleId}/void")
     public AdminSampleDetail voidSample(@PathVariable String sampleId) {
         return view(review.voidSample(AdminParams.positiveId(sampleId, "sampleId"),
-                AdminController.ACTOR));
+                AdminActor.current()));
+    }
+
+    @Operation(summary = "Pepper's preliminary review: attach an advisory recommendation to a sample",
+            description = "Body {\"recommendation\": \"SUGGEST_APPROVE\" | \"SUGGEST_RETURN\" | \"FLAG_OWNER\", "
+                    + "\"note\": optional, at most 1000 chars}. Replaces any earlier recommendation; never changes "
+                    + "the sample status (the owner makes the final call). Audit actor: the Access email when "
+                    + "present, else 'pepper'. Unknown sample: 404; bad recommendation: 400.")
+    @PostMapping("/{sampleId}/preliminary-review")
+    public AdminSampleDetail preliminaryReview(@PathVariable String sampleId,
+                                               @RequestBody(required = false) byte[] body) {
+        long id = AdminParams.positiveId(sampleId, "sampleId");
+        JsonNode json = AdminParams.object(objectMapper, body);
+        JsonNode r = json.get("recommendation");
+        if (r == null || !r.isTextual() || r.asText().isBlank()) {
+            throw AdminParams.bad("recommendation is required (SUGGEST_APPROVE / SUGGEST_RETURN / FLAG_OWNER)");
+        }
+        PepperRecommendation rec;
+        try {
+            rec = PepperRecommendation.valueOf(r.asText().strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw AdminParams.bad("recommendation must be SUGGEST_APPROVE / SUGGEST_RETURN / FLAG_OWNER");
+        }
+        String note = AdminParams.optionalText(json, "note", SampleReviewService.MAX_PEPPER_NOTE_LENGTH);
+        return view(review.preliminaryReview(id, rec, note, AdminActor.current(AdminActor.PEPPER)));
     }
 
     static AdminSampleDetail view(SampleWithFiles r) {
@@ -117,13 +144,23 @@ public class AdminReviewController {
                 .toList();
         return new AdminSampleDetail(d.id(), d.contributorId(), d.status(), d.completeness(), d.complete(),
                 d.returnReason(), d.variety(), d.weightGrams(), d.weightProvenance(), d.source(), d.melonDate(),
-                d.feedback(), files, d.createdAt(), d.updatedAt());
+                d.feedback(), files, d.createdAt(), d.updatedAt(), pepperRecommendation(r.sample()),
+                r.sample().getPepperNote(), instant(r.sample().getPepperReviewedAt()));
+    }
+
+    private static String pepperRecommendation(Sample s) {
+        return s.getPepperRecommendation() == null ? null : s.getPepperRecommendation().name();
+    }
+
+    private static String instant(java.time.Instant i) {
+        return i == null ? null : i.toString();
     }
 
     static AdminSampleSummary summary(Sample s) {
         return new AdminSampleSummary(s.getId(), s.getContributorId(), s.getStatus().name(),
                 new Completeness(s.hasAppearance(), s.hasRecording(), s.hasCutOpen(), s.hasFeedback()),
                 s.isComplete(), s.getReturnReason(), s.getVariety().name(),
-                s.getCreatedAt().toString(), s.getUpdatedAt().toString());
+                s.getCreatedAt().toString(), s.getUpdatedAt().toString(), pepperRecommendation(s), s.getPepperNote(),
+                instant(s.getPepperReviewedAt()));
     }
 }

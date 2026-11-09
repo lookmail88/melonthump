@@ -3,6 +3,7 @@ package dev.melonthump.api;
 import dev.melonthump.attest.AssertionService;
 import dev.melonthump.attest.AttestException;
 import dev.melonthump.contrib.AdExemptionService;
+import dev.melonthump.contrib.AdminSettingsService;
 import dev.melonthump.dto.ClientVersionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,19 +31,24 @@ public class VersionController {
     private final String latestVersion;
     private final String minSupportedVersion;
     private final String updateUrl;
-    private final int creditPerAd;
-    private final Long promoEndsAtEpochMillis;
     private final String rewardedAdUnitId;
-    private final int initialFreeThumps;
     private final boolean sessionUnlockEnabled;
     private final int adFreeSessionCreditPrice;
     private final String testflightVersion;
     private final String productVersion;
     private final AssertionService assertions;
     private final AdExemptionService exemptions;
+    /**
+     * S4: creditPerAd, promoEndsAtEpochMillis and initialFreeThumps are the
+     * effective admin settings (override, else the same properties / env
+     * defaults as before). Only the VALUES can change; the response shape
+     * and the per-version gating are untouched. latestVersion and
+     * minSupportedVersion stay plain configuration (release process only).
+     */
+    private final AdminSettingsService settings;
 
     /** Design values (1.2.0 §3, decided 2026-11-05) — also the fallback for invalid config. */
-    static final int DEFAULT_INITIAL_FREE_THUMPS = 2;
+    static final int DEFAULT_INITIAL_FREE_THUMPS = AdminSettingsService.DEFAULT_INITIAL_FREE_THUMPS;
     static final boolean DEFAULT_SESSION_UNLOCK_ENABLED = true;
     static final int DEFAULT_AD_FREE_SESSION_CREDIT_PRICE = 1;
 
@@ -51,30 +57,26 @@ public class VersionController {
             @Value("${melonthump.client.latest-version:1.0.0}") String latestVersion,
             @Value("${melonthump.client.min-supported-version:1.0.0}") String minSupportedVersion,
             @Value("${melonthump.client.update-url:}") String updateUrl,
-            @Value("${melonthump.client.credit-per-ad:1}") int creditPerAd,
-            @Value("${melonthump.client.promo-ends-at-epoch-millis:}") String promoEndsAtRaw,
             @Value("${melonthump.client.rewarded-ad-unit-id:}") String rewardedAdUnitId,
-            @Value("${melonthump.client.initial-free-thumps:2}") String initialFreeThumpsRaw,
             @Value("${melonthump.client.session-unlock-enabled:true}") String sessionUnlockRaw,
             @Value("${melonthump.client.ad-free-session-credit-price:1}") String adFreePriceRaw,
             @Value("${melonthump.client.testflight-version:}") String testflightVersion,
             @Value("${melonthump.client.product-version:}") String productVersion,
             AssertionService assertions,
-            AdExemptionService exemptions) {
+            AdExemptionService exemptions,
+            AdminSettingsService settings) {
         this.platform = platform;
         this.latestVersion = latestVersion;
         this.minSupportedVersion = minSupportedVersion;
         this.updateUrl = updateUrl;
-        this.creditPerAd = creditPerAd;
-        this.promoEndsAtEpochMillis = parseEpochMillis(promoEndsAtRaw);
         this.rewardedAdUnitId = rewardedAdUnitId;
-        this.initialFreeThumps = parseInt(initialFreeThumpsRaw, 0, DEFAULT_INITIAL_FREE_THUMPS);
         this.sessionUnlockEnabled = parseBoolean(sessionUnlockRaw, DEFAULT_SESSION_UNLOCK_ENABLED);
         this.adFreeSessionCreditPrice = parseInt(adFreePriceRaw, 1, DEFAULT_AD_FREE_SESSION_CREDIT_PRICE);
         this.testflightVersion = blankToNull(testflightVersion);
         this.productVersion = blankToNull(productVersion);
         this.assertions = assertions;
         this.exemptions = exemptions;
+        this.settings = settings;
     }
 
     /**
@@ -82,15 +84,7 @@ public class VersionController {
      * value — a typo in a manifest must never break the policy endpoint.
      */
     static int parseInt(String raw, int min, int fallback) {
-        if (raw == null || raw.isBlank()) {
-            return fallback;
-        }
-        try {
-            int value = Integer.parseInt(raw.trim());
-            return value >= min ? value : fallback;
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
+        return AdminSettingsService.parseInt(raw, min, fallback);
     }
 
     static boolean parseBoolean(String raw, boolean fallback) {
@@ -121,18 +115,6 @@ public class VersionController {
                 + (currentVersion == null ? "" : currentVersion);
     }
 
-    /** Blank or malformed config means "no promo running" — never fail the policy over it. */
-    private static Long parseEpochMillis(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(raw.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
     @Operation(summary = "Get the client version policy",
             description = "Returns the latest and minimum supported client versions. "
                     + "Pass currentVersion to have the server evaluate updateAvailable / forceUpdate for that client.")
@@ -153,11 +135,12 @@ public class VersionController {
         // 1.1.0 response — the new fields are null and omitted.
         boolean modern = currentVersion != null
                 && compareVersions(currentVersion, ClientVersionResponse.ALLOWANCE_FIELDS_SINCE) >= 0;
+        AdminSettingsService.Effective effective = settings.effective();
         return new ClientVersionResponse(
                 platform, latestVersion, minSupportedVersion, updateAvailable, forceUpdate, updateUrl,
-                creditPerAd, promoEndsAtEpochMillis,
+                effective.creditPerAd(), effective.promoEndsAtEpochMillis(),
                 attestedRewardedAdUnitId(currentVersion, keyId, assertion, challenge, bypass),
-                modern ? initialFreeThumps : null,
+                modern ? effective.initialFreeThumps() : null,
                 modern ? sessionUnlockEnabled : null,
                 modern ? adFreeSessionCreditPrice : null,
                 modern ? testflightVersion : null,

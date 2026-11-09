@@ -86,6 +86,18 @@ public class Sample {
     @Column(name = "return_reason")
     private String returnReason;
 
+    // S4: Pepper's preliminary review (§7 item 10). Admin-side only; written
+    // through SampleRepository#setPreliminaryReview, never by entity updates.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pepper_recommendation", length = 16, insertable = false, updatable = false)
+    private PepperRecommendation pepperRecommendation;
+
+    @Column(name = "pepper_note", insertable = false, updatable = false)
+    private String pepperNote;
+
+    @Column(name = "pepper_reviewed_at", insertable = false, updatable = false)
+    private Instant pepperReviewedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -238,6 +250,18 @@ public class Sample {
 
     public String getReturnReason() {
         return returnReason;
+    }
+
+    public PepperRecommendation getPepperRecommendation() {
+        return pepperRecommendation;
+    }
+
+    public String getPepperNote() {
+        return pepperNote;
+    }
+
+    public Instant getPepperReviewedAt() {
+        return pepperReviewedAt;
     }
 
     public Instant getCreatedAt() {

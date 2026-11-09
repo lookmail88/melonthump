@@ -2,7 +2,7 @@
 
 The server boots for QA without PostgreSQL using the `qa` Spring profile:
 an in-memory H2 database in PostgreSQL compatibility mode, with the schema
-built by the **same Flyway migrations** as production (V1–V6). Data lives
+built by the **same Flyway migrations** as production (V1–V7). Data lives
 only for the life of the process; every boot starts empty.
 
 The H2 driver is not in the production build. The `qa` **Maven** profile
@@ -109,5 +109,49 @@ curl -s "$B/api/admin/audit?objectType=SAMPLE&objectId=N&limit=50"
 Since S3 the RETURNED-resubmit path and the APPROVED / VOIDED 409 paths of
 the S2 sample endpoints are reachable black-box through the review
 endpoints above, and audit rows are readable through `GET /api/admin/audit`.
+
+### Admin page, runtime settings, Access identity, preliminary review, overview (S4)
+
+**Admin page:** open `http://localhost:8080/admin/` in a browser (Safari, Chrome or Edge;
+phone-width works too). It is plain static HTML/CSS/JS calling `/api/admin/**`; no login
+locally (Cloudflare Access fronts it in production). Sections: Overview · Contributors ·
+Sample review · Ad switches. `/admin` redirects to `/admin/`.
+
+```bash
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' $B/admin/          # 200 text/html
+curl -sI $B/admin/ | grep -i content-security-policy                         # same-origin CSP
+
+# Settings -> policy values (shapes unchanged; only values move)
+curl -s $B/api/admin/settings                                     # 4 keys: value, defaultValue, overridden
+curl -s -XPUT $B/api/admin/settings -H 'Content-Type: application/json' \
+  -d '{"key":"credit_per_ad","value":"-1"}'                       # overridden:true
+curl -s "$B/api/v1/version/getclientversion?currentVersion=1.1.0"  # "creditPerAd":-1, same fields as before
+curl -s -XPUT $B/api/admin/settings -H 'Content-Type: application/json' \
+  -d '{"key":"initial_free_thumps","value":"4"}'
+curl -s "$B/api/v1/version/getclientversion?currentVersion=1.2.0"  # "initialFreeThumps":4
+curl -s -XPUT $B/api/admin/settings -H 'Content-Type: application/json' \
+  -d '{"key":"latest_version","value":"9.9.9"}'                   # 400: not a setting (release process only)
+curl -s -XDELETE $B/api/admin/settings/credit_per_ad              # back to default; again -> 404
+curl -s -XDELETE $B/api/admin/settings/initial_free_thumps
+curl -s -XPUT $B/api/admin/settings -H 'Content-Type: application/json' \
+  -d '{"key":"adfree_per_approved_sample","value":"7"}'           # next approved complete sample earns 7
+
+# Actor: the Access email header becomes the audit actor; absent -> "owner"
+curl -s -XPUT $B/api/admin/settings -H 'Content-Type: application/json' \
+  -H 'Cf-Access-Authenticated-User-Email: qa@example.test' -d '{"key":"credit_per_ad","value":"2"}'
+curl -s "$B/api/admin/audit?objectType=SETTING&objectId=credit_per_ad&limit=1"   # "actor":"qa@example.test"
+
+# Pepper preliminary review (actor "pepper" unless the Access header is sent)
+curl -s -XPOST $B/api/admin/samples/N/preliminary-review -H 'Content-Type: application/json' \
+  -d '{"recommendation":"SUGGEST_RETURN","note":"cut-open photo is blurry"}'   # pepper* fields in admin shapes
+curl -s "$B/api/admin/audit?objectType=SAMPLE&objectId=N&limit=1"             # PRELIMINARY_REVIEW, actor pepper
+curl -s -H "$H" "$B/api/v1/contributions/samples/N?contributorId=$U"          # contributor shape: no pepper fields
+
+# Overview (page D)
+curl -s $B/api/admin/overview   # contributors{...}, samples{...}, completeSamplesApproved, pendingReview, adFreeOutstanding
+```
+
+With `melonthump.admin.enabled=false` the page still loads and shows an "Admin API
+disabled" banner (every `/api/admin/**` call is 404).
 
 Swagger UI: `http://localhost:8080/swagger-ui.html`.
