@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/lookmail88/melonthump/compare/v1.16.0...v1.17.0) (2026-11-09)
+
+
+### Features
+
+* per-type Vision judging — thresholds and sample scores by photo kind ([6702a92](https://github.com/lookmail88/melonthump/commit/6702a92cdd8d75029cc78bf5f1112f5ff256e87a))
+
 # [1.16.0](https://github.com/lookmail88/melonthump/compare/v1.15.0...v1.16.0) (2026-11-09)
 
 
