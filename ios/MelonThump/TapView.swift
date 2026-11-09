@@ -81,7 +81,7 @@ struct TapView: View {
             case .records: RecordsListView(onThump: thumpForRecord)
             case .program: ProgramMenuSheet()
             // Never set: the drawer's Feedback row opens the mail
-            // composer directly (SettingsView.openFeedbackMail).
+            // composer directly (MenuDrawer.openFeedbackMail).
             case .feedback: EmptyView()
             case .settings: SettingsView()
             case .about: AboutView()

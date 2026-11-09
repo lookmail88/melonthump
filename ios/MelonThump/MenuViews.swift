@@ -62,10 +62,10 @@ enum MenuDestination: String, Identifiable {
 /// Slide-in drawer from the left. 1.2.0 had exactly three entries
 /// (decided 2026-11-04, no History); 2.0 adds My Melons — the melon
 /// records, which are the thump history (design doc 2.0 §2 item 8),
-/// and the Model Improvement Program (FIX3, 2026-11-08) — the same
-/// destination Settings links to; the Settings entry stays — and
-/// Feedback (FIX4, 2026-11-08), which runs the Settings entry's own
-/// mail action instead of presenting a sheet.
+/// the Model Improvement Program (FIX3, 2026-11-08) and Feedback
+/// (FIX4, 2026-11-08), which opens the mail composer instead of
+/// presenting a sheet. FIX5 (2026-11-08): these two live only here —
+/// Settings no longer carries them (one entry per feature).
 struct MenuDrawer: View {
     @Binding var isOpen: Bool
     let onSelect: (MenuDestination) -> Void
@@ -89,10 +89,10 @@ struct MenuDrawer: View {
                         .padding(.bottom, 22)
                     row(.models, icon: "waveform.badge.magnifyingglass", title: l.t("menu.models"))
                     row(.records, icon: "list.bullet.rectangle", title: l.t("menu.records"))
-                    // Same icon and title logic as the Settings entry.
+                    // Join-vs-joined title: "Join…" until enrolled.
                     row(.program, icon: "leaf",
                         title: program.phase == .notEnrolled ? l.t("set.joinProgram") : l.t("program.title"))
-                    // Same icon, title and action as the Settings entry.
+                    // Opens the system mail composer directly (no sheet).
                     row(.feedback, icon: "envelope", title: l.t("set.feedback"))
                     row(.settings, icon: "gearshape", title: l.t("menu.settings"))
                     row(.about, icon: "info.circle", title: l.t("menu.about"))
@@ -119,7 +119,7 @@ struct MenuDrawer: View {
         Button {
             close()
             if destination == .feedback {
-                SettingsView.openFeedbackMail(l: l, openURL: openURL)
+                openFeedbackMail()
             } else {
                 onSelect(destination)
             }
@@ -141,12 +141,33 @@ struct MenuDrawer: View {
     }
 
     private func close() { isOpen = false }
+
+    /// Mirrors Retax's openFeedbackMail (ported 550b315): system mail
+    /// composer via mailto, nothing sent to our server; recipient and
+    /// subject prefilled, the app version appended to the body; stateless.
+    private func openFeedbackMail() {
+        if let url = Self.feedbackMailURL(subject: l.t("set.feedbackSubject")) {
+            openURL(url)
+        }
+    }
+
+    static func feedbackMailURL(subject: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = AppSettings.supportEmail
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: subject),
+            URLQueryItem(name: "body", value: "\n\n\u{2014}\nMelonThump " + version),
+        ]
+        return components.url
+    }
 }
 
 // MARK: - Model Improvement Program (drawer entry)
 
-/// The drawer's door into the program: the same ProgramEntryView the
-/// Settings entry pushes, in a sheet with its own NavigationStack and
+/// The app's door into the program (Settings no longer links to it,
+/// FIX5): ProgramEntryView in a sheet with its own NavigationStack and
 /// the Done button the other drawer sheets use.
 struct ProgramMenuSheet: View {
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
@@ -257,8 +278,6 @@ struct SettingsView: View {
     @AppStorage(AppSettings.listeningDurationKey) private var listeningDuration = AppSettings.defaultListeningDuration
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @ObservedObject private var policy = PolicyStore.shared
-    @ObservedObject private var program = ContributorProgram.shared
-    @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     private var l: L10n { L10n(preference: languagePref) }
 
@@ -311,41 +330,7 @@ struct SettingsView: View {
                     }
                 }
 
-                // 2.0 Model Improvement Program (design doc 2.0 §5 item 6):
-                // explanation → enrollment note → application; afterwards
-                // the program home and self-service.
-                Section {
-                    NavigationLink {
-                        ProgramEntryView()
-                    } label: {
-                        HStack {
-                            Image(systemName: "leaf")
-                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
-                            Text(program.phase == .notEnrolled ? l.t("set.joinProgram") : l.t("program.title"))
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    .accessibilityIdentifier("settings.program")
-                }
-
-                // Feedback (ported from Retax 550b315): system mail
-                // composer via mailto, nothing sent to our server.
-                Section {
-                    Button(action: openFeedbackMail) {
-                        HStack {
-                            Image(systemName: "envelope")
-                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
-                            Text(l.t("set.feedback"))
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.footnote).bold()
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-
-                // Development Team — after Feedback, above About.
+                // Development Team — above About.
                 Section {
                     NavigationLink {
                         TeamView()
@@ -359,7 +344,7 @@ struct SettingsView: View {
                     }
                 }
 
-                // About — below Feedback, as in Retax.
+                // About — last, as in Retax.
                 Section {
                     NavigationLink {
                         AboutContent()
@@ -398,31 +383,6 @@ struct SettingsView: View {
                 }
             }
         }
-    }
-
-    /// Mirrors Retax's openFeedbackMail: recipient prefilled, subject
-    /// prefilled, the app version appended to the body; stateless.
-    private func openFeedbackMail() {
-        Self.openFeedbackMail(l: l, openURL: openURL)
-    }
-
-    /// Shared with the drawer's Feedback row (FIX4): one code path.
-    static func openFeedbackMail(l: L10n, openURL: OpenURLAction) {
-        if let url = feedbackMailURL(subject: l.t("set.feedbackSubject")) {
-            openURL(url)
-        }
-    }
-
-    static func feedbackMailURL(subject: String) -> URL? {
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = AppSettings.supportEmail
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        components.queryItems = [
-            URLQueryItem(name: "subject", value: subject),
-            URLQueryItem(name: "body", value: "\n\n\u{2014}\nMelonThump " + version),
-        ]
-        return components.url
     }
 }
 
