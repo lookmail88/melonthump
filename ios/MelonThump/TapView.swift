@@ -326,7 +326,7 @@ struct TapView: View {
                 .shadow(color: MelonTheme.buttonGreen.opacity(0.35), radius: 10, y: 5)
             }
 
-            Text(l.f("home.hint", AppSettings.sanitizedDuration(listeningDuration)))
+            Text(l.t("home.journeyHint"))
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
@@ -810,6 +810,14 @@ struct RecordingView: View {
 
             Text(l.t("rec.prompt"))
                 .font(.subheadline)
+                .foregroundColor(MelonTheme.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.top, 6)
+
+            // FIX9: the auto-stop hint (formerly home.hint) lives with
+            // the recording instructions, at the active duration.
+            Text(l.f("rec.thumpHint", durationSeconds))
+                .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .multilineTextAlignment(.center)
                 .padding(.top, 6)
