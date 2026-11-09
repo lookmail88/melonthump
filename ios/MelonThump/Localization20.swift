@@ -170,6 +170,11 @@ extension L10n {
             .en: "Choose a variety above first (\"Other / not sure\" is fine).",
             .es: "Elige antes una variedad arriba (\"Otra / no sé\" vale).",
         ],
+        "contrib.lockedUntilApproved": [
+            .zh: "批准后即可提交样本。",
+            .en: "You can submit samples once your application is approved.",
+            .es: "Podrás enviar muestras cuando se apruebe tu solicitud.",
+        ],
         "contrib.appendFooter": [
             .zh: "吃完后补的切开图、评价和新照片，用「发送补充」上传到同一个样本。",
             .en: "The cut-open photo, rating and new photos you add later go to the same sample with Send updates.",

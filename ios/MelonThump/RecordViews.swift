@@ -256,7 +256,9 @@ struct RecordDetailView: View {
                 memberSteps(record)
             }
 
-            if program.isApproved || record.submission != nil {
+            // FIX7: PENDING applicants also see the section, with the
+            // submit button locked until approval.
+            if program.isApproved || program.isPending || record.submission != nil {
                 contributeSection(record)
             }
 
@@ -375,7 +377,7 @@ struct RecordDetailView: View {
         }
     }
 
-    // MARK: Contribute (approved contributors)
+    // MARK: Contribute (approved contributors; locked for pending applicants)
 
     @ViewBuilder
     private func contributeSection(_ record: MelonRecord) -> some View {
@@ -401,6 +403,21 @@ struct RecordDetailView: View {
                     }
                     .disabled(busy)
                 }
+            } else if !program.isApproved {
+                // FIX7: pending applicant — visible but locked. Tapping only
+                // explains; it never starts an upload.
+                Button {
+                    message = l.t("contrib.lockedUntilApproved")
+                } label: {
+                    HStack {
+                        Label(l.t("contrib.contribute"), systemImage: "icloud.and.arrow.up")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Image(systemName: "lock.fill").foregroundColor(.secondary)
+                    }
+                }
+                .accessibilityIdentifier("record.contribute.locked")
+                .accessibilityHint(l.t("contrib.lockedUntilApproved"))
             } else {
                 Button {
                     confirmContribute = true
@@ -420,7 +437,9 @@ struct RecordDetailView: View {
         } header: {
             Text(l.t("contrib.section"))
         } footer: {
-            if record.submission == nil {
+            if record.submission == nil, !program.isApproved {
+                Label(l.t("contrib.lockedUntilApproved"), systemImage: "lock.fill")
+            } else if record.submission == nil {
                 Text(record.variety == nil ? l.t("contrib.needVariety") : l.t("contrib.footer"))
             } else if program.isMember {
                 // FIX6: the append footer points at the cut-open photo and

@@ -297,6 +297,8 @@ final class ContributorProgram: ObservableObject {
     /// unknown standing (loading / unavailable) = not a member. Same
     /// per-environment cached standing as the program home.
     var isMember: Bool { phase == .enrolled(.pending) || phase == .enrolled(.approved) }
+    /// FIX7: applied and awaiting owner approval (sees the locked submit button).
+    var isPending: Bool { phase == .enrolled(.pending) }
     /// The "Use 1 ad-free unit" offer applies.
     var canSpendAdFree: Bool { isApproved && adFreeBalance > 0 && !adExemptPermanent }
 
