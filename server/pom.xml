@@ -22,6 +22,10 @@
         <java.version>25</java.version>
         <springdoc.version>3.1.1</springdoc.version>
         <bouncycastle.version>1.80</bouncycastle.version>
+        <!-- H2 is test-only by default; the `qa` Maven profile widens it to
+             runtime so the app can boot standalone on in-memory H2
+             (see QA-RUN.md). Production builds never ship H2. -->
+        <h2.scope>test</h2.scope>
     </properties>
 
     <dependencies>
@@ -52,6 +56,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
+        <!-- 2.0: contributor data layer (contributors, samples, audit log,
+             ad-free ledger) as JPA entities + Spring Data repositories.
+             Schema stays owned by Flyway (ddl-auto=none). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
@@ -78,7 +89,7 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>${h2.scope}</scope>
         </dependency>
         <!-- Test-only: mint a synthetic App Attest certificate chain so
              the verifier can be exercised end to end without a device. -->
@@ -95,6 +106,16 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <!-- QA boot on in-memory H2: mvn -Pqa spring-boot:run -Dspring-boot.run.profiles=qa -->
+        <profile>
+            <id>qa</id>
+            <properties>
+                <h2.scope>runtime</h2.scope>
+            </properties>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>

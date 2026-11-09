@@ -43,6 +43,10 @@ final class APIClient: Sendable {
         }
         var request = URLRequest(url: url)
         applyIdentityHeaders(&request)
+        // 2.0 (design doc 2.0 §2 item 6): the stats installId rides on the
+        // policy request so the server can answer adExempt for the
+        // owner's own devices. Older servers ignore the header.
+        request.setValue(StatsReporter.installId.uuidString.lowercased(), forHTTPHeaderField: "X-Install-Id")
         if let assertionHeaders {
             for (name, value) in assertionHeaders {
                 request.setValue(value, forHTTPHeaderField: name)

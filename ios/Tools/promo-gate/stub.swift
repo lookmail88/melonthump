@@ -18,6 +18,8 @@ struct ClientVersion {
     let initialFreeThumps: Int?
     let sessionUnlockEnabled: Bool?
     let adFreeSessionCreditPrice: Int?
+    /// 2.0 field; the harness policies never send it (older-server shape).
+    var adExempt: Bool? = nil
 }
 struct PolicyError: Error {}
 struct APIClient {

@@ -56,8 +56,20 @@ public record ClientVersionResponse(
         @JsonInclude(JsonInclude.Include.NON_NULL)
         @Schema(description = "1.2.0+: the client version currently released on the App Store; absent when not configured",
                 example = "1.1.0", nullable = true)
-        String productVersion) {
+        String productVersion,
+        // ---- 2.0 additive field (design doc 2.0 §2 item 6) ------------------
+        // Delivered ONLY to clients reporting currentVersion >= 2.0.0; null
+        // and therefore absent for every older client, whose response stays
+        // byte-identical.
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Schema(description = "2.0.0+: true when the X-Install-Id request header names an install on the "
+                + "owner ad-exemption allowlist (the device skips the ad gate entirely); false otherwise, "
+                + "including when the header is absent", example = "false", nullable = true)
+        Boolean adExempt) {
 
     /** First client version that receives the 1.2.0 policy fields. */
     public static final String ALLOWANCE_FIELDS_SINCE = "1.2.0";
+
+    /** First client version that receives {@code adExempt}. */
+    public static final String AD_EXEMPT_SINCE = "2.0.0";
 }

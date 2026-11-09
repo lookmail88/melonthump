@@ -70,7 +70,11 @@ struct L10n {
     }
     #endif
 
-    static let strings: [String: [AppLanguage: String]] = [
+    /// Every UI string: the 1.2.0 table below plus the 2.0 additions
+    /// (Localization20.swift). A key defined in both keeps the 1.2.0 text.
+    static let strings: [String: [AppLanguage: String]] = baseStrings.merging(strings20) { base, _ in base }
+
+    static let baseStrings: [String: [AppLanguage: String]] = [
         // MARK: Home
         "home.tagline": [.zh: "拍一拍，就知道！", .en: "thump it & know it!", .es: "¡dale un golpe y sabrás!"],
         "home.howTitle": [.zh: "使用方法", .en: "How it works", .es: "Cómo funciona"],

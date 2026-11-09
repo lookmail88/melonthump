@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <title>MelonThump Admin</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="admin.css">
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">MelonThump <span>Admin</span></div>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#overview" data-tab="overview">Overview</a>
+      <a href="#contributors" data-tab="contributors">Contributors</a>
+      <a href="#samples" data-tab="samples">Sample review</a>
+      <a href="#ads" data-tab="ads">Ad switches</a>
+    </nav>
+  </header>
+
+  <div id="banner" class="banner" role="alert" hidden></div>
+
+  <main id="main">
+    <!-- D: read-only overview -->
+    <section id="view-overview" class="view" hidden>
+      <div class="view-head">
+        <h2>Overview</h2>
+        <button type="button" class="btn" data-refresh="overview">Refresh</button>
+      </div>
+      <div id="overview-body"><p class="muted">Loading…</p></div>
+    </section>
+
+    <!-- A: contributors -->
+    <section id="view-contributors" class="view" hidden>
+      <div class="view-head">
+        <h2>Contributors</h2>
+        <div class="filters">
+          <label>Status
+            <select id="contrib-status">
+              <option value="">All</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="DECLINED">Declined</option>
+              <option value="REVOKED">Revoked</option>
+            </select>
+          </label>
+          <button type="button" class="btn" data-refresh="contributors">Refresh</button>
+        </div>
+      </div>
+      <div id="contrib-body"><p class="muted">Loading…</p></div>
+    </section>
+
+    <!-- B: sample review -->
+    <section id="view-samples" class="view" hidden>
+      <div class="view-head">
+        <h2>Sample review</h2>
+        <div class="filters">
+          <label>Status
+            <select id="sample-status">
+              <option value="">All</option>
+              <option value="SUBMITTED">Submitted</option>
+              <option value="APPROVED">Approved</option>
+              <option value="RETURNED">Returned</option>
+              <option value="VOIDED">Voided</option>
+            </select>
+          </label>
+          <label>Contributor
+            <select id="sample-contributor">
+              <option value="">All</option>
+            </select>
+          </label>
+          <button type="button" class="btn" data-refresh="samples">Refresh</button>
+        </div>
+      </div>
+      <div id="sample-body"><p class="muted">Loading…</p></div>
+    </section>
+
+    <!-- C: ad switches -->
+    <section id="view-ads" class="view" hidden>
+      <div class="view-head">
+        <h2>Ad switches</h2>
+        <button type="button" class="btn" data-refresh="ads">Refresh</button>
+      </div>
+      <div class="card">
+        <h3>Runtime settings</h3>
+        <p class="muted small">Overrides take effect on the version policy and the incentive ledger within seconds.
+          Reset returns a setting to its deployment default.</p>
+        <div id="settings-body"><p class="muted">Loading…</p></div>
+      </div>
+      <div class="card">
+        <h3>Release-class versions <span class="badge badge-muted">read-only</span></h3>
+        <p class="small">Latest and minimum supported versions are <strong>not editable here</strong>.
+          They change only through the release process (repository, pull request, ArgoCD).</p>
+        <div id="release-body"><p class="muted">Loading…</p></div>
+      </div>
+      <div class="card">
+        <h3>Install exemption list</h3>
+        <p class="muted small">Installs on this list get <code>adExempt: true</code> in the version policy (2.0+ clients)
+          and skip the ad gate entirely.</p>
+        <form id="exemption-form" class="inline-form" novalidate>
+          <label>Install ID
+            <input id="exemption-install" type="text" maxlength="64" autocomplete="off" spellcheck="false" required>
+          </label>
+          <label>Note
+            <input id="exemption-note" type="text" maxlength="128" autocomplete="off">
+          </label>
+          <button type="submit" class="btn btn-primary">Add / update</button>
+        </form>
+        <div id="exemptions-body"><p class="muted">Loading…</p></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="drawer" class="drawer" hidden>
+    <div class="drawer-backdrop" data-close-drawer></div>
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-head">
+        <h2 id="drawer-title">Details</h2>
+        <button type="button" class="btn" data-close-drawer>Close</button>
+      </div>
+      <div id="drawer-body" class="drawer-body"></div>
+    </aside>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
