@@ -83,7 +83,7 @@ struct L10n {
             .en: "Hold your phone near a watermelon, thump it once, and we'll listen to how ripe it is.",
             .es: "Acerca el teléfono a una sandía, dale un golpe y escucharemos qué tan madura está.",
         ],
-        "home.start": [.zh: "开始录音", .en: "Start Recording", .es: "Empezar a grabar"],
+        "home.start": [.zh: "开始验瓜", .en: "Start Melon Check", .es: "Revisar la sandía"],
         "home.hint": [
             .zh: "拍一下就好——%d 秒后自动停止",
             .en: "One good thump — it stops itself at %d seconds",

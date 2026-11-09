@@ -37,6 +37,10 @@ struct TapView: View {
     @State private var shareItem: ShareItem?
     @State private var inviteNotice: String?
     @State private var showPromoGate = false
+    /// FIX8: the promo gate was raised by the 开始验瓜 journey entry; once
+    /// the session unlocks (ad watched or ad-free unit spent) the journey
+    /// continues by itself. Cleared on "Not now" / a failed unlock.
+    @State private var resumeJourneyAfterUnlock = false
     @State private var menuOpen = false
     @State private var menuDestination: MenuDestination?
     @State private var ratingAskedThisSession = false
@@ -154,7 +158,7 @@ struct TapView: View {
             if program.canSpendAdFree {
                 Button(l.f("gate.useAdFree", program.adFreeBalance)) { spendAdFreeUnit() }
             }
-            Button(l.t("common.notNow"), role: .cancel) {}
+            Button(l.t("common.notNow"), role: .cancel) { resumeJourneyAfterUnlock = false }
         } message: {
             Text(l.t("promo.message"))
         }
@@ -383,13 +387,10 @@ struct TapView: View {
                 .foregroundColor(MelonTheme.deepGreen)
         } else if wallet.needsPromoAd {
             // Launch promo, past the free thumps (1.1.0 session gate).
-            Button {
-                earnWithAd()
-            } label: {
-                Text(l.t("credits.promoGate"))
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(MelonTheme.buttonGreen)
-            }
+            // FIX8: static wording — the 开始验瓜 button carries the gate.
+            Text(l.t("credits.promoGate"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.buttonGreen)
         } else if wallet.isPromoActive {
             Text(l.t("credits.promoUnlocked"))
                 .font(.footnote.weight(.semibold))
@@ -423,8 +424,13 @@ struct TapView: View {
         Task {
             if await AdsManager.shared.showRewarded() {
                 wallet.unlockSessionWithAd()
-            } else if !AdsManager.shared.rewardedReady {
-                errorMessage = l.t("ad.loading")
+                continueJourneyAfterUnlock()
+            } else {
+                // FIX8: no completed ad, no unlock — the journey stops here.
+                resumeJourneyAfterUnlock = false
+                if !AdsManager.shared.rewardedReady {
+                    errorMessage = l.t("ad.loading")
+                }
             }
         }
     }
@@ -436,12 +442,24 @@ struct TapView: View {
             switch await program.spendAdFreeUnit() {
             case .spent:
                 wallet.unlockSessionWithAd()
+                continueJourneyAfterUnlock()
             case .exempt:
-                break // permanent exemption now suppresses every gate
+                // permanent exemption now suppresses every gate
+                continueJourneyAfterUnlock()
             case .failed:
+                resumeJourneyAfterUnlock = false
                 errorMessage = l.t("gate.adFreeFailed")
             }
         }
+    }
+
+    /// FIX8: after the promo gate unlocks the session, the 开始验瓜 tap
+    /// that raised it carries on: record binding, photo gate, recording.
+    private func continueJourneyAfterUnlock() {
+        guard resumeJourneyAfterUnlock else { return }
+        resumeJourneyAfterUnlock = false
+        guard wallet.canThump, !recorder.isRecording, !isAnalyzing else { return }
+        toggleRecording()
     }
 
     /// 2.0 "Thump this melon" from a record: back to the home flow with
@@ -485,6 +503,7 @@ struct TapView: View {
         errorMessage = nil
         showSessionGate = false
         showPromoGate = false
+        resumeJourneyAfterUnlock = false
         menuOpen = false
         menuDestination = nil
         showInviteSheet = false
@@ -506,11 +525,23 @@ struct TapView: View {
             recordingStartedAt = nil
             analyze()
         } else {
+            // FIX8 ad gate FIRST — 开始验瓜 is the gated action. Every
+            // entry (home button, a record's "Thump this melon", the
+            // home screen reached via "Thump Another Melon") comes
+            // through here. Nothing is bound or opened until the session
+            // is unlocked; on unlock the journey resumes by itself.
+            if wallet.needsPromoAd {
+                resumeJourneyAfterUnlock = true
+                showPromoGate = true
+                return
+            }
             // FIX2 photo gate — on the recording-start path itself, so
             // every route (home tap, a record's "Thump this melon", an
-            // armed target) passes it. Checked BEFORE the wallet gates:
-            // a refused start never shows, spends or skips an ad/credit;
-            // those are evaluated when recording actually starts.
+            // armed target) passes it. Checked BEFORE the remaining wallet
+            // gates (session unlock / credits): a refused start never
+            // shows, spends or skips one; those are evaluated when
+            // recording actually starts. (FIX8: the promo ad gate alone
+            // now runs first, above.)
             guard let boundId = passPhotoGate() else { return }
             guard wallet.canThump else {
                 if wallet.needsPromoAd {
