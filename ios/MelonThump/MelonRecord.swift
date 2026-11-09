@@ -94,6 +94,11 @@ struct RecordPhoto: Codable, Identifiable, Equatable, Sendable {
     var fileName: String
     var contentType: String
     var addedAt: Date
+    /// FIX12: Vision `watermelon` confidence computed when the photo was
+    /// taken / picked (nil = not classified, or Vision had no opinion).
+    /// Drives the record page's warning caption and is reused for the
+    /// sample annotation. Older photos decode with nil.
+    var visionWatermelon: Double?
 }
 
 struct RecordThump: Codable, Identifiable, Equatable, Sendable {
@@ -293,10 +298,12 @@ final class MelonRecordStore: ObservableObject {
     }
 
     /// Stores a photo at full quality in the record's folder.
-    func addPhoto(_ data: Data, contentType: String, kind: PhotoKind, to id: UUID) throws {
+    @discardableResult
+    func addPhoto(_ data: Data, contentType: String, kind: PhotoKind, to id: UUID,
+                  visionWatermelon: Double? = nil) throws -> RecordPhoto {
         let photo = RecordPhoto(id: UUID(), kind: kind,
                                 fileName: "\(kind.rawValue.lowercased())-\(UUID().uuidString.prefix(8)).\(Self.fileExtension(for: contentType))",
-                                contentType: contentType, addedAt: Date())
+                                contentType: contentType, addedAt: Date(), visionWatermelon: visionWatermelon)
         let dir = Self.folder.appendingPathComponent(id.uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try data.write(to: dir.appendingPathComponent(photo.fileName), options: .atomic)
@@ -310,6 +317,20 @@ final class MelonRecordStore: ObservableObject {
             }
         }
         if let replaced { try? FileManager.default.removeItem(at: url(of: replaced, in: id)) }
+        return photo
+    }
+
+    /// FIX12: records a photo's Vision score once classified (no-op if the
+    /// photo has gone in the meantime).
+    func setVisionWatermelon(_ score: Double?, photoId: UUID, in id: UUID) {
+        guard let score else { return }
+        update(id) { record in
+            if let i = record.photos.firstIndex(where: { $0.id == photoId }) {
+                record.photos[i].visionWatermelon = score
+            } else if record.cutOpenPhoto?.id == photoId {
+                record.cutOpenPhoto?.visionWatermelon = score
+            }
+        }
     }
 
     func removePhoto(_ photo: RecordPhoto, from id: UUID) {

@@ -244,15 +244,28 @@ struct ContributionClient: Sendable {
         guard status == 204 || status == 200 else { throw Self.failure(status, data) }
     }
 
-    func submit(parts: [MultipartPart]) async throws -> SampleSummary {
-        let (status, data) = try await postMultipart(path: Self.base + "/samples", parts: parts)
+    /// FIX12 compatibility: when `compatParts` is given (the same request
+    /// minus the vision fields) and the server answers 400 (an older
+    /// server), it is sent once instead. The attest payload is rebuilt by
+    /// postMultipart for each request.
+    func submit(parts: [MultipartPart], compatParts: [MultipartPart]? = nil) async throws -> SampleSummary {
+        var (status, data) = try await postMultipart(path: Self.base + "/samples", parts: parts)
+        if status == 400, let compatParts {
+            (status, data) = try await postMultipart(path: Self.base + "/samples", parts: compatParts)
+        }
         guard status == 201 || status == 200 else { throw Self.failure(status, data) }
         guard let s = try? JSONDecoder().decode(SampleSummary.self, from: data) else { throw ContributionError.unavailable }
         return s
     }
 
-    func append(sampleId: Int64, parts: [MultipartPart]) async throws -> SampleSummary {
-        let (status, data) = try await postMultipart(path: Self.base + "/samples/\(sampleId)/parts", parts: parts)
+    /// FIX12 compatibility retry as for `submit`.
+    func append(sampleId: Int64, parts: [MultipartPart],
+                compatParts: [MultipartPart]? = nil) async throws -> SampleSummary {
+        let path = Self.base + "/samples/\(sampleId)/parts"
+        var (status, data) = try await postMultipart(path: path, parts: parts)
+        if status == 400, let compatParts {
+            (status, data) = try await postMultipart(path: path, parts: compatParts)
+        }
         guard status == 200 else { throw Self.failure(status, data) }
         guard let s = try? JSONDecoder().decode(SampleSummary.self, from: data) else { throw ContributionError.unavailable }
         return s
@@ -424,8 +437,7 @@ final class ContributorProgram: ObservableObject {
             if let p = record.weightProvenance { meta["weightProvenance"] = p.rawValue }
         }
         if let fb = record.feedback { meta["feedback"] = Self.feedbackJSON(fb) }
-        var parts = [MultipartPart(name: "meta", filename: nil, contentType: "application/json",
-                                   data: try JSONSerialization.data(withJSONObject: meta, options: [.sortedKeys]))]
+        var parts: [MultipartPart] = []
         var photoIds: [UUID] = []
         for photo in record.photos.prefix(12) {
             if let part = try await Self.photoPart(photo, name: "appearance", record: record.id, store: store) {
@@ -443,7 +455,13 @@ final class ContributorProgram: ObservableObject {
             parts.append(part)
             cutOpenId = cut.id
         }
-        let summary = try await client.submit(parts: parts)
+        // FIX12: Vision annotation over what this sample carries.
+        let vision = await Self.visionMeta(appearance: record.photos.filter { photoIds.contains($0.id) },
+                                           cutOpen: cutOpenId == nil ? nil : record.cutOpenPhoto,
+                                           record: record.id, store: store)
+        let (primary, compat) = try Self.withMeta(meta, vision: vision, files: parts)
+        parts = primary
+        let summary = try await client.submit(parts: primary, compatParts: compat)
         let sent = parts.contains { $0.name == "recording" } ? thump?.id : nil
         store.update(record.id) {
             $0.submission = RecordSubmission(
@@ -479,8 +497,7 @@ final class ContributorProgram: ObservableObject {
         let pending = Self.pendingAppend(record)
         var meta: [String: Any] = ["contributorId": id.uuidString.lowercased()]
         if let fb = pending.feedback { meta["feedback"] = Self.feedbackJSON(fb) }
-        var parts = [MultipartPart(name: "meta", filename: nil, contentType: "application/json",
-                                   data: try JSONSerialization.data(withJSONObject: meta, options: [.sortedKeys]))]
+        var parts: [MultipartPart] = []
         var photoIds: [UUID] = []
         for photo in pending.photos {
             if let part = try await Self.photoPart(photo, name: "appearance", record: record.id, store: store) {
@@ -499,7 +516,16 @@ final class ContributorProgram: ObservableObject {
             parts.append(part)
             sentCut = cut.id
         }
-        let summary = try await client.append(sampleId: sub.sampleId, parts: parts)
+        // FIX12: Vision annotation over the sample as it stands after this
+        // append: the photos already uploaded plus the new ones, and the
+        // cut-open photo the sample will carry.
+        let sampleIds = Set(sub.uploadedPhotoIds + photoIds)
+        let cutId = sentCut ?? sub.uploadedCutOpenId
+        let vision = await Self.visionMeta(appearance: record.photos.filter { sampleIds.contains($0.id) },
+                                           cutOpen: record.cutOpenPhoto.flatMap { $0.id == cutId ? $0 : nil },
+                                           record: record.id, store: store)
+        let (primary, compat) = try Self.withMeta(meta, vision: vision, files: parts)
+        let summary = try await client.append(sampleId: sub.sampleId, parts: primary, compatParts: compat)
         store.update(record.id) { r in
             r.submission?.serverStatus = summary.status
             r.submission?.returnReason = summary.returnReason
@@ -512,6 +538,45 @@ final class ContributorProgram: ObservableObject {
     }
 
     // MARK: Helpers
+
+    /// The meta part (plus FIX12 vision fields when any score exists)
+    /// followed by the file parts, and — only when vision fields were
+    /// added — the same request without them for the 400 retry.
+    private static func withMeta(_ meta: [String: Any], vision: [String: Double],
+                                 files: [MultipartPart]) throws -> ([MultipartPart], [MultipartPart]?) {
+        func metaPart(_ m: [String: Any]) throws -> MultipartPart {
+            MultipartPart(name: "meta", filename: nil, contentType: "application/json",
+                          data: try JSONSerialization.data(withJSONObject: m, options: [.sortedKeys]))
+        }
+        let plain = [try metaPart(meta)] + files
+        guard !vision.isEmpty else { return (plain, nil) }
+        let annotated = meta.merging(vision.mapValues { $0 as Any }) { _, new in new }
+        return ([try metaPart(annotated)] + files, plain)
+    }
+
+    /// FIX12: `visionWatermelon` = best score among the appearance photos,
+    /// `visionCutopenWatermelon` = the cut-open photo's score. Scores from
+    /// capture time are reused; photos without one are classified now
+    /// (and the score kept on the photo). A key is present only when a
+    /// score exists.
+    private static func visionMeta(appearance: [RecordPhoto], cutOpen: RecordPhoto?, record: UUID,
+                                   store: MelonRecordStore) async -> [String: Double] {
+        func score(_ photo: RecordPhoto) async -> Double? {
+            if let s = photo.visionWatermelon { return s }
+            let s = await WatermelonVision.score(url: store.url(of: photo, in: record))
+            store.setVisionWatermelon(s, photoId: photo.id, in: record)
+            return s
+        }
+        func wire(_ s: Double) -> Double { (min(1, max(0, s)) * 10_000).rounded() / 10_000 }
+        var out: [String: Double] = [:]
+        var best: Double?
+        for photo in appearance {
+            if let s = await score(photo) { best = max(best ?? s, s) }
+        }
+        if let best { out["visionWatermelon"] = wire(best) }
+        if let cutOpen, let s = await score(cutOpen) { out["visionCutopenWatermelon"] = wire(s) }
+        return out
+    }
 
     private static func photoPart(_ photo: RecordPhoto, name: String, record: UUID,
                                   store: MelonRecordStore) async throws -> MultipartPart? {

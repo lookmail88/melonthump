@@ -608,6 +608,11 @@
     ];
   }
 
+  // FIX12: advisory on-device Vision score (0-1), or a dash when not sent.
+  function visionScore(v) {
+    return typeof v === 'number' ? v.toFixed(2) : '—';
+  }
+
   function renderSample(s, audit) {
     const refresh = reloadAfterSampleChange;
     const actions = [];
@@ -686,6 +691,8 @@
           s.weightProvenance ? ' (' + humanize(s.weightProvenance) + ')' : ''),
         h('dt', null, 'Source'), h('dd', null, dash(s.source)),
         h('dt', null, 'Melon date'), h('dd', null, dash(s.melonDate)),
+        h('dt', null, 'Vision watermelon'), h('dd', null, visionScore(s.visionWatermelon), ' / cut: ',
+          visionScore(s.visionCutopenWatermelon)),
         h('dt', null, 'Contributor'), h('dd', null, contributorLink),
         h('dt', null, 'Submitted'), h('dd', null, fmtTime(s.createdAt)),
         h('dt', null, 'Updated'), h('dd', null, fmtTime(s.updatedAt))),

@@ -163,7 +163,13 @@ public final class ContributionDtos {
             @Schema(description = "S4: Pepper's note; may be null", nullable = true)
             String pepperNote,
             @Schema(description = "S4: ISO-8601 UTC instant of the preliminary review", nullable = true)
-            String pepperReviewedAt) {
+            String pepperReviewedAt,
+            @Schema(description = "FIX12: on-device Vision `watermelon` confidence (0-1), best of the appearance "
+                    + "photos, as sent by the client; null when not sent", nullable = true)
+            Double visionWatermelon,
+            @Schema(description = "FIX12: on-device Vision `watermelon` confidence (0-1) of the cut-open photo; "
+                    + "null when not sent", nullable = true)
+            Double visionCutopenWatermelon) {
     }
 
     @Schema(description = "Result of a manual ad-free grant / revocation")

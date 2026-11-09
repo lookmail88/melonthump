@@ -1,3 +1,4 @@
+import ImageIO
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -475,11 +476,21 @@ struct RecordDetailView: View {
 
     // MARK: Helpers
 
+    /// Files the photo as before, then (FIX12) classifies it in the
+    /// background; a low score shows the warning caption under it in
+    /// PhotoStrip. Never blocks or removes anything.
     private func save(_ data: Data, _ contentType: String, kind: PhotoKind) {
+        let photo: RecordPhoto
         do {
-            try store.addPhoto(data, contentType: contentType, kind: kind, to: recordId)
+            photo = try store.addPhoto(data, contentType: contentType, kind: kind, to: recordId)
         } catch {
             message = l.t("capture.saveFailed")
+            return
+        }
+        let recordId = recordId
+        Task {
+            let score = await WatermelonVision.score(data: data)
+            MelonRecordStore.shared.setVisionWatermelon(score, photoId: photo.id, in: recordId)
         }
     }
 
@@ -559,12 +570,24 @@ struct PhotoStrip: View {
     var body: some View {
         if !photos.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     ForEach(photos) { photo in
                         VStack(spacing: 3) {
                             RecordThumbnail(recordId: recordId, photo: photo)
                                 .frame(width: 76, height: 76)
                             Text(label(photo.kind)).font(.caption2).foregroundColor(.secondary)
+                            // FIX12: soft hint only; delete / retake with
+                            // the existing controls.
+                            if WatermelonVision.isFlagged(photo.visionWatermelon) {
+                                Label(l.t("capture.notMelon"), systemImage: "exclamationmark.triangle.fill")
+                                    .labelStyle(.titleAndIcon)
+                                    .font(.caption2)
+                                    .foregroundColor(.orange)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(width: 76)
+                                    .accessibilityIdentifier("photo.notMelon")
+                            }
                         }
                         .contextMenu {
                             Button(role: .destructive) { onDelete(photo) } label: {
@@ -695,12 +718,57 @@ struct JourneyPhotoSheet: View {
     @State private var saved = false
     @State private var saving = false
     @State private var message: String?
+    /// FIX12: a photo is being classified before it is filed.
+    @State private var checking = false
+    /// FIX12: a flagged photo awaiting 重拍 / 照样使用 (not filed yet).
+    @State private var pending: PendingPhoto?
+    /// False while the scanner cover is on screen (incl. its dismissal),
+    /// so the hand-off never races another presentation.
+    @State private var coverGone = true
     private var l: L10n { L10n(preference: languagePref) }
     private var cameraAvailable: Bool { UIImagePickerController.isSourceTypeAvailable(.camera) }
+
+    /// A captured / picked photo held back by the FIX12 hint.
+    private struct PendingPhoto {
+        let data: Data
+        let contentType: String
+        let kind: PhotoKind
+        let score: Double?
+        let preview: UIImage?
+    }
 
     var body: some View {
         NavigationStack {
             List {
+                if let pending {
+                    // FIX12: in-sheet confirmation — soft, never a block.
+                    Section {
+                        HStack(alignment: .center, spacing: 12) {
+                            if let preview = pending.preview {
+                                Image(uiImage: preview)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 64, height: 64)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .accessibilityHidden(true)
+                            }
+                            Label(l.t("capture.notMelon"), systemImage: "exclamationmark.triangle.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(.orange)
+                                .accessibilityIdentifier("journeyPhoto.notMelon")
+                        }
+                        Button { retake() } label: {
+                            Label(l.t("capture.retake"), systemImage: "arrow.counterclockwise")
+                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
+                        }
+                        .accessibilityIdentifier("journeyPhoto.retake")
+                        Button { useAnyway() } label: {
+                            Label(l.t("capture.useAnyway"), systemImage: "checkmark")
+                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
+                        }
+                        .accessibilityIdentifier("journeyPhoto.useAnyway")
+                    }
+                }
                 Section {
                     Label(l.t("capture.photosFirst"), systemImage: "camera.badge.ellipsis")
                         .font(.subheadline.weight(.semibold))
@@ -730,31 +798,38 @@ struct JourneyPhotoSheet: View {
                             .foregroundColor(MelonTheme.buttonGreenAdaptive)
                     }
                     .accessibilityIdentifier("journeyPhoto.library")
+                    if checking { ProgressView() }
                 }
-                .disabled(saving || saved)
+                .disabled(saving || saved || checking || pending != nil)
             }
             .navigationTitle(l.t("capture.step1"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(l.t("common.cancel")) { onCancel() }
+                        .disabled(checking)
                 }
             }
         }
-        .interactiveDismissDisabled(saving)
+        .interactiveDismissDisabled(saving || checking)
         .onAppear {
             // Camera first: the journey goes straight to the viewfinder.
             guard !cameraOpenedOnAppear else { return }
             cameraOpenedOnAppear = true
             if cameraAvailable { showCamera = true }
         }
-        .fullScreenCover(isPresented: $showCamera, onDismiss: finishIfSaved) {
+        .fullScreenCover(isPresented: $showCamera, onDismiss: {
+            coverGone = true
+            finishIfSaved()
+        }) {
             // FIX11: the scan-style camera, framed by (and able to switch)
             // this sheet's kind; its library button saves through the
             // same path, and its dismissal hands on via finishIfSaved.
+            // FIX12: the photo is classified first (consider).
             ScanCameraView(kind: $kind, allowsKindSwitch: true) { data, type in
-                save(data, type)
+                consider(data, type)
             }
+            .onAppear { coverGone = false }
         }
         .photosPicker(isPresented: $showLibrary, selection: $libraryItem, matching: .images)
         .onChange(of: libraryItem) { _, item in
@@ -762,10 +837,10 @@ struct JourneyPhotoSheet: View {
             libraryItem = nil
             saving = true
             Task {
-                defer { saving = false }
                 // Library picks count for the gate, exactly as on the record page.
-                if let (data, mime) = await PhotoCapture.libraryPhoto(item) { save(data, mime) }
-                finishIfSaved()
+                let picked = await PhotoCapture.libraryPhoto(item)
+                saving = false
+                if let (data, mime) = picked { consider(data, mime) }
             }
         }
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
@@ -773,20 +848,68 @@ struct JourneyPhotoSheet: View {
         }
     }
 
+    /// FIX12: classify, then file straight away (not flagged / no
+    /// opinion) or hold the photo for the in-sheet confirmation. The kind
+    /// is the one chosen when the photo was taken.
+    private func consider(_ data: Data, _ contentType: String) {
+        let kind = kind
+        checking = true
+        Task {
+            let score = await WatermelonVision.score(data: data)
+            checking = false
+            if WatermelonVision.isFlagged(score) {
+                pending = PendingPhoto(data: data, contentType: contentType, kind: kind, score: score,
+                                       preview: await Self.preview(data))
+            } else {
+                save(data, contentType, kind: kind, score: score)
+                finishIfSaved()
+            }
+        }
+    }
+
+    /// 重拍: discard the held photo; back to the camera / library choice.
+    private func retake() {
+        pending = nil
+    }
+
+    /// 照样使用: file it; the journey goes on into recording as usual.
+    private func useAnyway() {
+        guard let p = pending else { return }
+        pending = nil
+        save(p.data, p.contentType, kind: p.kind, score: p.score)
+        finishIfSaved()
+    }
+
+    private static func preview(_ data: Data) async -> UIImage? {
+        await Task.detached(priority: .userInitiated) {
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 192,
+            ]
+            return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary).map { UIImage(cgImage: $0) }
+        }.value
+    }
+
     /// The same storage path as the record page (RecordDetailView.save).
-    private func save(_ data: Data, _ contentType: String) {
+    private func save(_ data: Data, _ contentType: String, kind: PhotoKind, score: Double?) {
+        // The journey may have been abandoned (record removed) meanwhile.
+        guard MelonRecordStore.shared.record(id: recordId) != nil else { return }
         do {
-            try MelonRecordStore.shared.addPhoto(data, contentType: contentType, kind: kind, to: recordId)
+            try MelonRecordStore.shared.addPhoto(data, contentType: contentType, kind: kind, to: recordId,
+                                                 visionWatermelon: score)
             saved = true
         } catch {
             message = l.t("capture.saveFailed")
         }
     }
 
-    /// Hands back only once the camera / picker is gone, so the sheet's
-    /// own dismissal never races another presentation.
+    /// Hands back only once the camera / picker is gone (cover fully
+    /// dismissed) and no photo is still being checked, so the sheet's own
+    /// dismissal never races another presentation.
     private func finishIfSaved() {
-        guard saved, !showCamera, !showLibrary else { return }
+        guard saved, !showCamera, !showLibrary, coverGone, !checking, pending == nil else { return }
         onSaved()
     }
 }

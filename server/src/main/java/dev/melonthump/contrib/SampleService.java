@@ -77,9 +77,17 @@ public class SampleService {
     public record Feedback(int score, List<TasteTag> tasteTags, BandTruth bandTruth) {
     }
 
+    /**
+     * FIX12: the client's on-device Vision scores (0-1); each null when
+     * not sent. Advisory annotation only.
+     */
+    public record Vision(Double watermelon, Double cutOpenWatermelon) {
+        public static final Vision NONE = new Vision(null, null);
+    }
+
     /** Validated submission metadata (the melon record bookkeeping fields). */
     public record Meta(UUID contributorId, Variety variety, Integer weightGrams, WeightProvenance weightProvenance,
-                       String source, LocalDate melonDate, Feedback feedback) {
+                       String source, LocalDate melonDate, Feedback feedback, Vision vision) {
     }
 
     /** A sample together with its material file rows. */
@@ -123,6 +131,7 @@ public class SampleService {
         sample.setSource(meta.source());
         sample.setMelonDate(meta.melonDate());
         applyFeedback(sample, meta.feedback());
+        applyVision(sample, meta.vision());
         sample = samples.saveAndFlush(sample);
 
         List<SampleFile> stored = new ArrayList<>();
@@ -138,6 +147,13 @@ public class SampleService {
 
     @Transactional
     public SampleWithFiles append(long sampleId, UUID contributorId, Feedback feedback, List<Upload> uploads) {
+        return append(sampleId, contributorId, feedback, Vision.NONE, uploads);
+    }
+
+    /** As {@link #append(long, UUID, Feedback, List)}; a sent vision score overwrites, an absent one is kept. */
+    @Transactional
+    public SampleWithFiles append(long sampleId, UUID contributorId, Feedback feedback, Vision vision,
+                                  List<Upload> uploads) {
         Contributor contributor = requireContributor(contributorId);
         Sample sample = ownedForUpdate(sampleId, contributorId);
         if (contributor.getStatus() != ContributorStatus.APPROVED) {
@@ -175,6 +191,7 @@ public class SampleService {
         if (feedback != null) {
             applyFeedback(sample, feedback);
         }
+        applyVision(sample, vision);
         recomputeParts(sample, current);
 
         String action = ACTION_APPENDED;
@@ -248,6 +265,18 @@ public class SampleService {
         return samples.findForUpdate(sampleId)
                 .filter(s -> s.getContributorId().equals(contributorId))
                 .orElseThrow(() -> new SampleForbiddenException(sampleId));
+    }
+
+    private static void applyVision(Sample sample, Vision vision) {
+        if (vision == null) {
+            return;
+        }
+        if (vision.watermelon() != null) {
+            sample.setVisionWatermelon(vision.watermelon());
+        }
+        if (vision.cutOpenWatermelon() != null) {
+            sample.setVisionCutopenWatermelon(vision.cutOpenWatermelon());
+        }
     }
 
     private static void checkCounts(long existingAppearance, List<Upload> uploads) {

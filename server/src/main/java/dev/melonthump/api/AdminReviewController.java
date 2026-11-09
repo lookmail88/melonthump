@@ -145,7 +145,8 @@ public class AdminReviewController {
         return new AdminSampleDetail(d.id(), d.contributorId(), d.status(), d.completeness(), d.complete(),
                 d.returnReason(), d.variety(), d.weightGrams(), d.weightProvenance(), d.source(), d.melonDate(),
                 d.feedback(), files, d.createdAt(), d.updatedAt(), pepperRecommendation(r.sample()),
-                r.sample().getPepperNote(), instant(r.sample().getPepperReviewedAt()));
+                r.sample().getPepperNote(), instant(r.sample().getPepperReviewedAt()),
+                r.sample().getVisionWatermelon(), r.sample().getVisionCutopenWatermelon());
     }
 
     private static String pepperRecommendation(Sample s) {

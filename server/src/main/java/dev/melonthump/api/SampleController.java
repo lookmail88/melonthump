@@ -13,6 +13,7 @@ import dev.melonthump.contrib.SampleService.Feedback;
 import dev.melonthump.contrib.SampleService.Meta;
 import dev.melonthump.contrib.SampleService.SampleWithFiles;
 import dev.melonthump.contrib.SampleService.Upload;
+import dev.melonthump.contrib.SampleService.Vision;
 import dev.melonthump.contrib.TasteTag;
 import dev.melonthump.contrib.Variety;
 import dev.melonthump.contrib.WeightProvenance;
@@ -92,7 +93,8 @@ public class SampleController {
 
     @Operation(summary = "Submit a sample (multipart; APPROVED contributors only; App Attest gated)",
             description = "Parts: meta (JSON: contributorId, variety, weightGrams?, weightProvenance?, source?, "
-                    + "melonDate?, feedback? {score 0-100, tasteTags[], bandTruth}), appearance (1..n images), "
+                    + "melonDate?, feedback? {score 0-100, tasteTags[], bandTruth}, visionWatermelon? 0-1, "
+                    + "visionCutopenWatermelon? 0-1), appearance (1..n images), "
                     + "recording (1 audio), cutOpen (0..1 image). Missing parts are allowed (incomplete sample). "
                     + "201 + sample; 400 invalid meta/part/content type; 413 photo > 10 MB or recording > 25 MB; "
                     + "403 not APPROVED; 404 unknown contributor.")
@@ -111,7 +113,8 @@ public class SampleController {
                 optionalEnum(meta, "weightProvenance", WeightProvenance.class),
                 optionalSource(meta),
                 optionalDate(meta),
-                optionalFeedback(meta));
+                optionalFeedback(meta),
+                optionalVision(meta));
         List<Upload> uploads = validateUploads(received.files());
         SampleWithFiles result = service.submit(parsed, uploads);
         return ResponseEntity.status(HttpStatus.CREATED).body(detail(result));
@@ -119,7 +122,7 @@ public class SampleController {
 
     @Operation(summary = "Append parts to one's own sample (multipart; App Attest gated)",
             description = "contributorId as query parameter and/or in a meta JSON part ({contributorId, "
-                    + "feedback?}). File parts as for submit. A new recording / cutOpen replaces the stored one; "
+                    + "feedback?, visionWatermelon?, visionCutopenWatermelon?}). File parts as for submit. A new recording / cutOpen replaces the stored one; "
                     + "appearance photos are added; feedback overwrites. Allowed while SUBMITTED or RETURNED "
                     + "(RETURNED goes back to SUBMITTED). 403 not owner / unknown sample / not APPROVED; "
                     + "409 APPROVED or VOIDED; 400 nothing to append.")
@@ -140,12 +143,13 @@ public class SampleController {
             throw SampleRequestException.badMeta("contributorId in query and meta differ");
         }
         Feedback feedback = meta == null ? null : optionalFeedback(meta);
+        Vision vision = meta == null ? Vision.NONE : optionalVision(meta);
         List<Upload> uploads = validateUploads(received.files());
         if (uploads.isEmpty() && feedback == null) {
             throw new SampleRequestException(HttpStatus.BAD_REQUEST, "nothing_to_append",
                     "send at least one file part or feedback");
         }
-        return detail(service.append(sampleId, fromQuery != null ? fromQuery : fromMeta, feedback, uploads));
+        return detail(service.append(sampleId, fromQuery != null ? fromQuery : fromMeta, feedback, vision, uploads));
     }
 
     @Operation(summary = "The contributor's own samples, newest first (App Attest gated)")
@@ -415,6 +419,23 @@ public class SampleController {
             }
         }
         return new Feedback(score.intValue(), List.copyOf(tags), band);
+    }
+
+    /** FIX12: optional on-device Vision scores; each a number 0-1 when present. */
+    private static Vision optionalVision(JsonNode meta) {
+        return new Vision(optionalUnitScore(meta, "visionWatermelon"),
+                optionalUnitScore(meta, "visionCutopenWatermelon"));
+    }
+
+    private static Double optionalUnitScore(JsonNode meta, String field) {
+        JsonNode n = meta.get(field);
+        if (absent(n)) {
+            return null;
+        }
+        if (!n.isNumber() || !Double.isFinite(n.doubleValue()) || n.doubleValue() < 0 || n.doubleValue() > 1) {
+            throw SampleRequestException.badMeta(field + " must be a number 0-1");
+        }
+        return n.doubleValue();
     }
 
     private static long parseSampleId(String raw) {

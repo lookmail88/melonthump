@@ -92,6 +92,11 @@ extension L10n {
         "capture.addCut": [.zh: "拍切开图", .en: "Cut-open photo", .es: "Foto de la sandía abierta"],
         "capture.replaceCut": [.zh: "重拍切开图", .en: "Replace cut-open photo", .es: "Cambiar foto de la sandía abierta"],
         "capture.saveFailed": [.zh: "照片没能保存。", .en: "The photo could not be saved.", .es: "No se pudo guardar la foto."],
+        // FIX12: Vision soft hint (never blocks).
+        "capture.notMelon": [.zh: "这张看起来不像西瓜", .en: "This doesn't look like a watermelon",
+                             .es: "Esto no parece una sandía"],
+        "capture.retake": [.zh: "重拍", .en: "Retake", .es: "Repetir"],
+        "capture.useAnyway": [.zh: "照样使用", .en: "Use anyway", .es: "Usar de todos modos"],
         "capture.thump": [.zh: "拍这只瓜", .en: "Thump this melon", .es: "Golpear esta sandía"],
         "capture.thumpMore": [.zh: "再拍一次这只瓜", .en: "Thump this melon again", .es: "Golpear esta sandía otra vez"],
         "capture.thumpFooter": [

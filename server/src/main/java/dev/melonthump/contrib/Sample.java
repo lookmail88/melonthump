@@ -98,6 +98,14 @@ public class Sample {
     @Column(name = "pepper_reviewed_at", insertable = false, updatable = false)
     private Instant pepperReviewedAt;
 
+    // FIX12: on-device Vision `watermelon` confidence (0-1) sent by the
+    // client; advisory, null when the client had no score.
+    @Column(name = "vision_watermelon")
+    private Double visionWatermelon;
+
+    @Column(name = "vision_cutopen_watermelon")
+    private Double visionCutopenWatermelon;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -182,6 +190,22 @@ public class Sample {
 
     public void setReturnReason(String returnReason) {
         this.returnReason = returnReason;
+    }
+
+    public Double getVisionWatermelon() {
+        return visionWatermelon;
+    }
+
+    public void setVisionWatermelon(Double visionWatermelon) {
+        this.visionWatermelon = visionWatermelon;
+    }
+
+    public Double getVisionCutopenWatermelon() {
+        return visionCutopenWatermelon;
+    }
+
+    public void setVisionCutopenWatermelon(Double visionCutopenWatermelon) {
+        this.visionCutopenWatermelon = visionCutopenWatermelon;
     }
 
     public Long getId() {

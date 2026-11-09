@@ -412,4 +412,56 @@ class AdminReviewApiTest {
         assertNull(jdbc.queryForObject("SELECT MAX(id) FROM ad_free_ledger WHERE contributor_id = ?",
                 Long.class, c));
     }
+
+    // ---- FIX12: Vision watermelon annotation ------------------------------------
+
+    @Test
+    void visionScoresArePersistedOptionalValidatedAndShownInAdminDetail() throws Exception {
+        UUID c = approvedContributor();
+
+        // Absent (older clients): both null.
+        long plain = incompleteSample(c);
+        mvc.perform(get(ADMIN + "/" + plain)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visionWatermelon").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.visionCutopenWatermelon").value(org.hamcrest.Matchers.nullValue()));
+
+        // Present on submit: persisted and exposed; explicit null = absent.
+        Map<String, Object> m = metaMap(c, false);
+        m.put("visionWatermelon", 0.87);
+        m.put("visionCutopenWatermelon", null);
+        long id = body(submit(meta(m), file("appearance", "a.jpg", "image/jpeg", bytes(200, 4)))
+                .andExpect(status().isCreated())).get("id").asLong();
+        mvc.perform(get(ADMIN + "/" + id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visionWatermelon").value(0.87))
+                .andExpect(jsonPath("$.visionCutopenWatermelon").value(org.hamcrest.Matchers.nullValue()));
+        assertEquals(0.87, jdbc.queryForObject("SELECT vision_watermelon FROM samples WHERE id = ?",
+                Double.class, id), 1e-9);
+
+        // Append: a sent score overwrites, an absent one is kept.
+        Map<String, Object> a = new LinkedHashMap<>();
+        a.put("contributorId", c.toString());
+        a.put("visionCutopenWatermelon", 0.12);
+        MockMultipartHttpServletRequestBuilder b = multipart(SampleApiTest.BASE + "/" + id + "/parts");
+        b.part(meta(a));
+        b.part(file("cutOpen", "c.jpg", "image/jpeg", bytes(100, 5)));
+        mvc.perform(b.header("X-Attest-Bypass", "simulator")).andExpect(status().isOk());
+        mvc.perform(get(ADMIN + "/" + id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visionWatermelon").value(0.87))
+                .andExpect(jsonPath("$.visionCutopenWatermelon").value(0.12));
+
+        // Out of range / not a number: 400 invalid_meta, nothing stored.
+        for (Object bad : List.of(1.5, -0.1, "0.5", true)) {
+            Map<String, Object> mb = metaMap(c, false);
+            mb.put("visionWatermelon", bad);
+            submit(meta(mb), file("appearance", "a.jpg", "image/jpeg", bytes(50, 6)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("invalid_meta"));
+        }
+        // Integers 0 and 1 are valid numbers in range.
+        Map<String, Object> edge = metaMap(c, false);
+        edge.put("visionWatermelon", 0);
+        edge.put("visionCutopenWatermelon", 1);
+        submit(meta(edge), file("appearance", "a.jpg", "image/jpeg", bytes(50, 7)))
+                .andExpect(status().isCreated());
+    }
 }
