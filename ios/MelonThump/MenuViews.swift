@@ -55,7 +55,7 @@ struct TopBarButton: View {
 // MARK: - Hamburger drawer
 
 enum MenuDestination: String, Identifiable {
-    case models, records, program, settings, about
+    case models, records, program, feedback, settings, about
     var id: String { rawValue }
 }
 
@@ -63,11 +63,14 @@ enum MenuDestination: String, Identifiable {
 /// (decided 2026-11-04, no History); 2.0 adds My Melons — the melon
 /// records, which are the thump history (design doc 2.0 §2 item 8),
 /// and the Model Improvement Program (FIX3, 2026-11-08) — the same
-/// destination Settings links to; the Settings entry stays.
+/// destination Settings links to; the Settings entry stays — and
+/// Feedback (FIX4, 2026-11-08), which runs the Settings entry's own
+/// mail action instead of presenting a sheet.
 struct MenuDrawer: View {
     @Binding var isOpen: Bool
     let onSelect: (MenuDestination) -> Void
     @ObservedObject private var program = ContributorProgram.shared
+    @Environment(\.openURL) private var openURL
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
     private var l: L10n { L10n(preference: languagePref) }
 
@@ -89,6 +92,8 @@ struct MenuDrawer: View {
                     // Same icon and title logic as the Settings entry.
                     row(.program, icon: "leaf",
                         title: program.phase == .notEnrolled ? l.t("set.joinProgram") : l.t("program.title"))
+                    // Same icon, title and action as the Settings entry.
+                    row(.feedback, icon: "envelope", title: l.t("set.feedback"))
                     row(.settings, icon: "gearshape", title: l.t("menu.settings"))
                     row(.about, icon: "info.circle", title: l.t("menu.about"))
                     Spacer()
@@ -113,7 +118,11 @@ struct MenuDrawer: View {
     private func row(_ destination: MenuDestination, icon: String, title: String) -> some View {
         Button {
             close()
-            onSelect(destination)
+            if destination == .feedback {
+                SettingsView.openFeedbackMail(l: l, openURL: openURL)
+            } else {
+                onSelect(destination)
+            }
         } label: {
             HStack(spacing: 14) {
                 Image(systemName: icon)
@@ -394,7 +403,12 @@ struct SettingsView: View {
     /// Mirrors Retax's openFeedbackMail: recipient prefilled, subject
     /// prefilled, the app version appended to the body; stateless.
     private func openFeedbackMail() {
-        if let url = Self.feedbackMailURL(subject: l.t("set.feedbackSubject")) {
+        Self.openFeedbackMail(l: l, openURL: openURL)
+    }
+
+    /// Shared with the drawer's Feedback row (FIX4): one code path.
+    static func openFeedbackMail(l: L10n, openURL: OpenURLAction) {
+        if let url = feedbackMailURL(subject: l.t("set.feedbackSubject")) {
             openURL(url)
         }
     }
