@@ -291,6 +291,12 @@ final class ContributorProgram: ObservableObject {
 
     var contributorId: UUID? { ContributorIdentity.existing }
     var isApproved: Bool { phase == .enrolled(.approved) }
+    /// Program member for the record page's member-only steps: applied
+    /// and PENDING or APPROVED (a pending member may prepare a complete
+    /// sample while waiting). Never applied, DECLINED, REVOKED, or an
+    /// unknown standing (loading / unavailable) = not a member. Same
+    /// per-environment cached standing as the program home.
+    var isMember: Bool { phase == .enrolled(.pending) || phase == .enrolled(.approved) }
     /// The "Use 1 ad-free unit" offer applies.
     var canSpendAdFree: Bool { isApproved && adFreeBalance > 0 && !adExemptPermanent }
 

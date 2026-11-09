@@ -144,11 +144,14 @@ struct RecordThumbnail: View {
 
 // MARK: - One record: the unified capture flow
 
-/// Identical steps for everyone (design §7 item 3, v0.21 flow):
-/// 1 appearance photos, 2 thump, 3 weight (optional), 4 variety
-/// (selection only); then, after eating, the cut-open photo and the
-/// user's own feedback. Approved contributors additionally see
-/// "Contribute this melon". No model score anywhere (design §6 gates).
+/// Everyone sees 1 appearance photos and 2 thump. Program members
+/// (PENDING or APPROVED, `ContributorProgram.isMember`) also see the
+/// steps that feed the model: 3 weight (optional), 4 variety (selection
+/// only) and, after eating, the cut-open photo and the user's own
+/// feedback (FIX6). Display gating only — stored weight / variety /
+/// cut-open / feedback are never touched, and reappear on joining.
+/// Approved contributors additionally see "Contribute this melon".
+/// No model score anywhere (design §6 gates).
 struct RecordDetailView: View {
     let recordId: UUID
     let onThump: () -> Void
@@ -247,83 +250,10 @@ struct RecordDetailView: View {
                 Text(l.t("capture.thumpFooter"))
             }
 
-            // 3. Weight (optional, never required)
-            Section {
-                HStack {
-                    TextField(l.t("weight.placeholder"), text: $weightText)
-                        .keyboardType(.numberPad)
-                        .focused($weightFocused)
-                        .onChange(of: weightText) { _, text in commitWeight(text) }
-                    Text("g").foregroundColor(.secondary)
-                }
-                if record.weightProvenance == .photoEstimated {
-                    Text(WeightProvenance.photoEstimated.displayName(l)).foregroundColor(.secondary)
-                } else {
-                    Picker(l.t("weight.how"), selection: Binding(
-                        get: { record.weightProvenance ?? .scaleMeasured },
-                        set: { p in store.update(recordId) { $0.weightProvenance = $0.weightGrams == nil ? nil : p } }
-                    )) {
-                        Text(WeightProvenance.scaleMeasured.displayName(l)).tag(WeightProvenance.scaleMeasured)
-                        Text(WeightProvenance.manualEstimate.displayName(l)).tag(WeightProvenance.manualEstimate)
-                    }
-                    .pickerStyle(.segmented)
-                    .disabled(record.weightGrams == nil)
-                }
-            } header: {
-                Text(l.t("capture.step3"))
-            } footer: {
-                Text(l.t("weight.footer"))
-            }
-
-            // 4. Variety (selection only, never free text)
-            Section {
-                Picker(l.t("variety.title"), selection: Binding(
-                    get: { record.variety },
-                    set: { v in store.update(recordId) { $0.variety = v } }
-                )) {
-                    Text(l.t("variety.unset")).tag(MelonVariety?.none)
-                    ForEach(MelonVariety.allCases) { v in
-                        Text(v.displayName(l)).tag(MelonVariety?.some(v))
-                    }
-                }
-            } header: {
-                Text(l.t("capture.step4"))
-            }
-
-            // After eating: cut-open photo + the user's own feedback
-            Section {
-                if let cut = record.cutOpenPhoto {
-                    PhotoStrip(recordId: recordId, photos: [cut]) { photo in
-                        store.removePhoto(photo, from: recordId)
-                    }
-                }
-                PhotoAddButton(title: record.cutOpenPhoto == nil ? l.t("capture.addCut") : l.t("capture.replaceCut"),
-                               systemImage: "fork.knife") { data, type in
-                    save(data, type, kind: .cutOpen)
-                }
-                if let fb = record.feedback {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(l.f("feedback.scoreLine", fb.score))
-                            .font(.headline)
-                            .foregroundColor(MelonTheme.inkAdaptive)
-                        Text(fb.bandTruth.displayName(l))
-                            .font(.subheadline)
-                            .foregroundColor(MelonTheme.inkSoftAdaptive)
-                        if !fb.tasteTags.isEmpty {
-                            Text(fb.tasteTags.map { $0.displayName(l) }.joined(separator: " · "))
-                                .font(.caption)
-                                .foregroundColor(MelonTheme.inkSoftAdaptive)
-                        }
-                    }
-                }
-                Button(record.feedback == nil ? l.t("feedback.add") : l.t("feedback.edit")) {
-                    showFeedbackEditor = true
-                }
-                .foregroundColor(MelonTheme.buttonGreenAdaptive)
-            } header: {
-                Text(l.t("capture.afterEating"))
-            } footer: {
-                Text(l.t("feedback.footer"))
+            // FIX6: steps 3–4 and the after-cutting section are for
+            // program members only (display only; data stays on disk).
+            if program.isMember {
+                memberSteps(record)
             }
 
             if program.isApproved || record.submission != nil {
@@ -341,6 +271,15 @@ struct RecordDetailView: View {
                 Button(l.t("common.done")) { weightFocused = false }
             }
         }
+        .onChange(of: program.isMember) { _, member in
+            // Standing flipped mid-session (e.g. REVOKED): drop focus and
+            // the editor sheet for sections no longer shown. Nothing stored
+            // is changed.
+            if !member {
+                weightFocused = false
+                showFeedbackEditor = false
+            }
+        }
         .confirmationDialog(l.t("records.deleteTitle"), isPresented: $confirmDelete, titleVisibility: .visible) {
             Button(l.t("records.delete"), role: .destructive) {
                 store.delete(recordId)
@@ -349,6 +288,90 @@ struct RecordDetailView: View {
         } message: {
             Text(record.submission != nil && record.submission?.serverStatus != "WITHDRAWN"
                  ? l.t("records.deleteSubmitted") : l.t("records.deleteMessage"))
+        }
+    }
+
+    // MARK: Member-only steps (program members: PENDING / APPROVED)
+
+    @ViewBuilder
+    private func memberSteps(_ record: MelonRecord) -> some View {
+        // 3. Weight (optional, never required)
+        Section {
+            HStack {
+                TextField(l.t("weight.placeholder"), text: $weightText)
+                    .keyboardType(.numberPad)
+                    .focused($weightFocused)
+                    .onChange(of: weightText) { _, text in commitWeight(text) }
+                Text("g").foregroundColor(.secondary)
+            }
+            if record.weightProvenance == .photoEstimated {
+                Text(WeightProvenance.photoEstimated.displayName(l)).foregroundColor(.secondary)
+            } else {
+                Picker(l.t("weight.how"), selection: Binding(
+                    get: { record.weightProvenance ?? .scaleMeasured },
+                    set: { p in store.update(recordId) { $0.weightProvenance = $0.weightGrams == nil ? nil : p } }
+                )) {
+                    Text(WeightProvenance.scaleMeasured.displayName(l)).tag(WeightProvenance.scaleMeasured)
+                    Text(WeightProvenance.manualEstimate.displayName(l)).tag(WeightProvenance.manualEstimate)
+                }
+                .pickerStyle(.segmented)
+                .disabled(record.weightGrams == nil)
+            }
+        } header: {
+            Text(l.t("capture.step3"))
+        } footer: {
+            Text(l.t("weight.footer"))
+        }
+
+        // 4. Variety (selection only, never free text)
+        Section {
+            Picker(l.t("variety.title"), selection: Binding(
+                get: { record.variety },
+                set: { v in store.update(recordId) { $0.variety = v } }
+            )) {
+                Text(l.t("variety.unset")).tag(MelonVariety?.none)
+                ForEach(MelonVariety.allCases) { v in
+                    Text(v.displayName(l)).tag(MelonVariety?.some(v))
+                }
+            }
+        } header: {
+            Text(l.t("capture.step4"))
+        }
+
+        // After eating: cut-open photo + the user's own feedback
+        Section {
+            if let cut = record.cutOpenPhoto {
+                PhotoStrip(recordId: recordId, photos: [cut]) { photo in
+                    store.removePhoto(photo, from: recordId)
+                }
+            }
+            PhotoAddButton(title: record.cutOpenPhoto == nil ? l.t("capture.addCut") : l.t("capture.replaceCut"),
+                           systemImage: "fork.knife") { data, type in
+                save(data, type, kind: .cutOpen)
+            }
+            if let fb = record.feedback {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(l.f("feedback.scoreLine", fb.score))
+                        .font(.headline)
+                        .foregroundColor(MelonTheme.inkAdaptive)
+                    Text(fb.bandTruth.displayName(l))
+                        .font(.subheadline)
+                        .foregroundColor(MelonTheme.inkSoftAdaptive)
+                    if !fb.tasteTags.isEmpty {
+                        Text(fb.tasteTags.map { $0.displayName(l) }.joined(separator: " · "))
+                            .font(.caption)
+                            .foregroundColor(MelonTheme.inkSoftAdaptive)
+                    }
+                }
+            }
+            Button(record.feedback == nil ? l.t("feedback.add") : l.t("feedback.edit")) {
+                showFeedbackEditor = true
+            }
+            .foregroundColor(MelonTheme.buttonGreenAdaptive)
+        } header: {
+            Text(l.t("capture.afterEating"))
+        } footer: {
+            Text(l.t("feedback.footer"))
         }
     }
 
@@ -399,7 +422,9 @@ struct RecordDetailView: View {
         } footer: {
             if record.submission == nil {
                 Text(record.variety == nil ? l.t("contrib.needVariety") : l.t("contrib.footer"))
-            } else {
+            } else if program.isMember {
+                // FIX6: the append footer points at the cut-open photo and
+                // rating, which non-members don't see.
                 Text(l.t("contrib.appendFooter"))
             }
         }
