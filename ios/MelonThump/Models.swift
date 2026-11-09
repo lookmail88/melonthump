@@ -62,6 +62,10 @@ struct ClientVersion: Decodable {
     /// Server-published TestFlight / App Store versions (selector gate).
     let testflightVersion: String?
     let productVersion: String?
+    /// 2.0: true when this install's X-Install-Id is on the owner's
+    /// exemption allowlist — ads are fully suppressed. Sent only to
+    /// 2.0.0+ clients by newer servers; absent = false.
+    let adExempt: Bool?
 }
 
 /// Response from POST /api/v1/tap/analyze

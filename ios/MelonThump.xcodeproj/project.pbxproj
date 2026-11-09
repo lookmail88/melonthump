@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C20F0000000000000000000C /* Localization20.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F0000000000000000000B /* Localization20.swift */; };
+		C20F0000000000000000000A /* ProgramViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000009 /* ProgramViews.swift */; };
+		C20F00000000000000000008 /* RecordViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000007 /* RecordViews.swift */; };
+		C20F00000000000000000006 /* ContributorProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000005 /* ContributorProgram.swift */; };
+		C20F00000000000000000004 /* MelonRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000003 /* MelonRecord.swift */; };
+		C20F00000000000000000002 /* ContributionAttest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000001 /* ContributionAttest.swift */; };
 		165880FFD76974C2053F21DF /* MelonThumpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */; };
 		2B3C4D5E6F708192A3B4C5D6 /* LocalAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* LocalAnalyzer.swift */; };
 		2E421CDB6A52FD5565548A9C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC5D729A34425268DB38B91 /* Models.swift */; };
@@ -31,6 +37,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C20F0000000000000000000B /* Localization20.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization20.swift; sourceTree = "<group>"; };
+		C20F00000000000000000009 /* ProgramViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgramViews.swift; sourceTree = "<group>"; };
+		C20F00000000000000000007 /* RecordViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordViews.swift; sourceTree = "<group>"; };
+		C20F00000000000000000005 /* ContributorProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContributorProgram.swift; sourceTree = "<group>"; };
+		C20F00000000000000000003 /* MelonRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonRecord.swift; sourceTree = "<group>"; };
+		C20F00000000000000000001 /* ContributionAttest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContributionAttest.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F708192A3B4C5 /* LocalAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAnalyzer.swift; sourceTree = "<group>"; };
 		3C4D5E6F708192A3B4C5D6E7 /* VersionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionGate.swift; sourceTree = "<group>"; };
 		40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonThumpApp.swift; sourceTree = "<group>"; };
@@ -110,6 +122,12 @@
 				C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */,
 				C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */,
 				C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */,
+				C20F0000000000000000000B /* Localization20.swift */,
+				C20F00000000000000000009 /* ProgramViews.swift */,
+				C20F00000000000000000007 /* RecordViews.swift */,
+				C20F00000000000000000005 /* ContributorProgram.swift */,
+				C20F00000000000000000003 /* MelonRecord.swift */,
+				C20F00000000000000000001 /* ContributionAttest.swift */,
 				5D54A61DDCC862BDB9951073 /* Assets.xcassets */,
 				658704F015387A0D3FB86881 /* Info.plist */,
 			);
@@ -208,6 +226,12 @@
 				C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */,
 				C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */,
 				C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */,
+				C20F0000000000000000000C /* Localization20.swift in Sources */,
+				C20F0000000000000000000A /* ProgramViews.swift in Sources */,
+				C20F00000000000000000008 /* RecordViews.swift in Sources */,
+				C20F00000000000000000006 /* ContributorProgram.swift in Sources */,
+				C20F00000000000000000004 /* MelonRecord.swift in Sources */,
+				C20F00000000000000000002 /* ContributionAttest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -231,7 +255,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -273,7 +297,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;

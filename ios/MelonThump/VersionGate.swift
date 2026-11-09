@@ -95,6 +95,8 @@ struct VersionGateView: View {
         do {
             let policy = try await client.fetchClientVersion(
                 currentVersion: current, assertionHeaders: headers)
+            // 2.0: owner-install ad exemption (absent field = false).
+            CreditWallet.shared.applyAdExempt(policy.adExempt ?? false)
             if let unitID = policy.rewardedAdUnitId, !unitID.isEmpty {
                 AdsManager.shared.applyServerRewardedUnitId(unitID)
             }

@@ -55,12 +55,13 @@ struct TopBarButton: View {
 // MARK: - Hamburger drawer
 
 enum MenuDestination: String, Identifiable {
-    case models, settings, about
+    case models, records, settings, about
     var id: String { rawValue }
 }
 
-/// Slide-in drawer from the left. Exactly three entries (decided
-/// 2026-11-04): Model picker / Settings / About — no History.
+/// Slide-in drawer from the left. 1.2.0 had exactly three entries
+/// (decided 2026-11-04, no History); 2.0 adds My Melons — the melon
+/// records, which are the thump history (design doc 2.0 §2 item 8).
 struct MenuDrawer: View {
     @Binding var isOpen: Bool
     let onSelect: (MenuDestination) -> Void
@@ -81,6 +82,7 @@ struct MenuDrawer: View {
                         .padding(.top, 24)
                         .padding(.bottom, 22)
                     row(.models, icon: "waveform.badge.magnifyingglass", title: l.t("menu.models"))
+                    row(.records, icon: "list.bullet.rectangle", title: l.t("menu.records"))
                     row(.settings, icon: "gearshape", title: l.t("menu.settings"))
                     row(.about, icon: "info.circle", title: l.t("menu.about"))
                     Spacer()
@@ -218,6 +220,7 @@ struct SettingsView: View {
     @AppStorage(AppSettings.listeningDurationKey) private var listeningDuration = AppSettings.defaultListeningDuration
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @ObservedObject private var policy = PolicyStore.shared
+    @ObservedObject private var program = ContributorProgram.shared
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     private var l: L10n { L10n(preference: languagePref) }
@@ -269,6 +272,23 @@ struct SettingsView: View {
                     } footer: {
                         Text(l.t("set.serverFooter"))
                     }
+                }
+
+                // 2.0 Model Improvement Program (design doc 2.0 §5 item 6):
+                // explanation → enrollment note → application; afterwards
+                // the program home and self-service.
+                Section {
+                    NavigationLink {
+                        ProgramEntryView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "leaf")
+                                .foregroundColor(MelonTheme.buttonGreenAdaptive)
+                            Text(program.phase == .notEnrolled ? l.t("set.joinProgram") : l.t("program.title"))
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    .accessibilityIdentifier("settings.program")
                 }
 
                 // Feedback (ported from Retax 550b315): system mail

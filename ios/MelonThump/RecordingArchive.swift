@@ -77,10 +77,14 @@ enum RecordingArchive {
     }
 
     /// Fire-and-forget: never blocks the UI, never throws to the caller.
-    nonisolated static func save(_ context: Context) {
+    /// `onSaved` (2.0) receives the archive stem once the WAV + sidecar
+    /// are written, on the archive queue, so a melon record can link the
+    /// files instead of keeping a second copy of the audio.
+    nonisolated static func save(_ context: Context, onSaved: (@Sendable (String) -> Void)? = nil) {
         queue.async {
             do {
-                try performSave(context)
+                let stem = try performSave(context)
+                onSaved?(stem)
             } catch {
                 #if DEBUG
                 print("[RecordingArchive] save failed: \(error)")
@@ -91,7 +95,24 @@ enum RecordingArchive {
 
     // MARK: - Work (archive queue only)
 
-    private nonisolated static func performSave(_ c: Context) throws {
+    // MARK: - Pinned stems (2.0 melon records)
+
+    /// Stems linked from melon records the user has worked on (photos,
+    /// variety, feedback, a contribution…). The retention sweep skips
+    /// them, so a record's recording outlives the newest-20 window; the
+    /// set is owned by MelonRecordStore and replaced on every change.
+    private final class PinBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stems: Set<String> = []
+        func set(_ new: Set<String>) { lock.lock(); stems = new; lock.unlock() }
+        func get() -> Set<String> { lock.lock(); defer { lock.unlock() }; return stems }
+    }
+    private static let pins = PinBox()
+
+    nonisolated static func setPinnedStems(_ stems: Set<String>) { pins.set(stems) }
+
+    @discardableResult
+    private nonisolated static func performSave(_ c: Context) throws -> String {
         let fm = FileManager.default
         var dir = folder
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -135,6 +156,7 @@ enum RecordingArchive {
         try encoder.encode(meta).write(to: jsonURL, options: .atomic)
 
         prune(dir: dir)
+        return stem
     }
 
     /// `yyyyMMdd-HHmmss`, with `-2`, `-3`… appended on a same-second clash.
@@ -195,12 +217,14 @@ enum RecordingArchive {
 
     /// Keeps the newest `maxGroups` groups (a group = files sharing one
     /// archive stem). Stems sort chronologically as plain strings.
+    /// Pinned stems (2.0 melon records) are neither counted nor deleted.
     private nonisolated static func prune(dir: URL) {
         let fm = FileManager.default
         guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return }
+        let pinned = pins.get()
         var groups: [String: [String]] = [:]
         for name in names {
-            guard let stem = archiveStem(of: name) else { continue }
+            guard let stem = archiveStem(of: name), !pinned.contains(stem) else { continue }
             groups[stem, default: []].append(name)
         }
         let stems = groups.keys.sorted(by: stemOrder)

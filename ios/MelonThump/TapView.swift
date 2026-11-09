@@ -9,6 +9,12 @@ struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
     @ObservedObject private var wallet = CreditWallet.shared
     @ObservedObject private var invites = InviteManager.shared
+    /// 2.0 contributor program (ad-free units at the gates).
+    @ObservedObject private var program = ContributorProgram.shared
+    /// 2.0: the melon record the next thump belongs to, when the user
+    /// chose "Thump this melon" in a record; nil = the home flow, which
+    /// files the thump into a record in the background.
+    @State private var continuingRecordId: UUID?
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
@@ -60,6 +66,7 @@ struct TapView: View {
         .sheet(item: $menuDestination) { destination in
             switch destination {
             case .models: ModelPickerView()
+            case .records: RecordsListView(onThump: thumpForRecord)
             case .settings: SettingsView()
             case .about: AboutView()
             }
@@ -74,6 +81,9 @@ struct TapView: View {
         }
         .alert(l.t("gate.title"), isPresented: $showSessionGate) {
             Button(l.t("gate.watchAd")) { earnWithAd() }
+            if program.canSpendAdFree {
+                Button(l.f("gate.useAdFree", program.adFreeBalance)) { spendAdFreeUnit() }
+            }
             if wallet.canPayAdFree {
                 Button(wallet.adFreeSessionCreditPrice == 1
                        ? l.t("gate.useCredit") : l.f("gate.useCredits", wallet.adFreeSessionCreditPrice)) {
@@ -107,6 +117,9 @@ struct TapView: View {
         }
         .alert(l.t("promo.title"), isPresented: $showPromoGate) {
             Button(l.t("gate.watchAd")) { earnWithAd() }
+            if program.canSpendAdFree {
+                Button(l.f("gate.useAdFree", program.adFreeBalance)) { spendAdFreeUnit() }
+            }
             Button(l.t("common.notNow"), role: .cancel) {}
         } message: {
             Text(l.t("promo.message"))
@@ -115,6 +128,11 @@ struct TapView: View {
             await recorder.prepareSession()
             await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: serverEnvironment))
             await invites.onLaunch(wallet: wallet)
+        }
+        .task {
+            // 2.0: contributor standing (ad-free balance / permanent
+            // exemption). Silent and fail-soft; no id = no request.
+            await program.refresh()
         }
         .onChange(of: serverEnvironment) { _, env in
             Task { await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: env)) }
@@ -258,6 +276,22 @@ struct TapView: View {
             creditsRow
                 .padding(.top, 8)
 
+            if let id = continuingRecordId, let record = MelonRecordStore.shared.record(id: id) {
+                // 2.0: the next thump goes to this melon record.
+                HStack(spacing: 6) {
+                    Text(l.f("records.thumpingFor", record.createdAt.formatted(date: .abbreviated, time: .shortened)))
+                    Button {
+                        continuingRecordId = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .accessibilityLabel(l.t("common.cancel"))
+                }
+                .font(.caption)
+                .foregroundColor(MelonTheme.inkSoft)
+                .padding(.top, 6)
+            }
+
             if let errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
@@ -278,7 +312,12 @@ struct TapView: View {
 
     @ViewBuilder
     private var creditsRow: some View {
-        if wallet.isFreeDay {
+        if wallet.adsSuppressed {
+            // 2.0: owner-install adExempt or a permanently exempt contributor.
+            Text(l.t("credits.adFree"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.isFreeDay {
             Text(l.t("credits.freeDay"))
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
@@ -336,6 +375,35 @@ struct TapView: View {
         }
     }
 
+    /// 2.0: spends one contributor ad-free unit; on success the session
+    /// unlocks exactly as a watched ad does.
+    private func spendAdFreeUnit() {
+        Task {
+            switch await program.spendAdFreeUnit() {
+            case .spent:
+                wallet.unlockSessionWithAd()
+            case .exempt:
+                break // permanent exemption now suppresses every gate
+            case .failed:
+                errorMessage = l.t("gate.adFreeFailed")
+            }
+        }
+    }
+
+    /// 2.0 "Thump this melon" from a record: back to the home flow with
+    /// the record as the target, then the normal Start path (gates,
+    /// credits and ads exactly as for any thump).
+    private func thumpForRecord(_ id: UUID) {
+        continuingRecordId = id
+        menuDestination = nil
+        result = nil
+        Task {
+            // Let the records sheet finish dismissing first.
+            try? await Task.sleep(for: .milliseconds(600))
+            if !recorder.isRecording && !isAnalyzing { toggleRecording() }
+        }
+    }
+
     // MARK: - Result → next melon (design doc 1.2.0 §2)
 
     /// "Thump Another Melon": one tap from the result straight back to
@@ -367,6 +435,8 @@ struct TapView: View {
         menuDestination = nil
         showInviteSheet = false
         shareItem = nil
+        // 2.0: another melon — the next thump starts a new record.
+        continuingRecordId = nil
         // Last: clearing the result switches content to homeView.
         result = nil
     }
@@ -427,6 +497,11 @@ struct TapView: View {
                 // Documents/Recordings (newest 20). Local only — never
                 // uploaded, excluded from backup.
                 let d = model.descriptor
+                // 2.0 melon record: file this thump into its record (the
+                // chosen one, or a background home-flow record) and link
+                // the archive copy once it is written — no second copy.
+                let (_, thumpId) = MelonRecordStore.shared.attachThump(
+                    analyzed, modelId: d.modelId, modelVersion: d.modelVersion, target: continuingRecordId)
                 RecordingArchive.save(.init(
                     sourceURL: audioURL, analyzedAt: Date(),
                     modelId: d.modelId, modelVersion: d.modelVersion,
@@ -436,7 +511,9 @@ struct TapView: View {
                     spectralCentroidHz: analyzed.spectralCentroidHz,
                     decayTimeMs: analyzed.decayTimeMs,
                     analyzerLabel: analyzed.modelVersion,
-                    debugSummary: analyzed.debugSummary))
+                    debugSummary: analyzed.debugSummary)) { stem in
+                    Task { @MainActor in MelonRecordStore.shared.linkRecording(stem: stem, thumpId: thumpId) }
+                }
                 // 1.2.0 allowance: every real (non-UNKNOWN) analysis
                 // bumps this app version's count (promo freebies); in the
                 // post-promotion economy the first one uses up the free
