@@ -404,11 +404,10 @@ struct RecordDetailView: View {
                     .disabled(busy)
                 }
             } else if !program.isApproved {
-                // FIX7: pending applicant — visible but locked. Tapping only
-                // explains; it never starts an upload.
-                Button {
-                    message = l.t("contrib.lockedUntilApproved")
-                } label: {
+                // FIX7B: pending applicant — the button is visible but
+                // disabled for the whole review period, whatever the local
+                // state. The footer caption explains why; nothing happens on tap.
+                Button {} label: {
                     HStack {
                         Label(l.t("contrib.contribute"), systemImage: "icloud.and.arrow.up")
                             .foregroundColor(.secondary)
@@ -416,6 +415,7 @@ struct RecordDetailView: View {
                         Image(systemName: "lock.fill").foregroundColor(.secondary)
                     }
                 }
+                .disabled(true)
                 .accessibilityIdentifier("record.contribute.locked")
                 .accessibilityHint(l.t("contrib.lockedUntilApproved"))
             } else {
