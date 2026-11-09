@@ -1,3 +1,11 @@
+# [1.18.0](https://github.com/lookmail88/melonthump/compare/v1.17.0...v1.18.0) (2026-11-09)
+
+
+### Features
+
+* **server:** add en/zh language switcher to admin page top bar ([c6d3580](https://github.com/lookmail88/melonthump/commit/c6d35801efc2a3bad2900240b1ba5ff4d268b1f3))
+* **server:** filter contributors by enrollment note on admin page ([9a43385](https://github.com/lookmail88/melonthump/commit/9a433855329441432f9ac058af27cde3aaabfbf2))
+
 # [1.17.0](https://github.com/lookmail88/melonthump/compare/v1.16.0...v1.17.0) (2026-11-09)
 
 
