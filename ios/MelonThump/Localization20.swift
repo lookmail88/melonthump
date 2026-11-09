@@ -73,6 +73,21 @@ extension L10n {
         // FIX10: the journey photo sheet's kind choice
         "capture.kindRind": [.zh: "瓜皮近摄", .en: "Rind close-up", .es: "Primer plano de la cáscara"],
         "capture.kindWhole": [.zh: "整瓜", .en: "Whole melon", .es: "Sandía entera"],
+        // FIX11: the scan-style camera
+        "capture.scanRind": [.zh: "让瓜皮纹理填满框", .en: "Let the rind texture fill the frame", .es: "Haz que la textura de la cáscara llene el marco"],
+        "capture.scanWhole": [.zh: "把整瓜放进框里", .en: "Fit the whole melon in the frame", .es: "Encaja la sandía entera en el marco"],
+        "capture.cameraDenied": [
+            .zh: "无法使用相机：请在「设置」中允许 MelonThump 访问相机，或从相册选择照片。",
+            .en: "No camera access. Allow MelonThump to use the camera in Settings, or choose a photo from your library.",
+            .es: "Sin acceso a la cámara. Permite que MelonThump use la cámara en Ajustes o elige una foto de la fototeca.",
+        ],
+        "capture.cameraUnavailable": [
+            .zh: "相机暂时无法使用，可以从相册选择照片。",
+            .en: "The camera isn't available right now. You can choose a photo from your library.",
+            .es: "La cámara no está disponible ahora. Puedes elegir una foto de la fototeca.",
+        ],
+        "capture.openSettings": [.zh: "打开设置", .en: "Open Settings", .es: "Abrir Ajustes"],
+        "capture.torch": [.zh: "手电筒", .en: "Flashlight", .es: "Linterna"],
         "capture.cut": [.zh: "切开", .en: "Cut open", .es: "Abierta"],
         "capture.addCut": [.zh: "拍切开图", .en: "Cut-open photo", .es: "Foto de la sandía abierta"],
         "capture.replaceCut": [.zh: "重拍切开图", .en: "Replace cut-open photo", .es: "Cambiar foto de la sandía abierta"],

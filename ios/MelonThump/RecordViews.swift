@@ -214,11 +214,12 @@ struct RecordDetailView: View {
                 PhotoStrip(recordId: recordId, photos: record.photos) { photo in
                     store.removePhoto(photo, from: recordId)
                 }
-                PhotoAddButton(title: l.t("capture.addRind"), systemImage: "camera.macro") { data, type in
+                PhotoAddButton(title: l.t("capture.addRind"), systemImage: "camera.macro",
+                               scanKind: .rindCloseUp) { data, type in
                     save(data, type, kind: .rindCloseUp)
                 }
                 PhotoAddButton(title: l.t("capture.addWhole"), systemImage: "camera",
-                               guidance: l.t("capture.cardGuide")) { data, type in
+                               guidance: l.t("capture.cardGuide"), scanKind: .wholeMelon) { data, type in
                     save(data, type, kind: .wholeMelon)
                 }
             } header: {
@@ -593,6 +594,9 @@ struct PhotoAddButton: View {
     let title: String
     let systemImage: String
     var guidance: String?
+    /// FIX11: appearance photos (Step 1) shoot with the scan-style camera
+    /// framed for this kind; nil (cut-open) keeps the system camera.
+    var scanKind: PhotoKind?
     let onPhoto: (Data, String) -> Void
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
     @State private var showCamera = false
@@ -624,12 +628,16 @@ struct PhotoAddButton: View {
             if let guidance { Text(guidance) }
         }
         .fullScreenCover(isPresented: $showCamera) {
-            CameraPicker { image in
-                if let data = PhotoCapture.cameraJPEG(image) {
-                    onPhoto(data, "image/jpeg")
+            if let scanKind {
+                ScanCameraView(kind: .constant(scanKind), onPhoto: onPhoto)
+            } else {
+                CameraPicker { image in
+                    if let data = PhotoCapture.cameraJPEG(image) {
+                        onPhoto(data, "image/jpeg")
+                    }
                 }
+                .ignoresSafeArea()
             }
-            .ignoresSafeArea()
         }
         .photosPicker(isPresented: $showLibrary, selection: $libraryItem, matching: .images)
         .onChange(of: libraryItem) { _, item in
@@ -741,10 +749,12 @@ struct JourneyPhotoSheet: View {
             if cameraAvailable { showCamera = true }
         }
         .fullScreenCover(isPresented: $showCamera, onDismiss: finishIfSaved) {
-            CameraPicker { image in
-                if let data = PhotoCapture.cameraJPEG(image) { save(data, "image/jpeg") }
+            // FIX11: the scan-style camera, framed by (and able to switch)
+            // this sheet's kind; its library button saves through the
+            // same path, and its dismissal hands on via finishIfSaved.
+            ScanCameraView(kind: $kind, allowsKindSwitch: true) { data, type in
+                save(data, type)
             }
-            .ignoresSafeArea()
         }
         .photosPicker(isPresented: $showLibrary, selection: $libraryItem, matching: .images)
         .onChange(of: libraryItem) { _, item in
