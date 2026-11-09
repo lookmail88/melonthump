@@ -1,3 +1,24 @@
+# [1.15.0](https://github.com/lookmail88/melonthump/compare/v1.14.0...v1.15.0) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ios:** home copy matches the photo-first journey ([f31b1c1](https://github.com/lookmail88/melonthump/commit/f31b1c19125fa0ed485afebd3f600bb11dd76bc3))
+* **ios:** submit button stays disabled while application is under review ([917e237](https://github.com/lookmail88/melonthump/commit/917e237cbc8650017e21f5e0980f23c07e5a7aa4))
+
+
+### Features
+
+* **ios:** appearance photos are required before recording ([1c854ff](https://github.com/lookmail88/melonthump/commit/1c854ff0857504e0029510c232741e7dabe64f70))
+* **ios:** feedback entry in the main menu ([a8d4a7b](https://github.com/lookmail88/melonthump/commit/a8d4a7b19f4269be1d1981e28642a6e3374d4833))
+* **ios:** journey photo gate opens a camera, then straight to recording ([504a044](https://github.com/lookmail88/melonthump/commit/504a044e518dddd79969fafa5b8bba9c8e85183f))
+* **ios:** model improvement program entry in the main menu ([3937a63](https://github.com/lookmail88/melonthump/commit/3937a634c45e7ff1d2655cff4034d61b43280ae2))
+* **ios:** pending applicants see the locked submit-sample button ([e27b99f](https://github.com/lookmail88/melonthump/commit/e27b99fc15153e1e2b5ce6ef9bf3f9689d36ee5c))
+* **ios:** record page shows member steps only to program members ([f4f1358](https://github.com/lookmail88/melonthump/commit/f4f1358b8fcf10f2ae2519560464965e84da918c))
+* **ios:** scan-style camera for melon photos ([1af303a](https://github.com/lookmail88/melonthump/commit/1af303a1db60cb19169a7b5ab5a01192cfca5dd2))
+* **ios:** start button becomes the melon-check entry and carries the ad gate ([e86d8f0](https://github.com/lookmail88/melonthump/commit/e86d8f0c8e474a848a4ff0557217a22afa46eb25))
+* **ios:** verdict view links into the melon record for photos ([b71297c](https://github.com/lookmail88/melonthump/commit/b71297cb44695346fa46db58703734919cfe1807))
+
 # [1.14.0](https://github.com/lookmail88/melonthump/compare/v1.13.0...v1.14.0) (2026-11-09)
 
 
