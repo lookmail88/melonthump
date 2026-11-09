@@ -164,12 +164,18 @@ public final class ContributionDtos {
             String pepperNote,
             @Schema(description = "S4: ISO-8601 UTC instant of the preliminary review", nullable = true)
             String pepperReviewedAt,
-            @Schema(description = "FIX12: on-device Vision `watermelon` confidence (0-1), best of the appearance "
-                    + "photos, as sent by the client; null when not sent", nullable = true)
+            @Schema(description = "FIX12 (legacy): on-device Vision `watermelon` confidence (0-1), best of the "
+                    + "appearance photos, as sent by a FIX12 client; null when not sent", nullable = true)
             Double visionWatermelon,
             @Schema(description = "FIX12: on-device Vision `watermelon` confidence (0-1) of the cut-open photo; "
                     + "null when not sent", nullable = true)
-            Double visionCutopenWatermelon) {
+            Double visionCutopenWatermelon,
+            @Schema(description = "FIX12B: on-device Vision `watermelon` confidence (0-1), best of the whole-melon "
+                    + "photos; null when not sent", nullable = true)
+            Double visionWholeWatermelon,
+            @Schema(description = "FIX12B: on-device Vision `watermelon` confidence (0-1), best of the rind "
+                    + "close-up photos; null when not sent", nullable = true)
+            Double visionRindWatermelon) {
     }
 
     @Schema(description = "Result of a manual ad-free grant / revocation")

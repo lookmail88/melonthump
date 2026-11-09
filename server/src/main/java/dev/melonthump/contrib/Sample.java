@@ -106,6 +106,13 @@ public class Sample {
     @Column(name = "vision_cutopen_watermelon")
     private Double visionCutopenWatermelon;
 
+    // FIX12B: per-kind scores (best whole-melon photo, best rind close-up).
+    @Column(name = "vision_whole_watermelon")
+    private Double visionWholeWatermelon;
+
+    @Column(name = "vision_rind_watermelon")
+    private Double visionRindWatermelon;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -206,6 +213,22 @@ public class Sample {
 
     public void setVisionCutopenWatermelon(Double visionCutopenWatermelon) {
         this.visionCutopenWatermelon = visionCutopenWatermelon;
+    }
+
+    public Double getVisionWholeWatermelon() {
+        return visionWholeWatermelon;
+    }
+
+    public void setVisionWholeWatermelon(Double visionWholeWatermelon) {
+        this.visionWholeWatermelon = visionWholeWatermelon;
+    }
+
+    public Double getVisionRindWatermelon() {
+        return visionRindWatermelon;
+    }
+
+    public void setVisionRindWatermelon(Double visionRindWatermelon) {
+        this.visionRindWatermelon = visionRindWatermelon;
     }
 
     public Long getId() {

@@ -93,8 +93,8 @@ public class SampleController {
 
     @Operation(summary = "Submit a sample (multipart; APPROVED contributors only; App Attest gated)",
             description = "Parts: meta (JSON: contributorId, variety, weightGrams?, weightProvenance?, source?, "
-                    + "melonDate?, feedback? {score 0-100, tasteTags[], bandTruth}, visionWatermelon? 0-1, "
-                    + "visionCutopenWatermelon? 0-1), appearance (1..n images), "
+                    + "melonDate?, feedback? {score 0-100, tasteTags[], bandTruth}, visionWholeWatermelon? 0-1, "
+                    + "visionRindWatermelon? 0-1, visionCutopenWatermelon? 0-1, visionWatermelon? 0-1 (legacy)), appearance (1..n images), "
                     + "recording (1 audio), cutOpen (0..1 image). Missing parts are allowed (incomplete sample). "
                     + "201 + sample; 400 invalid meta/part/content type; 413 photo > 10 MB or recording > 25 MB; "
                     + "403 not APPROVED; 404 unknown contributor.")
@@ -122,7 +122,7 @@ public class SampleController {
 
     @Operation(summary = "Append parts to one's own sample (multipart; App Attest gated)",
             description = "contributorId as query parameter and/or in a meta JSON part ({contributorId, "
-                    + "feedback?, visionWatermelon?, visionCutopenWatermelon?}). File parts as for submit. A new recording / cutOpen replaces the stored one; "
+                    + "feedback?, visionWholeWatermelon?, visionRindWatermelon?, visionCutopenWatermelon?, visionWatermelon?}). File parts as for submit. A new recording / cutOpen replaces the stored one; "
                     + "appearance photos are added; feedback overwrites. Allowed while SUBMITTED or RETURNED "
                     + "(RETURNED goes back to SUBMITTED). 403 not owner / unknown sample / not APPROVED; "
                     + "409 APPROVED or VOIDED; 400 nothing to append.")
@@ -421,10 +421,15 @@ public class SampleController {
         return new Feedback(score.intValue(), List.copyOf(tags), band);
     }
 
-    /** FIX12: optional on-device Vision scores; each a number 0-1 when present. */
+    /**
+     * FIX12 / FIX12B: optional on-device Vision scores; each a number 0-1
+     * when present. visionWatermelon is FIX12's legacy combined score.
+     */
     private static Vision optionalVision(JsonNode meta) {
         return new Vision(optionalUnitScore(meta, "visionWatermelon"),
-                optionalUnitScore(meta, "visionCutopenWatermelon"));
+                optionalUnitScore(meta, "visionCutopenWatermelon"),
+                optionalUnitScore(meta, "visionWholeWatermelon"),
+                optionalUnitScore(meta, "visionRindWatermelon"));
     }
 
     private static Double optionalUnitScore(JsonNode meta, String field) {

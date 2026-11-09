@@ -539,9 +539,10 @@ final class ContributorProgram: ObservableObject {
 
     // MARK: Helpers
 
-    /// The meta part (plus FIX12 vision fields when any score exists)
-    /// followed by the file parts, and — only when vision fields were
-    /// added — the same request without them for the 400 retry.
+    /// The meta part (plus the FIX12B per-kind vision fields when any
+    /// score exists) followed by the file parts, and — only when vision
+    /// fields were added — the same request without ANY of them (whole,
+    /// rind, cut-open) for the 400 retry.
     private static func withMeta(_ meta: [String: Any], vision: [String: Double],
                                  files: [MultipartPart]) throws -> ([MultipartPart], [MultipartPart]?) {
         func metaPart(_ m: [String: Any]) throws -> MultipartPart {
@@ -554,11 +555,13 @@ final class ContributorProgram: ObservableObject {
         return ([try metaPart(annotated)] + files, plain)
     }
 
-    /// FIX12: `visionWatermelon` = best score among the appearance photos,
-    /// `visionCutopenWatermelon` = the cut-open photo's score. Scores from
-    /// capture time are reused; photos without one are classified now
-    /// (and the score kept on the photo). A key is present only when a
-    /// score exists.
+    /// FIX12B: per-kind annotation — `visionWholeWatermelon` = best score
+    /// among the whole-melon photos, `visionRindWatermelon` = best score
+    /// among the rind close-ups, `visionCutopenWatermelon` = the cut-open
+    /// photo's score. The combined FIX12 `visionWatermelon` is no longer
+    /// sent. Scores from capture time are reused; photos without one are
+    /// classified now (and the score kept on the photo). A key is present
+    /// only when a score exists for that kind.
     private static func visionMeta(appearance: [RecordPhoto], cutOpen: RecordPhoto?, record: UUID,
                                    store: MelonRecordStore) async -> [String: Double] {
         func score(_ photo: RecordPhoto) async -> Double? {
@@ -568,12 +571,16 @@ final class ContributorProgram: ObservableObject {
             return s
         }
         func wire(_ s: Double) -> Double { (min(1, max(0, s)) * 10_000).rounded() / 10_000 }
-        var out: [String: Double] = [:]
-        var best: Double?
-        for photo in appearance {
-            if let s = await score(photo) { best = max(best ?? s, s) }
+        func best(_ kind: PhotoKind) async -> Double? {
+            var top: Double?
+            for photo in appearance where photo.kind == kind {
+                if let s = await score(photo) { top = max(top ?? s, s) }
+            }
+            return top
         }
-        if let best { out["visionWatermelon"] = wire(best) }
+        var out: [String: Double] = [:]
+        if let s = await best(.wholeMelon) { out["visionWholeWatermelon"] = wire(s) }
+        if let s = await best(.rindCloseUp) { out["visionRindWatermelon"] = wire(s) }
         if let cutOpen, let s = await score(cutOpen) { out["visionCutopenWatermelon"] = wire(s) }
         return out
     }

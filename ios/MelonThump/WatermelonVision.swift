@@ -8,20 +8,39 @@ import Vision
 //  B. sample annotation sent with submit / send-updates.
 // It never blocks a user action. Any error or missing result is "no
 // opinion" (nil): no hint, and the field is left out of the upload.
+// FIX12B: every photo is judged against its own kind (per-kind bar for
+// the hint; per-kind scores in the sample annotation).
 
 enum WatermelonVision {
-    /// Below this score a photo is flagged "doesn't look like a watermelon".
-    static let watermelonHintThreshold = 0.20
+    /// Below its kind's score a photo is flagged "doesn't look like a
+    /// watermelon" (FIX12B: one bar per photo kind).
+    /// Whole melon.
+    static let wholeMelonHintThreshold = 0.20
+    /// Cut-open melon.
+    static let cutOpenHintThreshold = 0.20
+    /// Rind close-up: texture-only shots score systematically lower, so a
+    /// single bar would false-flag real rind photos.
+    static let rindCloseUpHintThreshold = 0.10
+
+    /// The hint bar for a photo of this kind.
+    static func hintThreshold(for kind: PhotoKind) -> Double {
+        switch kind {
+        case .wholeMelon: return wholeMelonHintThreshold
+        case .cutOpen: return cutOpenHintThreshold
+        case .rindCloseUp: return rindCloseUpHintThreshold
+        }
+    }
 
     /// The Vision label whose confidence is the score.
     static let identifier = "watermelon"
     /// Photos are classified from a downscaled copy of about this size.
     static let maxPixelSize = 512
 
-    /// True only for a real score below the threshold (nil = no opinion).
-    static func isFlagged(_ score: Double?) -> Bool {
+    /// True only for a real score below the bar of the photo's kind
+    /// (nil = no opinion).
+    static func isFlagged(_ score: Double?, kind: PhotoKind) -> Bool {
         guard let score else { return false }
-        return score < watermelonHintThreshold
+        return score < hintThreshold(for: kind)
     }
 
     /// Score for encoded image bytes (JPEG / PNG / HEIC / WebP), computed

@@ -578,7 +578,7 @@ struct PhotoStrip: View {
                             Text(label(photo.kind)).font(.caption2).foregroundColor(.secondary)
                             // FIX12: soft hint only; delete / retake with
                             // the existing controls.
-                            if WatermelonVision.isFlagged(photo.visionWatermelon) {
+                            if WatermelonVision.isFlagged(photo.visionWatermelon, kind: photo.kind) {
                                 Label(l.t("capture.notMelon"), systemImage: "exclamationmark.triangle.fill")
                                     .labelStyle(.titleAndIcon)
                                     .font(.caption2)
@@ -857,7 +857,7 @@ struct JourneyPhotoSheet: View {
         Task {
             let score = await WatermelonVision.score(data: data)
             checking = false
-            if WatermelonVision.isFlagged(score) {
+            if WatermelonVision.isFlagged(score, kind: kind) {
                 pending = PendingPhoto(data: data, contentType: contentType, kind: kind, score: score,
                                        preview: await Self.preview(data))
             } else {

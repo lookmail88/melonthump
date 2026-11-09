@@ -79,10 +79,12 @@ public class SampleService {
 
     /**
      * FIX12: the client's on-device Vision scores (0-1); each null when
-     * not sent. Advisory annotation only.
+     * not sent. Advisory annotation only. {@code watermelon} is FIX12's
+     * legacy combined score; FIX12B adds the per-kind whole / rind scores.
      */
-    public record Vision(Double watermelon, Double cutOpenWatermelon) {
-        public static final Vision NONE = new Vision(null, null);
+    public record Vision(Double watermelon, Double cutOpenWatermelon, Double wholeWatermelon,
+                         Double rindWatermelon) {
+        public static final Vision NONE = new Vision(null, null, null, null);
     }
 
     /** Validated submission metadata (the melon record bookkeeping fields). */
@@ -276,6 +278,12 @@ public class SampleService {
         }
         if (vision.cutOpenWatermelon() != null) {
             sample.setVisionCutopenWatermelon(vision.cutOpenWatermelon());
+        }
+        if (vision.wholeWatermelon() != null) {
+            sample.setVisionWholeWatermelon(vision.wholeWatermelon());
+        }
+        if (vision.rindWatermelon() != null) {
+            sample.setVisionRindWatermelon(vision.rindWatermelon());
         }
     }
 

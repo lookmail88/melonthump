@@ -464,4 +464,80 @@ class AdminReviewApiTest {
         submit(meta(edge), file("appearance", "a.jpg", "image/jpeg", bytes(50, 7)))
                 .andExpect(status().isCreated());
     }
+
+    // ---- FIX12B: per-kind Vision scores ------------------------------------------
+
+    @Test
+    void perKindVisionScoresArePersistedOptionalValidatedAndShownInAdminDetail() throws Exception {
+        UUID c = approvedContributor();
+
+        // Absent (older clients): all per-kind values null.
+        long plain = incompleteSample(c);
+        mvc.perform(get(ADMIN + "/" + plain)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visionWholeWatermelon").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.visionRindWatermelon").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.visionCutopenWatermelon").value(org.hamcrest.Matchers.nullValue()));
+
+        // Submit with whole + rind (a FIX12B client never sends the combined field).
+        Map<String, Object> m = metaMap(c, false);
+        m.put("visionWholeWatermelon", 0.91);
+        m.put("visionRindWatermelon", 0.08);
+        long id = body(submit(meta(m), file("appearance", "a.jpg", "image/jpeg", bytes(200, 8)))
+                .andExpect(status().isCreated())).get("id").asLong();
+        mvc.perform(get(ADMIN + "/" + id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visionWholeWatermelon").value(0.91))
+                .andExpect(jsonPath("$.visionRindWatermelon").value(0.08))
+                .andExpect(jsonPath("$.visionCutopenWatermelon").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.visionWatermelon").value(org.hamcrest.Matchers.nullValue()));
+        assertEquals(0.91, jdbc.queryForObject("SELECT vision_whole_watermelon FROM samples WHERE id = ?",
+                Double.class, id), 1e-9);
+        assertEquals(0.08, jdbc.queryForObject("SELECT vision_rind_watermelon FROM samples WHERE id = ?",
+                Double.class, id), 1e-9);
+
+        // Append with a file: rind replaced, whole kept (absent), cut-open set.
+        Map<String, Object> a = new LinkedHashMap<>();
+        a.put("contributorId", c.toString());
+        a.put("visionRindWatermelon", 0.33);
+        a.put("visionCutopenWatermelon", 0.5);
+        MockMultipartHttpServletRequestBuilder b = multipart(SampleApiTest.BASE + "/" + id + "/parts");
+        b.part(meta(a));
+        b.part(file("cutOpen", "c.jpg", "image/jpeg", bytes(100, 9)));
+        mvc.perform(b.header("X-Attest-Bypass", "simulator")).andExpect(status().isOk());
+        mvc.perform(get(ADMIN + "/" + id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visionWholeWatermelon").value(0.91))
+                .andExpect(jsonPath("$.visionRindWatermelon").value(0.33))
+                .andExpect(jsonPath("$.visionCutopenWatermelon").value(0.5));
+
+        // Scores alone are not something to append.
+        Map<String, Object> only = new LinkedHashMap<>();
+        only.put("contributorId", c.toString());
+        only.put("visionWholeWatermelon", 0.4);
+        MockMultipartHttpServletRequestBuilder ob = multipart(SampleApiTest.BASE + "/" + id + "/parts");
+        ob.part(meta(only));
+        mvc.perform(ob.header("X-Attest-Bypass", "simulator")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("nothing_to_append"));
+        assertEquals(0.91, jdbc.queryForObject("SELECT vision_whole_watermelon FROM samples WHERE id = ?",
+                Double.class, id), 1e-9);
+
+        // Out of range / not a number: 400 invalid_meta.
+        for (String field : List.of("visionWholeWatermelon", "visionRindWatermelon")) {
+            for (Object bad : List.of(1.5, -0.1, "0.5", true)) {
+                Map<String, Object> mb = metaMap(c, false);
+                mb.put(field, bad);
+                submit(meta(mb), file("appearance", "a.jpg", "image/jpeg", bytes(50, 10)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.error").value("invalid_meta"));
+            }
+        }
+
+        // A FIX12 client (legacy combined field) still works.
+        Map<String, Object> legacy = metaMap(c, false);
+        legacy.put("visionWatermelon", 0.7);
+        long lid = body(submit(meta(legacy), file("appearance", "a.jpg", "image/jpeg", bytes(50, 11)))
+                .andExpect(status().isCreated())).get("id").asLong();
+        mvc.perform(get(ADMIN + "/" + lid)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visionWatermelon").value(0.7))
+                .andExpect(jsonPath("$.visionWholeWatermelon").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.visionRindWatermelon").value(org.hamcrest.Matchers.nullValue()));
+    }
 }
