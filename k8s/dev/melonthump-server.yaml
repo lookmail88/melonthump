@@ -46,11 +46,13 @@ spec:
               value: "1798790400000"
             # 2.0 contributor materials on a persistent volume, so
             # uploads survive pod restarts; contributors can withdraw
-            # (true delete) at any time. Admin API stays dark
-            # (MELONTHUMP_ADMIN_ENABLED unset) until the Cloudflare
-            # Access policy for /api/admin/** is verified live.
+            # (true delete) at any time. Admin API enabled
+            # 2026-11-09: Cloudflare Access apps for /admin and
+            # /api/admin are live (owner-only allow policy).
             - name: MELONTHUMP_CONTRIB_STORAGE_DIR
               value: "/data/contributions"
+            - name: MELONTHUMP_ADMIN_ENABLED
+              value: "true"
             - name: SPRING_DATASOURCE_URL
               valueFrom:
                 secretKeyRef:
