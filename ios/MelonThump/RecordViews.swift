@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-// MARK: - My Melons: the record list (thump history)
+// MARK: - My Samples: the record list (thump history)
 
 /// Every melon record, newest first. Tapping one reopens it; "+" starts
 /// a new record for the unified capture flow. `onThump` hands a record

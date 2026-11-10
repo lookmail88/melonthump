@@ -95,7 +95,7 @@ struct TapView: View {
             }
         }
         .sheet(isPresented: $showResultRecord) {
-            // FIX1: the same RecordDetailView My Melons pushes, in a sheet
+            // FIX1: the same RecordDetailView My Samples pushes, in a sheet
             // with its own NavigationStack and the list's Done button.
             if let id = resultRecordId {
                 recordSheet(id) { showResultRecord = false }
@@ -106,7 +106,7 @@ struct TapView: View {
             set: { if !$0 { photoGateRecordId = nil } }
         ), onDismiss: photoGateDismissed) {
             // FIX2/FIX10: a start refused by the photo gate lands here —
-            // NOT the record page (that stays in My Melons): a direct
+            // NOT the record page (that stays in My Samples): a direct
             // camera sheet; on save the journey resumes into recording,
             // on cancel it aborts.
             if let id = photoGateRecordId {
@@ -597,7 +597,7 @@ struct TapView: View {
     }
 
     /// FIX2: a gate-created record left without anything in it is
-    /// removed again (no empty rows in My Melons); one with a photo stays
+    /// removed again (no empty rows in My Samples); one with a photo stays
     /// armed so the next tap comes back to the same melon.
     private func photoGateDismissed() {
         // FIX10: photo saved → straight on into recording (the record is

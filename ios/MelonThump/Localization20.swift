@@ -7,7 +7,7 @@ import Foundation
 extension L10n {
     static let strings20: [String: [AppLanguage: String]] = [
         // MARK: Menu / Settings
-        "menu.records": [.zh: "我的瓜", .en: "My Melons", .es: "Mis sandías"],
+        "menu.records": [.zh: "我的样本", .en: "My Samples", .es: "Mis muestras"],
         "set.joinProgram": [
             .zh: "参与模型提升计划",
             .en: "Join the Model Improvement Program",
@@ -15,7 +15,7 @@ extension L10n {
         ],
 
         // MARK: Records list
-        "records.title": [.zh: "我的瓜", .en: "My Melons", .es: "Mis sandías"],
+        "records.title": [.zh: "我的样本", .en: "My Samples", .es: "Mis muestras"],
         "records.new": [.zh: "新的瓜", .en: "New melon", .es: "Nueva sandía"],
         "records.empty": [
             .zh: "还没有记录。每次拍瓜都会自动记在这里，也可以点右上角「＋」新建一只瓜。",
@@ -334,9 +334,9 @@ extension L10n {
         ],
         "program.myContributions": [.zh: "我的贡献", .en: "My contributions", .es: "Mis aportaciones"],
         "program.howToContribute": [
-            .zh: "贡献方法：菜单 →「我的瓜」→ 打开一只瓜 →「贡献这只瓜」。",
-            .en: "To contribute: menu → My Melons → open a melon → Contribute this melon.",
-            .es: "Para aportar: menú → Mis sandías → abre una sandía → Aportar esta sandía.",
+            .zh: "贡献方法：菜单 →「我的样本」→ 打开一只瓜 →「贡献这只瓜」。",
+            .en: "To contribute: menu → My Samples → open a melon → Contribute this melon.",
+            .es: "Para aportar: menú → Mis muestras → abre una sandía → Aportar esta sandía.",
         ],
         "program.about": [.zh: "计划说明与隐私", .en: "About the program & privacy", .es: "Sobre el programa y la privacidad"],
         "program.idFooter": [

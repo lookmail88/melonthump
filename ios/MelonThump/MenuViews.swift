@@ -60,7 +60,7 @@ enum MenuDestination: String, Identifiable {
 }
 
 /// Slide-in drawer from the left. 1.2.0 had exactly three entries
-/// (decided 2026-11-04, no History); 2.0 adds My Melons — the melon
+/// (decided 2026-11-04, no History); 2.0 adds My Samples — the melon
 /// records, which are the thump history (design doc 2.0 §2 item 8),
 /// the Model Improvement Program (FIX3, 2026-11-08) and Feedback
 /// (FIX4, 2026-11-08), which opens the mail composer instead of
