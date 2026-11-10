@@ -304,7 +304,8 @@ final class ContributorProgram: ObservableObject {
 
     var contributorId: UUID? { ContributorIdentity.existing }
     var isApproved: Bool { phase == .enrolled(.approved) }
-    /// Program member for the record page's member-only steps: applied
+    /// Program member for the record page's member-only steps and the
+    /// My Samples menu entry (BATCH110): applied
     /// and PENDING or APPROVED (a pending member may prepare a complete
     /// sample while waiting). Never applied, DECLINED, REVOKED, or an
     /// unknown standing (loading / unavailable) = not a member. Same

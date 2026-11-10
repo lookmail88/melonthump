@@ -65,7 +65,9 @@ enum MenuDestination: String, Identifiable {
 /// the Model Improvement Program (FIX3, 2026-11-08) and Feedback
 /// (FIX4, 2026-11-08), which opens the mail composer instead of
 /// presenting a sheet. FIX5 (2026-11-08): these two live only here —
-/// Settings no longer carries them (one entry per feature).
+/// Settings no longer carries them (one entry per feature). Order
+/// (2026-11-10): Program, My Samples, Feedback; My Samples shows only
+/// while `ContributorProgram.isMember` (PENDING or APPROVED).
 struct MenuDrawer: View {
     @Binding var isOpen: Bool
     let onSelect: (MenuDestination) -> Void
@@ -91,7 +93,13 @@ struct MenuDrawer: View {
                     // Join-vs-joined title: "Join…" until enrolled.
                     row(.program, icon: "leaf",
                         title: program.phase == .notEnrolled ? l.t("set.joinProgram") : l.t("program.title"))
-                    row(.records, icon: "list.bullet.rectangle", title: l.t("menu.records"))
+                    // My Samples is offered only to applicants (PENDING or
+                    // APPROVED) — the same cached standing the record
+                    // views read. Display-only: records and the other
+                    // entry points are untouched.
+                    if program.isMember {
+                        row(.records, icon: "list.bullet.rectangle", title: l.t("menu.records"))
+                    }
                     // Opens the system mail composer directly (no sheet).
                     row(.feedback, icon: "envelope", title: l.t("set.feedback"))
                     row(.settings, icon: "gearshape", title: l.t("menu.settings"))
