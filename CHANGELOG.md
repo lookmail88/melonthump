@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/lookmail88/melonthump/compare/v1.18.0...v1.19.0) (2026-11-10)
+
+
+### Features
+
+* **ios:** show My Samples menu entry only to contributor applicants ([a87938c](https://github.com/lookmail88/melonthump/commit/a87938c0d5e7c889fae85e717d6af1b12497e7e8))
+
 # [1.18.0](https://github.com/lookmail88/melonthump/compare/v1.17.0...v1.18.0) (2026-11-09)
 
 
