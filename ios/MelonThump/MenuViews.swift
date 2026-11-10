@@ -88,10 +88,10 @@ struct MenuDrawer: View {
                         .padding(.top, 24)
                         .padding(.bottom, 22)
                     row(.models, icon: "waveform.badge.magnifyingglass", title: l.t("menu.models"))
-                    row(.records, icon: "list.bullet.rectangle", title: l.t("menu.records"))
                     // Join-vs-joined title: "Join…" until enrolled.
                     row(.program, icon: "leaf",
                         title: program.phase == .notEnrolled ? l.t("set.joinProgram") : l.t("program.title"))
+                    row(.records, icon: "list.bullet.rectangle", title: l.t("menu.records"))
                     // Opens the system mail composer directly (no sheet).
                     row(.feedback, icon: "envelope", title: l.t("set.feedback"))
                     row(.settings, icon: "gearshape", title: l.t("menu.settings"))
