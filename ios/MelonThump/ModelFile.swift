@@ -3,9 +3,9 @@ import Foundation
 // MARK: - .ml model files (design doc 1.2.0 §1, docs/ml-format.md v1)
 //
 // The analysis model is data: a `.ml` file is a UTF-8 JSON document
-// carrying every tunable of the analyzer. The built-in model, Baby 1.0,
-// ships twice — as the bundled `baby-1.0.ml` and as the compiled-in
-// constants below (HeuristicBandsParameters.babyV22) — so a missing or
+// carrying every tunable of the analyzer. The built-in model, Standard,
+// ships twice — as the bundled `standard.ml` and as the compiled-in
+// constants below (HeuristicBandsParameters.standard) — so a missing or
 // invalid bundled file can never take analysis down. External files in
 // Documents/Models are scanned once at launch, read-only; an invalid one
 // is skipped whole, never partially applied, and never crashes the app.
@@ -28,9 +28,9 @@ enum ModelOffer: Hashable, Sendable {
 }
 
 enum ModelSource: Hashable, Sendable {
-    /// Baby 1.0 from the bundled file.
+    /// Standard from the bundled file.
     case bundled
-    /// Baby 1.0 from the compiled-in constants (bundled file missing/invalid).
+    /// Standard from the compiled-in constants (bundled file missing/invalid).
     case builtInConstants
     /// A valid file from Documents/Models (file name).
     case external(String)
@@ -52,10 +52,22 @@ enum ModelFormat {
     static let fileExtension = "ml"
     static let supportedFormatVersion = 1.0
     static let maxFileBytes = 64 * 1024
-    static let builtInModelId = "baby-1.0"
+    static let builtInModelId = "standard"
+    /// Ids the built-in model shipped under before (it was "Baby 1.0",
+    /// id `baby-1.0`, until the rename to Standard). They stay reserved
+    /// and resolve to the built-in model, so a selection persisted by an
+    /// older install keeps pointing at Standard.
+    static let legacyBuiltInModelIds: Set<String> = ["baby-1.0"]
+    /// Ids an external file may never claim.
+    static let reservedModelIds: Set<String> = legacyBuiltInModelIds.union([builtInModelId])
+    /// Maps a legacy built-in id to the current one; any other id is
+    /// returned unchanged.
+    static func canonicalModelId(_ id: String) -> String {
+        legacyBuiltInModelIds.contains(id) ? builtInModelId : id
+    }
     static let heuristicBandsKind = "heuristic-bands"
     /// Corrected per the 2026-11-05 adjudication: the dot is allowed
-    /// (the reserved id `baby-1.0` contains one).
+    /// (the legacy reserved id `baby-1.0` contains one).
     static let modelIdCharacters = Set("abcdefghijklmnopqrstuvwxyz0123456789.-")
     static let maxIdLength = 64
     static let maxLabelLength = 64
@@ -124,11 +136,12 @@ struct HeuristicBandsParameters: Equatable, Sendable {
     var silenceGuardCrestDb: Double = 3.5
     var silenceGuardPromDb: Double = 30
 
-    /// Compiled-in fallback: the bundled baby-1.0.ml carries the same
-    /// values; a DEBUG launch check asserts they agree. (Named for the
-    /// heuristic version it originally froze; the v2.3 floor/width
-    /// values and the v2.4 estimator keys have since been folded in.)
-    static let babyV22 = HeuristicBandsParameters(
+    /// Compiled-in fallback: the bundled standard.ml carries the same
+    /// values; a DEBUG launch check asserts they agree. This is the
+    /// heuristic v2.2 parameter set (formerly `babyV22`), numbers
+    /// unchanged by the rename; the v2.3 floor/width values and the
+    /// v2.4 estimator keys have since been folded in.
+    static let standard = HeuristicBandsParameters(
         overripeBelowHz: 160,
         ripeUpToHz: 280,
         confidenceBase: 0.55,
@@ -368,7 +381,7 @@ enum ModelFileError: Error, Equatable, CustomStringConvertible {
         case .missingOrMistypedField(let f): return "required field missing or mistyped: \(f)"
         case .unsupportedFormatVersion: return "formatVersion is not 1"
         case .invalidModelId: return "modelId must be [a-z0-9.-]"
-        case .reservedModelId: return "modelId baby-1.0 is reserved for the built-in model"
+        case .reservedModelId: return "modelId standard (and legacy baby-1.0) is reserved for the built-in model"
         case .unsupportedKind(let k): return "kind \(k) is not implemented by this loader"
         case .invalidParameters(let rule): return "parameters fail: \(rule)"
         }
@@ -435,7 +448,7 @@ enum ModelFileLoader {
               envelope.modelId.allSatisfy({ ModelFormat.modelIdCharacters.contains($0) }) else {
             throw ModelFileError.invalidModelId
         }
-        if envelope.modelId == ModelFormat.builtInModelId && !allowReservedId {
+        if ModelFormat.reservedModelIds.contains(envelope.modelId) && !allowReservedId {
             throw ModelFileError.reservedModelId
         }
         let name = envelope.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -464,24 +477,24 @@ enum ModelFileLoader {
         }
     }
 
-    /// Baby 1.0: the bundled file when it is present and valid, else
+    /// Standard: the bundled file when it is present and valid, else
     /// the compiled-in constants. Always returns a model.
     static func loadBuiltIn(bundle: Bundle = .main) -> HeuristicBandsModel {
-        if let url = bundle.url(forResource: "baby-1.0", withExtension: ModelFormat.fileExtension),
+        if let url = bundle.url(forResource: "standard", withExtension: ModelFormat.fileExtension),
            let data = try? Data(contentsOf: url),
            let model = try? load(data: data, source: .bundled, allowReservedId: true) as? HeuristicBandsModel,
            model.descriptor.modelId == ModelFormat.builtInModelId {
             #if DEBUG
-            assert(model.parameters == .babyV22,
-                   "bundled baby-1.0.ml drifted from the compiled-in Baby 1.0 constants")
+            assert(model.parameters == .standard,
+                   "bundled standard.ml drifted from the compiled-in Standard constants")
             #endif
             return model
         }
         return HeuristicBandsModel(
             descriptor: ModelDescriptor(
-                modelId: ModelFormat.builtInModelId, modelVersion: "1.0", displayName: "Baby 1.0",
+                modelId: ModelFormat.builtInModelId, modelVersion: "1.0", displayName: "Standard",
                 kind: ModelFormat.heuristicBandsKind, source: .builtInConstants, offer: .free),
-            parameters: .babyV22)
+            parameters: .standard)
     }
 
     /// Scans a folder (non-recursive) for `*.ml` files in file-name
@@ -522,10 +535,11 @@ enum ModelFileLoader {
 
 // MARK: - Registry (picker source + active model)
 
-/// All models available this launch: Baby 1.0 first (always present,
+/// All models available this launch: Standard first (always present,
 /// default, free forever), then valid external files. The selection is
 /// persisted and takes effect from the next analysis; a selection whose
-/// file disappeared falls back to Baby 1.0.
+/// file disappeared falls back to Standard. A persisted legacy id
+/// (`baby-1.0`) is migrated to `standard` at launch.
 @MainActor
 final class ModelRegistry: ObservableObject {
     static let shared = ModelRegistry()
@@ -545,7 +559,11 @@ final class ModelRegistry: ObservableObject {
     }
 
     private init() {
-        selectedId = UserDefaults.standard.string(forKey: Self.selectionKey) ?? ModelFormat.builtInModelId
+        let stored = UserDefaults.standard.string(forKey: Self.selectionKey)
+        selectedId = ModelFormat.canonicalModelId(stored ?? ModelFormat.builtInModelId)
+        if let stored, stored != selectedId {
+            UserDefaults.standard.set(selectedId, forKey: Self.selectionKey)
+        }
         reload()
     }
 
@@ -555,7 +573,8 @@ final class ModelRegistry: ObservableObject {
         let builtIn = ModelFileLoader.loadBuiltIn()
         let folder = Self.externalFolder
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let scan = ModelFileLoader.scan(folder: folder, taken: [builtIn.descriptor.modelId])
+        let scan = ModelFileLoader.scan(folder: folder,
+                                        taken: ModelFormat.reservedModelIds.union([builtIn.descriptor.modelId]))
         models = [builtIn] + scan.models
         skipped = scan.skipped
         #if DEBUG
@@ -566,7 +585,8 @@ final class ModelRegistry: ObservableObject {
     }
 
     var activeModel: any ThumpModel {
-        models.first { $0.descriptor.modelId == selectedId }
+        let id = ModelFormat.canonicalModelId(selectedId)
+        return models.first { $0.descriptor.modelId == id }
             ?? models.first { $0.descriptor.isDefault }
             ?? ModelFileLoader.loadBuiltIn()
     }

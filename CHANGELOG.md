@@ -1,3 +1,64 @@
+# [1.19.0](https://github.com/lookmail88/melonthump/compare/v1.18.0...v1.19.0) (2026-11-10)
+
+
+### Features
+
+* **ios:** show My Samples menu entry only to contributor applicants ([a87938c](https://github.com/lookmail88/melonthump/commit/a87938c0d5e7c889fae85e717d6af1b12497e7e8))
+
+# [1.18.0](https://github.com/lookmail88/melonthump/compare/v1.17.0...v1.18.0) (2026-11-09)
+
+
+### Features
+
+* **server:** add en/zh language switcher to admin page top bar ([c6d3580](https://github.com/lookmail88/melonthump/commit/c6d35801efc2a3bad2900240b1ba5ff4d268b1f3))
+* **server:** filter contributors by enrollment note on admin page ([9a43385](https://github.com/lookmail88/melonthump/commit/9a433855329441432f9ac058af27cde3aaabfbf2))
+
+# [1.17.0](https://github.com/lookmail88/melonthump/compare/v1.16.0...v1.17.0) (2026-11-09)
+
+
+### Features
+
+* per-type Vision judging — thresholds and sample scores by photo kind ([6702a92](https://github.com/lookmail88/melonthump/commit/6702a92cdd8d75029cc78bf5f1112f5ff256e87a))
+
+# [1.16.0](https://github.com/lookmail88/melonthump/compare/v1.15.0...v1.16.0) (2026-11-09)
+
+
+### Features
+
+* Vision watermelon check — capture hint and sample annotation ([1b1e1fc](https://github.com/lookmail88/melonthump/commit/1b1e1fce97b7928bbde463d7b41b35c3a6f32b3a))
+
+# [1.15.0](https://github.com/lookmail88/melonthump/compare/v1.14.0...v1.15.0) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ios:** home copy matches the photo-first journey ([f31b1c1](https://github.com/lookmail88/melonthump/commit/f31b1c19125fa0ed485afebd3f600bb11dd76bc3))
+* **ios:** submit button stays disabled while application is under review ([917e237](https://github.com/lookmail88/melonthump/commit/917e237cbc8650017e21f5e0980f23c07e5a7aa4))
+
+
+### Features
+
+* **ios:** appearance photos are required before recording ([1c854ff](https://github.com/lookmail88/melonthump/commit/1c854ff0857504e0029510c232741e7dabe64f70))
+* **ios:** feedback entry in the main menu ([a8d4a7b](https://github.com/lookmail88/melonthump/commit/a8d4a7b19f4269be1d1981e28642a6e3374d4833))
+* **ios:** journey photo gate opens a camera, then straight to recording ([504a044](https://github.com/lookmail88/melonthump/commit/504a044e518dddd79969fafa5b8bba9c8e85183f))
+* **ios:** model improvement program entry in the main menu ([3937a63](https://github.com/lookmail88/melonthump/commit/3937a634c45e7ff1d2655cff4034d61b43280ae2))
+* **ios:** pending applicants see the locked submit-sample button ([e27b99f](https://github.com/lookmail88/melonthump/commit/e27b99fc15153e1e2b5ce6ef9bf3f9689d36ee5c))
+* **ios:** record page shows member steps only to program members ([f4f1358](https://github.com/lookmail88/melonthump/commit/f4f1358b8fcf10f2ae2519560464965e84da918c))
+* **ios:** scan-style camera for melon photos ([1af303a](https://github.com/lookmail88/melonthump/commit/1af303a1db60cb19169a7b5ab5a01192cfca5dd2))
+* **ios:** start button becomes the melon-check entry and carries the ad gate ([e86d8f0](https://github.com/lookmail88/melonthump/commit/e86d8f0c8e474a848a4ff0557217a22afa46eb25))
+* **ios:** verdict view links into the melon record for photos ([b71297c](https://github.com/lookmail88/melonthump/commit/b71297cb44695346fa46db58703734919cfe1807))
+
+# [1.14.0](https://github.com/lookmail88/melonthump/compare/v1.13.0...v1.14.0) (2026-11-09)
+
+
+### Features
+
+* **ios:** 2.0 melon records, unified capture, contributor program, adExempt ([2fa7f8b](https://github.com/lookmail88/melonthump/commit/2fa7f8b6242e9f720da4f62fb8f0c0bfcba165fb))
+* **server:** 2.0 contributor data layer, application flow, admin API and audit log ([2eb7e0f](https://github.com/lookmail88/melonthump/commit/2eb7e0fdf145ddd9045798e011035f07c41c6ca5))
+* **server:** 2.0 S2 sample submission, material storage, self-service, attest-gated contributions ([8ea7eb1](https://github.com/lookmail88/melonthump/commit/8ea7eb1487187034c8adc0d0e7238ecbb473b89d))
+* **server:** 2.0 S3 sample review, ad-free ledger wiring, exemptions and adExempt policy ([9674ac5](https://github.com/lookmail88/melonthump/commit/9674ac5268efc1874ab319ab7da6bd8cfbf289af))
+* **server:** 2.0 S4 admin web page, runtime settings, Access actor, preliminary review ([62d3e0b](https://github.com/lookmail88/melonthump/commit/62d3e0b0fe6bc26a7a2f6a8d6c2b10a009d9a494))
+
 # [1.13.0](https://github.com/lookmail88/melonthump/compare/v1.12.0...v1.13.0) (2026-11-06)
 
 

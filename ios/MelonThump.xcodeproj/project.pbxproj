@@ -7,6 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C20F0000000000000000000C /* Localization20.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F0000000000000000000B /* Localization20.swift */; };
+		C20F0000000000000000000A /* ProgramViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000009 /* ProgramViews.swift */; };
+		C20F00000000000000000008 /* RecordViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000007 /* RecordViews.swift */; };
+		C20F0000000000000000000E /* ScanCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F0000000000000000000D /* ScanCamera.swift */; };
+		C20F00000000000000000010 /* WatermelonVision.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F0000000000000000000F /* WatermelonVision.swift */; };
+		C20F00000000000000000006 /* ContributorProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000005 /* ContributorProgram.swift */; };
+		C20F00000000000000000004 /* MelonRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000003 /* MelonRecord.swift */; };
+		C20F00000000000000000002 /* ContributionAttest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20F00000000000000000001 /* ContributionAttest.swift */; };
 		165880FFD76974C2053F21DF /* MelonThumpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */; };
 		2B3C4D5E6F708192A3B4C5D6 /* LocalAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* LocalAnalyzer.swift */; };
 		2E421CDB6A52FD5565548A9C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC5D729A34425268DB38B91 /* Models.swift */; };
@@ -23,7 +31,7 @@
 		AA1200000000000000000002 /* StatsReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1200000000000000000001 /* StatsReporter.swift */; };
 		AB1200000000000000000002 /* RecordingArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1200000000000000000001 /* RecordingArchive.swift */; };
 		C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE84823A264EC109C72E57 /* ModelFile.swift */; };
-		C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */ = {isa = PBXBuildFile; fileRef = C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */; };
+		C0DF6880FD3D88C5BADD3BBE /* standard.ml in Resources */ = {isa = PBXBuildFile; fileRef = C0DE6880FD3D88C5BADD3BBE /* standard.ml */; };
 		C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */; };
 		C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */; };
 		C0DF9B83F3D3DEDDAD657CF9 /* PolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */; };
@@ -31,6 +39,14 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C20F0000000000000000000B /* Localization20.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization20.swift; sourceTree = "<group>"; };
+		C20F00000000000000000009 /* ProgramViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgramViews.swift; sourceTree = "<group>"; };
+		C20F00000000000000000007 /* RecordViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordViews.swift; sourceTree = "<group>"; };
+		C20F0000000000000000000D /* ScanCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanCamera.swift; sourceTree = "<group>"; };
+		C20F0000000000000000000F /* WatermelonVision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatermelonVision.swift; sourceTree = "<group>"; };
+		C20F00000000000000000005 /* ContributorProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContributorProgram.swift; sourceTree = "<group>"; };
+		C20F00000000000000000003 /* MelonRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonRecord.swift; sourceTree = "<group>"; };
+		C20F00000000000000000001 /* ContributionAttest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContributionAttest.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F708192A3B4C5 /* LocalAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAnalyzer.swift; sourceTree = "<group>"; };
 		3C4D5E6F708192A3B4C5D6E7 /* VersionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionGate.swift; sourceTree = "<group>"; };
 		40228CCB401BB86F188CEB02 /* MelonThumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelonThumpApp.swift; sourceTree = "<group>"; };
@@ -50,7 +66,7 @@
 		CF6100000000000000000001 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		D8620F32F2EB853B0DE3C574 /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0DE84823A264EC109C72E57 /* ModelFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFile.swift; sourceTree = "<group>"; };
-		C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Models/baby-1.0.ml"; sourceTree = "<group>"; };
+		C0DE6880FD3D88C5BADD3BBE /* standard.ml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Models/standard.ml"; sourceTree = "<group>"; };
 		C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuViews.swift; sourceTree = "<group>"; };
 		C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolicyStore.swift; sourceTree = "<group>"; };
@@ -105,11 +121,19 @@
 				AB1200000000000000000001 /* RecordingArchive.swift */,
 				AA1300000000000000000001 /* MelonThump.entitlements */,
 				C0DE84823A264EC109C72E57 /* ModelFile.swift */,
-				C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */,
+				C0DE6880FD3D88C5BADD3BBE /* standard.ml */,
 				C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */,
 				C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */,
 				C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */,
 				C0DE08FF7C067BF8A99A3DAE /* InviteManager.swift */,
+				C20F0000000000000000000B /* Localization20.swift */,
+				C20F00000000000000000009 /* ProgramViews.swift */,
+				C20F00000000000000000007 /* RecordViews.swift */,
+				C20F0000000000000000000D /* ScanCamera.swift */,
+				C20F0000000000000000000F /* WatermelonVision.swift */,
+				C20F00000000000000000005 /* ContributorProgram.swift */,
+				C20F00000000000000000003 /* MelonRecord.swift */,
+				C20F00000000000000000001 /* ContributionAttest.swift */,
 				5D54A61DDCC862BDB9951073 /* Assets.xcassets */,
 				658704F015387A0D3FB86881 /* Info.plist */,
 			);
@@ -180,7 +204,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4E7356890EE1B32CB2F8ABF3 /* Assets.xcassets in Resources */,
-				C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */,
+				C0DF6880FD3D88C5BADD3BBE /* standard.ml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,6 +232,14 @@
 				C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */,
 				C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */,
 				C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */,
+				C20F0000000000000000000C /* Localization20.swift in Sources */,
+				C20F0000000000000000000A /* ProgramViews.swift in Sources */,
+				C20F00000000000000000008 /* RecordViews.swift in Sources */,
+				C20F0000000000000000000E /* ScanCamera.swift in Sources */,
+				C20F00000000000000000010 /* WatermelonVision.swift in Sources */,
+				C20F00000000000000000006 /* ContributorProgram.swift in Sources */,
+				C20F00000000000000000004 /* MelonRecord.swift in Sources */,
+				C20F00000000000000000002 /* ContributionAttest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -231,7 +263,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -273,7 +305,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.xuyang.melonthump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;

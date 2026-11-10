@@ -9,6 +9,27 @@ struct TapView: View {
     @StateObject private var recorder = AudioRecorder()
     @ObservedObject private var wallet = CreditWallet.shared
     @ObservedObject private var invites = InviteManager.shared
+    /// 2.0 contributor program (ad-free units at the gates).
+    @ObservedObject private var program = ContributorProgram.shared
+    /// 2.0: the melon record the next thump belongs to, when the user
+    /// chose "Thump this melon" in a record; nil = the home flow, which
+    /// files the thump into a record in the background.
+    @State private var continuingRecordId: UUID?
+    /// FIX1: the record the shown result was filed into (attachThump's
+    /// record id), for the result's "Photograph this melon" button; nil =
+    /// not attached, and the button is simply absent.
+    @State private var resultRecordId: UUID?
+    /// FIX1: that record's detail (Step 1 = appearance photos) is open.
+    @State private var showResultRecord = false
+    /// FIX2 photo gate: the record a start was refused for (it lacks its
+    /// appearance photos); its capture sheet is open while this is set.
+    @State private var photoGateRecordId: UUID?
+    /// FIX10: the journey photo sheet saved its photo — once the sheet has
+    /// gone, the 开始验瓜 journey carries on into recording by itself.
+    @State private var resumeJourneyAfterPhoto = false
+    /// FIX2: the record the photo gate passed for the running recording,
+    /// so the analysis is filed exactly where the gate looked.
+    @State private var gatedRecordId: UUID?
     @AppStorage("serverEnvironment") private var serverEnvironment: ServerEnvironment = .prod
     @State private var result: TapResult?
     @State private var errorMessage: String?
@@ -19,6 +40,10 @@ struct TapView: View {
     @State private var shareItem: ShareItem?
     @State private var inviteNotice: String?
     @State private var showPromoGate = false
+    /// FIX8: the promo gate was raised by the 开始验瓜 journey entry; once
+    /// the session unlocks (ad watched or ad-free unit spent) the journey
+    /// continues by itself. Cleared on "Not now" / a failed unlock.
+    @State private var resumeJourneyAfterUnlock = false
     @State private var menuOpen = false
     @State private var menuDestination: MenuDestination?
     @State private var ratingAskedThisSession = false
@@ -60,8 +85,38 @@ struct TapView: View {
         .sheet(item: $menuDestination) { destination in
             switch destination {
             case .models: ModelPickerView()
+            case .records: RecordsListView(onThump: thumpForRecord)
+            case .program: ProgramMenuSheet()
+            // Never set: the drawer's Feedback row opens the mail
+            // composer directly (MenuDrawer.openFeedbackMail).
+            case .feedback: EmptyView()
             case .settings: SettingsView()
             case .about: AboutView()
+            }
+        }
+        .sheet(isPresented: $showResultRecord) {
+            // FIX1: the same RecordDetailView My Samples pushes, in a sheet
+            // with its own NavigationStack and the list's Done button.
+            if let id = resultRecordId {
+                recordSheet(id) { showResultRecord = false }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { photoGateRecordId != nil },
+            set: { if !$0 { photoGateRecordId = nil } }
+        ), onDismiss: photoGateDismissed) {
+            // FIX2/FIX10: a start refused by the photo gate lands here —
+            // NOT the record page (that stays in My Samples): a direct
+            // camera sheet; on save the journey resumes into recording,
+            // on cancel it aborts.
+            if let id = photoGateRecordId {
+                JourneyPhotoSheet(recordId: id, onSaved: {
+                    resumeJourneyAfterPhoto = true
+                    photoGateRecordId = nil
+                }, onCancel: {
+                    resumeJourneyAfterPhoto = false
+                    photoGateRecordId = nil
+                })
             }
         }
         .alert(l.t("error.title"), isPresented: Binding(
@@ -74,6 +129,9 @@ struct TapView: View {
         }
         .alert(l.t("gate.title"), isPresented: $showSessionGate) {
             Button(l.t("gate.watchAd")) { earnWithAd() }
+            if program.canSpendAdFree {
+                Button(l.f("gate.useAdFree", program.adFreeBalance)) { spendAdFreeUnit() }
+            }
             if wallet.canPayAdFree {
                 Button(wallet.adFreeSessionCreditPrice == 1
                        ? l.t("gate.useCredit") : l.f("gate.useCredits", wallet.adFreeSessionCreditPrice)) {
@@ -107,7 +165,10 @@ struct TapView: View {
         }
         .alert(l.t("promo.title"), isPresented: $showPromoGate) {
             Button(l.t("gate.watchAd")) { earnWithAd() }
-            Button(l.t("common.notNow"), role: .cancel) {}
+            if program.canSpendAdFree {
+                Button(l.f("gate.useAdFree", program.adFreeBalance)) { spendAdFreeUnit() }
+            }
+            Button(l.t("common.notNow"), role: .cancel) { resumeJourneyAfterUnlock = false }
         } message: {
             Text(l.t("promo.message"))
         }
@@ -115,6 +176,11 @@ struct TapView: View {
             await recorder.prepareSession()
             await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: serverEnvironment))
             await invites.onLaunch(wallet: wallet)
+        }
+        .task {
+            // 2.0: contributor standing (ad-free balance / permanent
+            // exemption). Silent and fail-soft; no id = no request.
+            await program.refresh()
         }
         .onChange(of: serverEnvironment) { _, env in
             Task { await wallet.refreshPolicy(environment: AppIdentity.resolvedEnvironment(stored: env)) }
@@ -168,8 +234,28 @@ struct TapView: View {
                           durationSeconds: activeRecordingSeconds, onStop: toggleRecording)
         } else if let result {
             ResultView(result: result, errorMessage: errorMessage, onAgain: startNextMelon)
+                .photographAction(resultRecordId.flatMap { id in
+                    MelonRecordStore.shared.record(id: id) == nil ? nil : { showResultRecord = true }
+                })
         } else {
             homeView
+        }
+    }
+
+    /// FIX1/FIX2: a record's capture view in its own sheet, with the
+    /// list's Done button; its "Thump this melon" closes the sheet and
+    /// arms the record (thumpForRecord).
+    private func recordSheet(_ id: UUID, close: @escaping () -> Void) -> some View {
+        NavigationStack {
+            RecordDetailView(recordId: id, onThump: {
+                close()
+                thumpForRecord(id)
+            })
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(l.t("common.done")) { close() }
+                }
+            }
         }
     }
 
@@ -250,13 +336,29 @@ struct TapView: View {
                 .shadow(color: MelonTheme.buttonGreen.opacity(0.35), radius: 10, y: 5)
             }
 
-            Text(l.f("home.hint", AppSettings.sanitizedDuration(listeningDuration)))
+            Text(l.t("home.journeyHint"))
                 .font(.caption)
                 .foregroundColor(MelonTheme.inkSoft)
                 .padding(.top, 10)
 
             creditsRow
                 .padding(.top, 8)
+
+            if let id = continuingRecordId, let record = MelonRecordStore.shared.record(id: id) {
+                // 2.0: the next thump goes to this melon record.
+                HStack(spacing: 6) {
+                    Text(l.f("records.thumpingFor", record.createdAt.formatted(date: .abbreviated, time: .shortened)))
+                    Button {
+                        continuingRecordId = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .accessibilityLabel(l.t("common.cancel"))
+                }
+                .font(.caption)
+                .foregroundColor(MelonTheme.inkSoft)
+                .padding(.top, 6)
+            }
 
             if let errorMessage {
                 Text(errorMessage)
@@ -278,7 +380,12 @@ struct TapView: View {
 
     @ViewBuilder
     private var creditsRow: some View {
-        if wallet.isFreeDay {
+        if wallet.adsSuppressed {
+            // 2.0: owner-install adExempt or a permanently exempt contributor.
+            Text(l.t("credits.adFree"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.deepGreen)
+        } else if wallet.isFreeDay {
             Text(l.t("credits.freeDay"))
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(MelonTheme.deepGreen)
@@ -290,13 +397,10 @@ struct TapView: View {
                 .foregroundColor(MelonTheme.deepGreen)
         } else if wallet.needsPromoAd {
             // Launch promo, past the free thumps (1.1.0 session gate).
-            Button {
-                earnWithAd()
-            } label: {
-                Text(l.t("credits.promoGate"))
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(MelonTheme.buttonGreen)
-            }
+            // FIX8: static wording — the 开始验瓜 button carries the gate.
+            Text(l.t("credits.promoGate"))
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(MelonTheme.buttonGreen)
         } else if wallet.isPromoActive {
             Text(l.t("credits.promoUnlocked"))
                 .font(.footnote.weight(.semibold))
@@ -330,9 +434,55 @@ struct TapView: View {
         Task {
             if await AdsManager.shared.showRewarded() {
                 wallet.unlockSessionWithAd()
-            } else if !AdsManager.shared.rewardedReady {
-                errorMessage = l.t("ad.loading")
+                continueJourneyAfterUnlock()
+            } else {
+                // FIX8: no completed ad, no unlock — the journey stops here.
+                resumeJourneyAfterUnlock = false
+                if !AdsManager.shared.rewardedReady {
+                    errorMessage = l.t("ad.loading")
+                }
             }
+        }
+    }
+
+    /// 2.0: spends one contributor ad-free unit; on success the session
+    /// unlocks exactly as a watched ad does.
+    private func spendAdFreeUnit() {
+        Task {
+            switch await program.spendAdFreeUnit() {
+            case .spent:
+                wallet.unlockSessionWithAd()
+                continueJourneyAfterUnlock()
+            case .exempt:
+                // permanent exemption now suppresses every gate
+                continueJourneyAfterUnlock()
+            case .failed:
+                resumeJourneyAfterUnlock = false
+                errorMessage = l.t("gate.adFreeFailed")
+            }
+        }
+    }
+
+    /// FIX8: after the promo gate unlocks the session, the 开始验瓜 tap
+    /// that raised it carries on: record binding, photo gate, recording.
+    private func continueJourneyAfterUnlock() {
+        guard resumeJourneyAfterUnlock else { return }
+        resumeJourneyAfterUnlock = false
+        guard wallet.canThump, !recorder.isRecording, !isAnalyzing else { return }
+        toggleRecording()
+    }
+
+    /// 2.0 "Thump this melon" from a record: back to the home flow with
+    /// the record as the target, then the normal Start path (gates,
+    /// credits and ads exactly as for any thump).
+    private func thumpForRecord(_ id: UUID) {
+        continuingRecordId = id
+        menuDestination = nil
+        result = nil
+        Task {
+            // Let the records sheet finish dismissing first.
+            try? await Task.sleep(for: .milliseconds(600))
+            if !recorder.isRecording && !isAnalyzing { toggleRecording() }
         }
     }
 
@@ -363,10 +513,16 @@ struct TapView: View {
         errorMessage = nil
         showSessionGate = false
         showPromoGate = false
+        resumeJourneyAfterUnlock = false
         menuOpen = false
         menuDestination = nil
         showInviteSheet = false
         shareItem = nil
+        // FIX1: the result's record link belongs to the result being left.
+        showResultRecord = false
+        resultRecordId = nil
+        // 2.0: another melon — the next thump starts a new record.
+        continuingRecordId = nil
         // Last: clearing the result switches content to homeView.
         result = nil
     }
@@ -379,6 +535,24 @@ struct TapView: View {
             recordingStartedAt = nil
             analyze()
         } else {
+            // FIX8 ad gate FIRST — 开始验瓜 is the gated action. Every
+            // entry (home button, a record's "Thump this melon", the
+            // home screen reached via "Thump Another Melon") comes
+            // through here. Nothing is bound or opened until the session
+            // is unlocked; on unlock the journey resumes by itself.
+            if wallet.needsPromoAd {
+                resumeJourneyAfterUnlock = true
+                showPromoGate = true
+                return
+            }
+            // FIX2 photo gate — on the recording-start path itself, so
+            // every route (home tap, a record's "Thump this melon", an
+            // armed target) passes it. Checked BEFORE the remaining wallet
+            // gates (session unlock / credits): a refused start never
+            // shows, spends or skips one; those are evaluated when
+            // recording actually starts. (FIX8: the promo ad gate alone
+            // now runs first, above.)
+            guard let boundId = passPhotoGate() else { return }
             guard wallet.canThump else {
                 if wallet.needsPromoAd {
                     showPromoGate = true
@@ -399,11 +573,46 @@ struct TapView: View {
                     activeRecordingSeconds = AppSettings.sanitizedDuration(listeningDuration)
                     try recorder.startRecording()
                     recordingStartedAt = Date()
+                    gatedRecordId = boundId
                 } catch {
                     errorMessage = l.f("error.startRecording", error.localizedDescription)
                 }
             }
         }
+    }
+
+    /// FIX2: binds the start to its record exactly as filing will
+    /// (armed target, else the open UNKNOWN-only home record, else a new
+    /// record) and returns it when it has an appearance photo. If not,
+    /// recording does not start: the record (created now for a new melon)
+    /// is armed and the FIX10 journey photo sheet (camera first) opens.
+    private func passPhotoGate() -> UUID? {
+        let store = MelonRecordStore.shared
+        let id = store.boundRecordId(target: continuingRecordId) ?? store.createRecord(fromHomeThump: true).id
+        if store.record(id: id)?.hasRequiredPhotos == true { return id }
+        continuingRecordId = id
+        menuDestination = nil
+        photoGateRecordId = id
+        return nil
+    }
+
+    /// FIX2: a gate-created record left without anything in it is
+    /// removed again (no empty rows in My Samples); one with a photo stays
+    /// armed so the next tap comes back to the same melon.
+    private func photoGateDismissed() {
+        // FIX10: photo saved → straight on into recording (the record is
+        // armed in continuingRecordId, so toggleRecording binds to it and
+        // the gate now passes). Same resume semantics as the ad unlock.
+        if resumeJourneyAfterPhoto {
+            resumeJourneyAfterPhoto = false
+            guard !recorder.isRecording, !isAnalyzing else { return }
+            toggleRecording()
+            return
+        }
+        guard let id = continuingRecordId, let record = MelonRecordStore.shared.record(id: id),
+              record.isBlank else { return }
+        MelonRecordStore.shared.delete(id)
+        continuingRecordId = nil
     }
 
     private func analyze() {
@@ -413,12 +622,16 @@ struct TapView: View {
         }
         isAnalyzing = true
         errorMessage = nil
+        resultRecordId = nil
+        // FIX2: file into the record the photo gate passed for this take.
+        let target = gatedRecordId ?? continuingRecordId
+        gatedRecordId = nil
         Task {
             defer { isAnalyzing = false }
             do {
                 // Analysis runs fully on-device; nothing is uploaded.
                 // The model is the one picked in the hamburger menu
-                // (Baby 1.0 by default), effective from this analysis.
+                // (Standard by default), effective from this analysis.
                 let model = ModelRegistry.shared.activeModel
                 let analyzed = try model.analyze(audioURL: audioURL)
                 result = analyzed
@@ -427,6 +640,13 @@ struct TapView: View {
                 // Documents/Recordings (newest 20). Local only — never
                 // uploaded, excluded from backup.
                 let d = model.descriptor
+                // 2.0 melon record: file this thump into its record (the
+                // chosen one, or a background home-flow record) and link
+                // the archive copy once it is written — no second copy.
+                let (recordId, thumpId) = MelonRecordStore.shared.attachThump(
+                    analyzed, modelId: d.modelId, modelVersion: d.modelVersion, target: target)
+                // FIX1: the result's "Photograph this melon" opens this record.
+                resultRecordId = recordId
                 RecordingArchive.save(.init(
                     sourceURL: audioURL, analyzedAt: Date(),
                     modelId: d.modelId, modelVersion: d.modelVersion,
@@ -436,7 +656,9 @@ struct TapView: View {
                     spectralCentroidHz: analyzed.spectralCentroidHz,
                     decayTimeMs: analyzed.decayTimeMs,
                     analyzerLabel: analyzed.modelVersion,
-                    debugSummary: analyzed.debugSummary))
+                    debugSummary: analyzed.debugSummary)) { stem in
+                    Task { @MainActor in MelonRecordStore.shared.linkRecording(stem: stem, thumpId: thumpId) }
+                }
                 // 1.2.0 allowance: every real (non-UNKNOWN) analysis
                 // bumps this app version's count (promo freebies); in the
                 // post-promotion economy the first one uses up the free
@@ -474,7 +696,7 @@ struct TapView: View {
             try? await Task.sleep(for: .seconds(RatingPolicy.settleDelaySeconds))
             guard !Task.isCancelled, result?.verdict == Ripeness.ripe.rawValue, !isAnalyzing, !recorder.isRecording,
                   !menuOpen, menuDestination == nil, errorMessage == nil,
-                  !showSessionGate, !showPromoGate, !showInviteSheet, shareItem == nil,
+                  !showSessionGate, !showPromoGate, !showInviteSheet, shareItem == nil, !showResultRecord,
                   inviteNotice == nil, !ratingAskedThisSession else { return }
             ratingAskedThisSession = true
             requestReview()
@@ -611,6 +833,14 @@ struct RecordingView: View {
                 .multilineTextAlignment(.center)
                 .padding(.top, 6)
 
+            // FIX9: the auto-stop hint (formerly home.hint) lives with
+            // the recording instructions, at the active duration.
+            Text(l.f("rec.thumpHint", durationSeconds))
+                .font(.caption)
+                .foregroundColor(MelonTheme.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.top, 6)
+
             Spacer()
 
             Button(action: onStop) {
@@ -709,6 +939,17 @@ struct ResultView: View {
     let result: TapResult
     let errorMessage: String?
     let onAgain: () -> Void
+    /// FIX1: opens the melon record this thump was filed into (its Step 1
+    /// is the appearance photos). nil = no record → no button.
+    var onPhotograph: (() -> Void)? = nil
+
+    /// Sets `onPhotograph` (a chained call, so the primary
+    /// `ResultView(…, onAgain: startNextMelon)` wiring stays as it is).
+    func photographAction(_ action: (() -> Void)?) -> ResultView {
+        var view = self
+        view.onPhotograph = action
+        return view
+    }
 
     private var ripeness: Ripeness { Ripeness(verdict: result.verdict) }
     @AppStorage(L10n.storageKey) private var languagePref = L10n.followSystem
@@ -775,6 +1016,22 @@ struct ResultView: View {
 
             Spacer()
 
+            // FIX1: the melon is in hand right now — photos one tap away.
+            if let onPhotograph {
+                Button(action: onPhotograph) {
+                    Label(l.t("res.photograph"), systemImage: "camera.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(MelonTheme.cream)
+                        .foregroundColor(MelonTheme.buttonGreen)
+                        .cornerRadius(999)
+                        .overlay(Capsule().stroke(MelonTheme.buttonGreen, lineWidth: 2))
+                }
+                .accessibilityIdentifier("result.photograph")
+                .padding(.bottom, 12)
+            }
+
             // The one-tap way back to the start-recording screen.
             Button(action: onAgain) {
                 Text(l.t("res.again"))
@@ -807,9 +1064,9 @@ struct ResultView: View {
         .cornerRadius(16)
     }
 
-    /// Band edges of the model in use (Baby 1.0: 160 / 280 Hz).
+    /// Band edges of the model in use (Standard: 160 / 280 Hz).
     private var bands: (low: String, high: String) {
-        let p = (ModelRegistry.shared.activeModel as? HeuristicBandsModel)?.parameters ?? .babyV22
+        let p = (ModelRegistry.shared.activeModel as? HeuristicBandsModel)?.parameters ?? .standard
         return (String(format: "%g", p.overripeBelowHz), String(format: "%g", p.ripeUpToHz))
     }
 

@@ -5,7 +5,7 @@ import Foundation
 //
 // Everything below the signal generators is measurement only: the
 // analysis itself is the production LocalAnalyzer.analyze(samples:...)
-// with HeuristicBandsParameters.babyV22 (Baby 1.0 == heuristic v2.2).
+// with HeuristicBandsParameters.standard (Standard == heuristic v2.2).
 // The "knockout" table re-runs with ONE gate disabled at a time — a
 // sensitivity probe for this report, not a proposed parameter set.
 
@@ -261,7 +261,7 @@ func parse(_ key: String, _ debug: String?) -> Double? {
 }
 
 func run(_ samples: [Double], _ truth: Truth, _ p: HeuristicBandsParameters) -> Outcome {
-    let res = try! LocalAnalyzer.analyze(samples: samples, sampleRate: SR, parameters: p, modelLabel: "baby-1.0/1.0")
+    let res = try! LocalAnalyzer.analyze(samples: samples, sampleRate: SR, parameters: p, modelLabel: "standard/1.0")
     return Outcome(truth: truth, verdict: res.verdict, gate: gateName(res.debugSummary),
                    crest: parse("crest", res.debugSummary), prom: parse("prom", res.debugSummary),
                    snr: parse("snr", res.debugSummary))
@@ -294,7 +294,7 @@ struct Tally {
 
 let tableHead = "| scenario | N | detected (non-UNKNOWN) | correct verdict | verdicts | median crest dB | top rejecting gates (share of N) |\n|---|---|---|---|---|---|---|"
 
-func scenario(_ f: Factors, n: Int, seed: UInt64, p: HeuristicBandsParameters = .babyV22) -> Tally {
+func scenario(_ f: Factors, n: Int, seed: UInt64, p: HeuristicBandsParameters = .standard) -> Tally {
     var g = RNG(seed: seed)
     var t = Tally()
     for _ in 0..<n {
@@ -309,10 +309,10 @@ func scenario(_ f: Factors, n: Int, seed: UInt64, p: HeuristicBandsParameters = 
 var args = Array(CommandLine.arguments.dropFirst())
 
 if args.first == "--wav" {
-    // Real recordings → Baby 1.0, with the gate debug line.
+    // Real recordings → Standard, with the gate debug line.
     for path in args.dropFirst() {
         do {
-            let r = try LocalAnalyzer.analyze(audioURL: URL(fileURLWithPath: path), parameters: .babyV22, modelLabel: "baby-1.0/1.0")
+            let r = try LocalAnalyzer.analyze(audioURL: URL(fileURLWithPath: path), parameters: .standard, modelLabel: "standard/1.0")
             print("\(path): \(r.verdict) f=\(r.dominantFrequencyHz) | \(r.debugSummary ?? "")")
         } catch { print("\(path): ERROR \(error)") }
     }
@@ -360,7 +360,7 @@ let scenarios: [(String, Factors)] = [
     ("B5 B4 + handling = phone, full", r5),
 ]
 
-print("# MelonThump recognition diagnosis — production LocalAnalyzer, Baby 1.0 (heuristic v2.2)")
+print("# MelonThump recognition diagnosis — production LocalAnalyzer, Standard model (heuristic v2.2)")
 print("sample rate \(SR) Hz, \(Int(SECONDS)) s clips (default Listening Duration), N=\(N) per scenario, fixed seeds\n")
 print("## 1. Scenario ladder\n")
 print(tableHead)
@@ -416,10 +416,10 @@ breakdown("B3 + B4 by number of knocks (only knocks ≥ −40 dBFS)", b3b4, bins
 
 // Gate knockout: one gate disabled at a time (sensitivity probe only).
 func knockout(_ name: String, _ f: (inout HeuristicBandsParameters) -> Void) -> (String, HeuristicBandsParameters) {
-    var p = HeuristicBandsParameters.babyV22; f(&p); return (name, p)
+    var p = HeuristicBandsParameters.standard; f(&p); return (name, p)
 }
 let knockouts: [(String, HeuristicBandsParameters)] = [
-    ("none (Baby 1.0 as shipped)", .babyV22),
+    ("none (Standard as shipped)", .standard),
     knockout("absfloor off") { $0.absoluteFloor = 0 },
     knockout("width off") { $0.peakWidthMinFrames = 1 },
     knockout("prominence off") { $0.prominenceDbMin = -1000 },

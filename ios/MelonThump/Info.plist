@@ -54,6 +54,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Photograph a watermelon's rind, the whole melon, or its cut flesh for your melon record.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose watermelon photos from your library for your melon record.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Record the sound of tapping a watermelon to judge its ripeness.</string>
 	<key>NSUserTrackingUsageDescription</key>

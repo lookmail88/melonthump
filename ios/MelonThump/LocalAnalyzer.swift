@@ -114,7 +114,7 @@ import Foundation
 ///
 /// 1.2.0 (design doc §1): every tunable now comes from a loaded model
 /// (`HeuristicBandsParameters`, carried by a `.ml` file — see
-/// ModelFile.swift and docs/ml-format.md). Baby 1.0's parameters
+/// ModelFile.swift and docs/ml-format.md). Standard's parameters
 /// shipped as heuristic v2.2 exactly; the v2.3 gate changes and the
 /// v2.4 estimator above are structural and apply on top of the loaded
 /// parameters (the estimator's own tunables do live in the file).

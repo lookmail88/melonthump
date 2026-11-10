@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.13.0
+          image: ghcr.io/lookmail88/melonthump-server:v1.19.0
           imagePullPolicy: Always
           env:
             # 1.1.0 App Attest (design doc §5/§7): the dev backend also
@@ -37,16 +37,22 @@ spec:
             # prints one line (RequestLoggingFilter). Prod uses ERROR.
             - name: MELONTHUMP_LOG_LEVEL
               value: "DEBUG"
-            # Pin the client latest-version at 1.0.0 on dev: the image
-            # build stamps the in-development 1.1.0, and a 1.0.0 client
-            # pointed at dev would hit the update gate with nothing to
-            # download. Unpin when 1.1.0 ships.
-            - name: MELONTHUMP_CLIENT_LATEST_VERSION
-              value: "1.0.0"
+            # Client latest-version comes from the image build stamp
+            # (MARKETING_VERSION in the pbxproj, 2.0.0 for this line);
+            # the old 1.0.0 pin was removed 2026-11-08.
             # Launch promo on the test build: window runs until the end
             # of 2026 — 2027-01-01 00:00 America/Los_Angeles (epoch ms).
             - name: MELONTHUMP_PROMO_ENDS_AT_EPOCH_MILLIS
               value: "1798790400000"
+            # 2.0 contributor materials on a persistent volume, so
+            # uploads survive pod restarts; contributors can withdraw
+            # (true delete) at any time. Admin API enabled
+            # 2026-11-09: Cloudflare Access apps for /admin and
+            # /api/admin are live (owner-only allow policy).
+            - name: MELONTHUMP_CONTRIB_STORAGE_DIR
+              value: "/data/contributions"
+            - name: MELONTHUMP_ADMIN_ENABLED
+              value: "true"
             - name: SPRING_DATASOURCE_URL
               valueFrom:
                 secretKeyRef:
@@ -64,6 +70,9 @@ spec:
                   key: password
           ports:
             - containerPort: 8080
+          volumeMounts:
+            - name: contrib-storage
+              mountPath: /data/contributions
           readinessProbe:
             httpGet:
               path: /api/health
@@ -83,6 +92,10 @@ spec:
             limits:
               cpu: "1"
               memory: 512Mi
+      volumes:
+        - name: contrib-storage
+          persistentVolumeClaim:
+            claimName: melonthump-contrib-storage
 ---
 apiVersion: v1
 kind: Service
@@ -98,3 +111,15 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: melonthump-contrib-storage
+  namespace: melonthump-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

@@ -70,20 +70,24 @@ struct L10n {
     }
     #endif
 
-    static let strings: [String: [AppLanguage: String]] = [
+    /// Every UI string: the 1.2.0 table below plus the 2.0 additions
+    /// (Localization20.swift). A key defined in both keeps the 1.2.0 text.
+    static let strings: [String: [AppLanguage: String]] = baseStrings.merging(strings20) { base, _ in base }
+
+    static let baseStrings: [String: [AppLanguage: String]] = [
         // MARK: Home
         "home.tagline": [.zh: "拍一拍，就知道！", .en: "thump it & know it!", .es: "¡dale un golpe y sabrás!"],
         "home.howTitle": [.zh: "使用方法", .en: "How it works", .es: "Cómo funciona"],
         "home.howBody": [
-            .zh: "把手机靠近西瓜，拍一下，我们来听听它熟没熟。",
-            .en: "Hold your phone near a watermelon, thump it once, and we'll listen to how ripe it is.",
-            .es: "Acerca el teléfono a una sandía, dale un golpe y escucharemos qué tan madura está.",
+            .zh: "先给西瓜拍张照，再把手机靠近西瓜，拍一下，我们来听听它熟没熟。",
+            .en: "Snap a photo of the melon first, then hold your phone close, thump it once, and we'll listen to how ripe it is.",
+            .es: "Primero hazle una foto a la sandía, luego acerca el teléfono, dale un golpe y escucharemos qué tan madura está.",
         ],
-        "home.start": [.zh: "开始录音", .en: "Start Recording", .es: "Empezar a grabar"],
-        "home.hint": [
-            .zh: "拍一下就好——%d 秒后自动停止",
-            .en: "One good thump — it stops itself at %d seconds",
-            .es: "Un buen golpe: se detiene solo a los %d segundos",
+        "home.start": [.zh: "开始验瓜", .en: "Start Melon Check", .es: "Revisar la sandía"],
+        "home.journeyHint": [
+            .zh: "先拍照，再拍瓜，听声辨熟。",
+            .en: "Photo first, then a thump — we listen for ripeness.",
+            .es: "Primero la foto, luego un golpe: escuchamos si está madura.",
         ],
         "home.menu": [.zh: "菜单", .en: "Menu", .es: "Menú"],
         "home.invite": [.zh: "邀请", .en: "Invite", .es: "Invitar"],
@@ -135,7 +139,7 @@ struct L10n {
             .en: "Credits: %d · unlock this visit ad-free",
             .es: "Créditos: %d · desbloquea esta visita sin anuncios",
         ],
-        "credits.balance": [.zh: "Credit：%d", .en: "Credits: %d", .es: "Créditos: %d"],
+        "credits.balance": [.zh: "剩余次数：%d", .en: "Credits: %d", .es: "Créditos: %d"],
         "promo.title": [.zh: "上线推广", .en: "Launch promo", .es: "Promo de lanzamiento"],
         "promo.message": [
             .zh: "看一支短广告，即可在退出 App 前无限次拍瓜。",
@@ -186,6 +190,11 @@ struct L10n {
             .zh: "现在拍西瓜——\n拍一下就够了",
             .en: "Thump the melon now —\none good knock is enough",
             .es: "Golpea la sandía ahora:\ncon un buen golpe basta",
+        ],
+        "rec.thumpHint": [
+            .zh: "拍一下就好——%d 秒后自动停止",
+            .en: "One good thump — it stops itself at %d seconds",
+            .es: "Un buen golpe: se detiene solo a los %d segundos",
         ],
         "rec.stop": [.zh: "■  停止并分析", .en: "■  Stop & Analyze", .es: "■  Detener y analizar"],
         "rec.autoStops": [

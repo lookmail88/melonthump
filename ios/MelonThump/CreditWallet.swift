@@ -38,6 +38,12 @@ import Foundation
 /// at 0. The earlier lifetime counter (analysis.lifetimeCount, 413210d
 /// pre-release builds) is discarded, never carried over.
 ///
+/// 2.0 ad suppression (design doc 2.0 §2 item 6): an install on the
+/// owner's adExempt allowlist (policy `adExempt: true`) or a contributor
+/// with permanent ad exemption skips every ad gate — promo and
+/// post-promotion alike — and is never offered an ad. Absent field
+/// (older servers) = false; nothing else in the rules above changes.
+///
 /// 1.2.0 drops the v1 welcome grant of 5 for new installs (superseded
 /// by the allowance above); existing balances are kept.
 @MainActor
@@ -64,6 +70,13 @@ final class CreditWallet: ObservableObject {
     @Published private(set) var initialFreeThumps = CreditWallet.defaultInitialFreeThumps
     @Published private(set) var sessionUnlockEnabled = CreditWallet.defaultSessionUnlockEnabled
     @Published private(set) var adFreeSessionCreditPrice = CreditWallet.defaultAdFreeSessionCreditPrice
+
+    /// 2.0: the policy's adExempt flag for this install (absent = false).
+    @Published private(set) var policyAdExempt = false
+    /// 2.0: the contributor program reports permanent ad exemption.
+    @Published private(set) var contributorExempt = false
+    /// No ad gate and no ad offer at all.
+    var adsSuppressed: Bool { policyAdExempt || contributorExempt }
 
     static let defaultInitialFreeThumps = 2
     static let defaultSessionUnlockEnabled = true
@@ -128,11 +141,11 @@ final class CreditWallet: ObservableObject {
     /// Promo gate: one completed ad unlocks this app session — once the
     /// this version's promo freebies are used up.
     var needsPromoAd: Bool {
-        isPromoActive && !isFreeDay && !sessionUnlocked && promoFreeRemaining == 0
+        isPromoActive && !isFreeDay && !sessionUnlocked && promoFreeRemaining == 0 && !adsSuppressed
     }
     /// Post-promotion gate: free thump used and the session not yet unlocked.
     var needsSessionUnlock: Bool {
-        economyActive && sessionUnlockEnabled && firstFreeUsed && !sessionUnlocked
+        economyActive && sessionUnlockEnabled && firstFreeUsed && !sessionUnlocked && !adsSuppressed
     }
     var canPayAdFree: Bool { balance >= adFreeSessionCreditPrice }
     var canThump: Bool { !needsPromoAd && !needsSessionUnlock }
@@ -150,6 +163,7 @@ final class CreditWallet: ObservableObject {
             grantAllowanceIfDue()
             return
         }
+        applyAdExempt(policy.adExempt ?? false)
         creditPerAd = policy.creditPerAd ?? 1
         if creditPerAd == -1, freeDayStamp != Self.todayString {
             defaults.set(Self.todayString, forKey: Key.freeDay)
@@ -166,6 +180,17 @@ final class CreditWallet: ObservableObject {
             markFirstFreeUsed()
         }
         grantAllowanceIfDue()
+    }
+
+    /// Policy adExempt for this install (also applied by the launch
+    /// gate's attested policy fetch). Absent from older servers = false.
+    func applyAdExempt(_ exempt: Bool) {
+        if policyAdExempt != exempt { policyAdExempt = exempt }
+    }
+
+    /// Permanent ad exemption from the contributor program.
+    func setContributorExempt(_ exempt: Bool) {
+        if contributorExempt != exempt { contributorExempt = exempt }
     }
 
     /// The one-time grant of (initialFreeThumps − 1) credits, given once

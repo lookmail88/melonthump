@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct MelonThumpApp: App {
     init() {
-        // .ml models: Baby 1.0 plus a one-time, read-only scan of
+        // .ml models: Standard plus a one-time, read-only scan of
         // Documents/Models at launch (design doc 1.2.0 §1).
         _ = ModelRegistry.shared
         RatingPolicy.recordLaunch()
@@ -55,7 +55,8 @@ struct MelonThumpApp: App {
 /// archives): launch with -screenshot-home, -screenshot-recording or
 /// -screenshot-result to render that screen directly; 1.2.0 adds
 /// -screenshot-splash / -menu / -models / -settings(-selector) /
-/// -about / -invite for the QA captures of the new UI.
+/// -about / -invite for the QA captures of the new UI; 2.0 adds
+/// -records / -record / -program / -program-about.
 private struct ScreenshotStage: View {
     let arg: String
 
@@ -102,6 +103,17 @@ private struct ScreenshotStage: View {
             AboutView()
         case "-screenshot-invite":
             TapView(startWithInviteSheet: true)
+        // 2.0 QA captures: records list, one record's capture flow,
+        // the program entry (explanation / home / not-available state).
+        case "-screenshot-records":
+            RecordsListView(onThump: { _ in })
+        case "-screenshot-record":
+            let record = MelonRecordStore.shared.records.first ?? MelonRecordStore.shared.createRecord()
+            NavigationStack { RecordDetailView(recordId: record.id, onThump: {}) }
+        case "-screenshot-program":
+            NavigationStack { ProgramEntryView() }
+        case "-screenshot-program-about":
+            NavigationStack { ProgramExplanationView(showApply: true) }
         default:
             TapView()
         }

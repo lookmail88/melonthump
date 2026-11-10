@@ -8,10 +8,20 @@ func check(_ cond: Bool, _ msg: String) { if !cond { failures += 1; print("FAIL:
 let bundled = URL(fileURLWithPath: CommandLine.arguments[1])
 let data = try! Data(contentsOf: bundled)
 let model = try! ModelFileLoader.load(data: data, source: .bundled, allowReservedId: true) as! HeuristicBandsModel
-check(model.parameters == .babyV22, "bundled baby-1.0.ml != babyV22")
-check(model.descriptor.displayName == "Baby 1.0" && model.descriptor.modelId == "baby-1.0", "descriptor")
+check(model.parameters == .standard, "bundled standard.ml != compiled-in .standard")
+check(model.descriptor.displayName == "Standard" && model.descriptor.modelId == "standard", "descriptor")
+check(model.descriptor.isDefault && ModelFormat.builtInModelId == "standard", "built-in id")
+// Legacy alias: an id persisted by a pre-rename install resolves to Standard.
+check(ModelFormat.canonicalModelId("baby-1.0") == "standard", "legacy alias baby-1.0 -> standard")
+check(ModelFormat.canonicalModelId("standard") == "standard", "canonical id unchanged")
+check(ModelFormat.canonicalModelId("other") == "other", "non-reserved id unchanged")
+check(ModelFormat.reservedModelIds == ["standard", "baby-1.0"], "reserved ids")
+// Compiled-in fallback carries the same descriptor.
+let fallback = ModelFileLoader.loadBuiltIn(bundle: Bundle(for: NSObject.self))
+check(fallback.descriptor.modelId == "standard" && fallback.descriptor.displayName == "Standard"
+      && fallback.parameters == .standard, "compiled-in fallback descriptor")
 // Bit-level comparison of every field via Mirror.
-let a = Mirror(reflecting: model.parameters).children, b = Mirror(reflecting: HeuristicBandsParameters.babyV22).children
+let a = Mirror(reflecting: model.parameters).children, b = Mirror(reflecting: HeuristicBandsParameters.standard).children
 for (x, y) in zip(a, b) {
     if let dx = x.value as? Double, let dy = y.value as? Double { check(dx.bitPattern == dy.bitPattern, "bits \(x.label!)") }
     if let ix = x.value as? Int, let iy = y.value as? Int { check(ix == iy, "int \(x.label!)") }
@@ -36,7 +46,7 @@ func expectOK(_ d: Data, _ name: String) {
 }
 expectOK(variant { _ in }, "valid external copy")
 expectOK(variant { $0["futureField"] = ["x": 1]; $0["notes"] = "hi" }, "unknown fields ignored")
-expectOK(variant { $0["modelId"] = "baby-2.0.1" }, "dotted id")
+expectOK(variant { $0["modelId"] = "standard-2.0.1" }, "dotted id")
 expectFail(Data(count: 64 * 1024 + 1), "65 KB")
 expectFail(Data("not json".utf8), "not JSON")
 expectFail(Data("[1,2]".utf8), "top-level array")
@@ -45,10 +55,13 @@ expectFail(variant { $0.removeValue(forKey: "displayName") }, "missing displayNa
 expectFail(variant { $0.removeValue(forKey: "parameters") }, "missing parameters")
 expectFail(variant { $0["formatVersion"] = 2 }, "formatVersion 2")
 expectFail(variant { $0["formatVersion"] = "1" }, "formatVersion string")
-expectFail(variant { $0["modelId"] = "Baby" }, "uppercase id")
+expectFail(variant { $0["modelId"] = "Standard" }, "uppercase id")
 expectFail(variant { $0["modelId"] = "a b" }, "space in id")
 expectFail(variant { $0["modelId"] = "" }, "empty id")
-expectFail(variant { $0["modelId"] = "baby-1.0" }, "reserved id from external")
+expectFail(variant { $0["modelId"] = "standard" }, "reserved id from external")
+expectFail(variant { $0["modelId"] = "baby-1.0" }, "legacy reserved id from external")
+do { _ = try ModelFileLoader.load(data: variant { $0["modelId"] = "baby-1.0" }, source: .external("x.ml"), allowReservedId: false) }
+catch { check(error as? ModelFileError == .reservedModelId, "legacy id error kind \(error)") }
 expectFail(variant { $0["kind"] = "coreml" }, "unknown kind")
 expectFail(variant { $0["displayName"] = 5 }, "displayName number")
 expectFail(params { $0.removeValue(forKey: "crestDbMin") }, "missing crestDbMin")
@@ -68,17 +81,20 @@ try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: t
 try! variant { $0["modelId"] = "dup"; $0["displayName"] = "First" }.write(to: dir.appendingPathComponent("a.ml"))
 try! variant { $0["modelId"] = "dup"; $0["displayName"] = "Second" }.write(to: dir.appendingPathComponent("b.ml"))
 try! variant { $0["modelId"] = "baby-1.0" }.write(to: dir.appendingPathComponent("c.ml"))
+try! variant { $0["modelId"] = "standard" }.write(to: dir.appendingPathComponent("c2.ml"))
 try! Data("{".utf8).write(to: dir.appendingPathComponent("d.ml"))
 try! variant { $0["modelId"] = "other" }.write(to: dir.appendingPathComponent("e.ml"))
 try! variant { $0["modelId"] = "ignored" }.write(to: dir.appendingPathComponent("f.json"))
 try! Data(count: 70_000).write(to: dir.appendingPathComponent("g.ml"))
-let scan = ModelFileLoader.scan(folder: dir, taken: ["baby-1.0"])
+let scan = ModelFileLoader.scan(folder: dir, taken: ModelFormat.reservedModelIds)
 check(scan.models.first?.descriptor.displayName == "First", "first file in name order wins")
 check(scan.models.map { $0.descriptor.modelId } == ["dup", "other"], "scan ids")
-check(scan.skipped.count == 4, "skipped \(scan.skipped)")
+check(scan.skipped.count == 5, "skipped \(scan.skipped)")
 print("scan:", scan.models.map { $0.descriptor.modelId }, "skipped:", scan.skipped.map { "\($0.0): \($0.1)" })
 
-// ---------- 4. v2.2 equivalence on synthetic recordings ----------
+// ---------- 4. v2.4 equivalence on synthetic recordings ----------
+// Reference: v24-reference.swift, a frozen snapshot of the production
+// analyzer + Standard parameters at v2.4 (not a live import).
 var rng = SystemRandomNumberGenerator()
 func rand(_ r: ClosedRange<Double>) -> Double { Double.random(in: r, using: &rng) }
 func signal(sr: Int, seconds: Double, kind: Int) -> [Double] {
@@ -119,7 +135,7 @@ for trial in 0..<Int(CommandLine.arguments[2])! {
     let secs = [3.0, 5.0, 8.0][(trial / 3) % 3]
     let url = writeWav(signal(sr: sr, seconds: secs, kind: trial % 6), sr: sr)
     defer { try? FileManager.default.removeItem(at: url) }
-    let old = try? LocalAnalyzerV22.analyze(audioURL: url)
+    let old = try? LocalAnalyzerV24.analyze(audioURL: url)
     let new = try? model.analyze(audioURL: url)
     compared += 1
     guard let o = old, let nn = new else { check(old == nil && new == nil, "throw mismatch \(trial)"); continue }
@@ -129,6 +145,7 @@ for trial in 0..<Int(CommandLine.arguments[2])! {
         && o.spectralCentroidHz.bitPattern == nn.spectralCentroidHz.bitPattern
         && o.decayTimeMs.bitPattern == nn.decayTimeMs.bitPattern
         && o.confidence.bitPattern == nn.confidence.bitPattern
+        && o.modelVersion == nn.modelVersion
         && o.debugSummary == nn.debugSummary
     check(same, "trial \(trial): \(o) vs \(nn)")
 }
