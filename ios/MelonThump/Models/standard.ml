@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
-  "modelId": "baby-1.0",
+  "modelId": "standard",
   "modelVersion": "1.0",
-  "displayName": "Baby 1.0",
+  "displayName": "Standard",
   "kind": "heuristic-bands",
   "notes": "Heuristic v2.2 migrated into a model file, parameter for parameter. Bands: f < 160 Hz OVERRIPE; 160 <= f < 280 Hz RIPE; f >= 280 Hz UNRIPE. v2.3 (2026-11-06): absoluteFloor lowered to 0.002 (≈ −54 dBFS) after field recordings showed real knocks rejected at the −45 dBFS floor; the v2.3 width/crest gate changes are structural in LocalAnalyzer and apply on top of these parameters. v2.4 (2026-11-06): the dominant frequency is estimated by the persistent-spectrum lowest-strong-peak estimator (structural in LocalAnalyzer); its tunables are the persist* / strongPeakRatio / fundamentalMinHz / silenceGuard* keys below, which older files may omit (loader applies the same defaults).",
   "parameters": {

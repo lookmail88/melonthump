@@ -189,7 +189,7 @@ struct ProgramMenuSheet: View {
 // MARK: - Model picker
 
 /// Lists every available model with its state — Default / Free / Paid
-/// (price, or Purchased). 1.2.0 ships Baby 1.0 only (default, free
+/// (price, or Purchased). 1.2.0 ships Standard only (default, free
 /// forever) plus any valid external files; the paid row rendering
 /// exists for a later release, but no paid model and no StoreKit flow
 /// ship now. A selection persists and applies from the next analysis.

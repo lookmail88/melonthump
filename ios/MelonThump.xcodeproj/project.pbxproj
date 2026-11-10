@@ -31,7 +31,7 @@
 		AA1200000000000000000002 /* StatsReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1200000000000000000001 /* StatsReporter.swift */; };
 		AB1200000000000000000002 /* RecordingArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1200000000000000000001 /* RecordingArchive.swift */; };
 		C0DF84823A264EC109C72E57 /* ModelFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE84823A264EC109C72E57 /* ModelFile.swift */; };
-		C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */ = {isa = PBXBuildFile; fileRef = C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */; };
+		C0DF6880FD3D88C5BADD3BBE /* standard.ml in Resources */ = {isa = PBXBuildFile; fileRef = C0DE6880FD3D88C5BADD3BBE /* standard.ml */; };
 		C0DF0ABAE98C3689AE0A1E7C /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */; };
 		C0DFE7CDA446E3637CCD4789 /* MenuViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */; };
 		C0DF9B83F3D3DEDDAD657CF9 /* PolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */; };
@@ -66,7 +66,7 @@
 		CF6100000000000000000001 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		D8620F32F2EB853B0DE3C574 /* MelonThump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MelonThump.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0DE84823A264EC109C72E57 /* ModelFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFile.swift; sourceTree = "<group>"; };
-		C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Models/baby-1.0.ml"; sourceTree = "<group>"; };
+		C0DE6880FD3D88C5BADD3BBE /* standard.ml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Models/standard.ml"; sourceTree = "<group>"; };
 		C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuViews.swift; sourceTree = "<group>"; };
 		C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolicyStore.swift; sourceTree = "<group>"; };
@@ -121,7 +121,7 @@
 				AB1200000000000000000001 /* RecordingArchive.swift */,
 				AA1300000000000000000001 /* MelonThump.entitlements */,
 				C0DE84823A264EC109C72E57 /* ModelFile.swift */,
-				C0DE6880FD3D88C5BADD3BBE /* baby-1.0.ml */,
+				C0DE6880FD3D88C5BADD3BBE /* standard.ml */,
 				C0DE0ABAE98C3689AE0A1E7C /* Localization.swift */,
 				C0DEE7CDA446E3637CCD4789 /* MenuViews.swift */,
 				C0DE9B83F3D3DEDDAD657CF9 /* PolicyStore.swift */,
@@ -204,7 +204,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4E7356890EE1B32CB2F8ABF3 /* Assets.xcassets in Resources */,
-				C0DF6880FD3D88C5BADD3BBE /* baby-1.0.ml in Resources */,
+				C0DF6880FD3D88C5BADD3BBE /* standard.ml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

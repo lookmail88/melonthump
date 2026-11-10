@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct MelonThumpApp: App {
     init() {
-        // .ml models: Baby 1.0 plus a one-time, read-only scan of
+        // .ml models: Standard plus a one-time, read-only scan of
         // Documents/Models at launch (design doc 1.2.0 §1).
         _ = ModelRegistry.shared
         RatingPolicy.recordLaunch()

@@ -631,7 +631,7 @@ struct TapView: View {
             do {
                 // Analysis runs fully on-device; nothing is uploaded.
                 // The model is the one picked in the hamburger menu
-                // (Baby 1.0 by default), effective from this analysis.
+                // (Standard by default), effective from this analysis.
                 let model = ModelRegistry.shared.activeModel
                 let analyzed = try model.analyze(audioURL: audioURL)
                 result = analyzed
@@ -1064,9 +1064,9 @@ struct ResultView: View {
         .cornerRadius(16)
     }
 
-    /// Band edges of the model in use (Baby 1.0: 160 / 280 Hz).
+    /// Band edges of the model in use (Standard: 160 / 280 Hz).
     private var bands: (low: String, high: String) {
-        let p = (ModelRegistry.shared.activeModel as? HeuristicBandsModel)?.parameters ?? .babyV22
+        let p = (ModelRegistry.shared.activeModel as? HeuristicBandsModel)?.parameters ?? .standard
         return (String(format: "%g", p.overripeBelowHz), String(format: "%g", p.ripeUpToHz))
     }
 
