@@ -92,7 +92,9 @@ check(scan.models.map { $0.descriptor.modelId } == ["dup", "other"], "scan ids")
 check(scan.skipped.count == 5, "skipped \(scan.skipped)")
 print("scan:", scan.models.map { $0.descriptor.modelId }, "skipped:", scan.skipped.map { "\($0.0): \($0.1)" })
 
-// ---------- 4. v2.2 equivalence on synthetic recordings ----------
+// ---------- 4. v2.4 equivalence on synthetic recordings ----------
+// Reference: v24-reference.swift, a frozen snapshot of the production
+// analyzer + Standard parameters at v2.4 (not a live import).
 var rng = SystemRandomNumberGenerator()
 func rand(_ r: ClosedRange<Double>) -> Double { Double.random(in: r, using: &rng) }
 func signal(sr: Int, seconds: Double, kind: Int) -> [Double] {
@@ -133,7 +135,7 @@ for trial in 0..<Int(CommandLine.arguments[2])! {
     let secs = [3.0, 5.0, 8.0][(trial / 3) % 3]
     let url = writeWav(signal(sr: sr, seconds: secs, kind: trial % 6), sr: sr)
     defer { try? FileManager.default.removeItem(at: url) }
-    let old = try? LocalAnalyzerV22.analyze(audioURL: url)
+    let old = try? LocalAnalyzerV24.analyze(audioURL: url)
     let new = try? model.analyze(audioURL: url)
     compared += 1
     guard let o = old, let nn = new else { check(old == nil && new == nil, "throw mismatch \(trial)"); continue }
@@ -143,6 +145,7 @@ for trial in 0..<Int(CommandLine.arguments[2])! {
         && o.spectralCentroidHz.bitPattern == nn.spectralCentroidHz.bitPattern
         && o.decayTimeMs.bitPattern == nn.decayTimeMs.bitPattern
         && o.confidence.bitPattern == nn.confidence.bitPattern
+        && o.modelVersion == nn.modelVersion
         && o.debugSummary == nn.debugSummary
     check(same, "trial \(trial): \(o) vs \(nn)")
 }
