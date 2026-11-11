@@ -1,3 +1,15 @@
+# [1.20.0](https://github.com/lookmail88/melonthump/compare/v1.19.0...v1.20.0) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ios:** validate mic input before installTap to stop post-ad recorder crash ([c8bf4bc](https://github.com/lookmail88/melonthump/commit/c8bf4bcb2b4d29d1792e20de1cb7d4ba94d64c15))
+
+
+### Features
+
+* **k8s:** enable prod contribution storage and admin, pin client latest at 1.2.0 ([a2e9c47](https://github.com/lookmail88/melonthump/commit/a2e9c4717b863f444134a0774ad5cf459217cae7))
+
 # [1.19.0](https://github.com/lookmail88/melonthump/compare/v1.18.0...v1.19.0) (2026-11-10)
 
 
