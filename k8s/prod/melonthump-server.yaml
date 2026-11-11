@@ -60,7 +60,7 @@ spec:
             # Keep latest at 1.2.0 until the App Store release lands;
             # flipping this value to "2.0.0" is the final release step.
             - name: MELONTHUMP_CLIENT_LATEST_VERSION
-              value: "1.2.0"
+              value: "2.0.0"
             # 2.0 contribution storage + admin (2026-11-10): sample
             # files live on the PVC below; the admin APIs are live
             # behind the prod Cloudflare Access app (owner-only).
