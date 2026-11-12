@@ -571,9 +571,16 @@ struct TapView: View {
                 do {
                     // Listening Duration applies from this recording on.
                     activeRecordingSeconds = AppSettings.sanitizedDuration(listeningDuration)
+                    // 2.0.1: re-assert the session + validate the input
+                    // right here (a rewarded ad may have just handed the
+                    // session back unusable); throws instead of letting
+                    // installTap abort the app.
+                    try await recorder.prepareToRecord()
                     try recorder.startRecording()
                     recordingStartedAt = Date()
                     gatedRecordId = boundId
+                } catch RecorderError.inputUnavailable {
+                    errorMessage = l.t("error.micUnavailable")
                 } catch {
                     errorMessage = l.f("error.startRecording", error.localizedDescription)
                 }

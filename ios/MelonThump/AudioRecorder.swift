@@ -35,6 +35,9 @@ final class AudioRecorder: NSObject, ObservableObject, @unchecked Sendable {
     @Published var audioLevel: Double = 0
 
     private var engine: AVAudioEngine?
+    /// Engine whose input prepareToRecord() validated; consumed by the
+    /// next startRecording().
+    private var preparedEngine: AVAudioEngine?
     private var outputFile: AVAudioFile?
     private let levelBox = LevelBox()
 
@@ -52,6 +55,57 @@ final class AudioRecorder: NSObject, ObservableObject, @unchecked Sendable {
         }.value
     }
 
+    /// 2.0.1 (TASK-201): re-asserts the session AT THE POINT OF
+    /// RECORDING, with real errors. A rewarded ad can hand the session
+    /// back inactive / not record-ready after prepareSession() ran (and
+    /// that early warm-up swallows its errors). Same category/mode as
+    /// prepareSession(); activation stays off the main thread.
+    func assertRecordingSession() async throws {
+        try await Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .measurement)
+            try session.setActive(true)
+        }.value
+    }
+
+    /// 2.0.1 (TASK-201): must be awaited right before startRecording().
+    /// Asserts the session, then checks the input is real (input
+    /// available, sampleRate > 0, channelCount > 0). If not: re-asserts
+    /// once, waits ~300 ms for the route/session to settle, and checks
+    /// again on a fresh engine; still not ready → throws
+    /// RecorderError.inputUnavailable. The checked engine is kept for
+    /// startRecording(), which re-checks it before installTap anyway.
+    func prepareToRecord() async throws {
+        preparedEngine = nil
+        try await assertRecordingSession()
+        var engine = AVAudioEngine()
+        if Self.readinessError(of: engine) == nil {
+            preparedEngine = engine
+            return
+        }
+        try await assertRecordingSession()
+        try await Task.sleep(for: .milliseconds(300))
+        engine = AVAudioEngine()
+        if let error = Self.readinessError(of: engine) { throw error }
+        preparedEngine = engine
+    }
+
+    /// nil when the engine's input is safe to tap; otherwise the error to
+    /// throw. Reading inputNode/outputFormat never raises — only
+    /// installTap does — so this is the guard in front of it.
+    private static func readinessError(of engine: AVAudioEngine) -> RecorderError? {
+        let format = engine.inputNode.outputFormat(forBus: 0)
+        let available = AVAudioSession.sharedInstance().isInputAvailable
+        if RecorderReadiness.isInputReady(sampleRate: format.sampleRate,
+                                          channelCount: format.channelCount,
+                                          inputAvailable: available) {
+            return nil
+        }
+        return .inputUnavailable(sampleRate: format.sampleRate,
+                                 channelCount: format.channelCount,
+                                 inputAvailable: available)
+    }
+
     func requestPermission() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { granted in
@@ -64,7 +118,13 @@ final class AudioRecorder: NSObject, ObservableObject, @unchecked Sendable {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("tap-\(UUID().uuidString).wav")
 
-        let engine = AVAudioEngine()
+        // 2.0.1: use the engine prepareToRecord() validated, and never
+        // feed installTap an invalid format — check again here, BEFORE
+        // any AVAudioFile / installTap call (installTap raises an
+        // uncatchable NSException on a 0 Hz / 0-channel input).
+        let engine = preparedEngine ?? AVAudioEngine()
+        preparedEngine = nil
+        if let error = Self.readinessError(of: engine) { throw error }
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
 

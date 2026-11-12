@@ -174,6 +174,7 @@ struct L10n {
         "error.title": [.zh: "出了点问题", .en: "Something went wrong", .es: "Algo salió mal"],
         "error.mic": [.zh: "麦克风权限被拒绝。", .en: "Microphone permission denied.", .es: "Permiso de micrófono denegado."],
         "error.startRecording": [.zh: "无法开始录音：%@", .en: "Failed to start recording: %@", .es: "No se pudo empezar a grabar: %@"],
+        "error.micUnavailable": [.zh: "麦克风暂时不可用，请重试。", .en: "Microphone temporarily unavailable, please try again.", .es: "El micrófono no está disponible temporalmente; inténtalo de nuevo."],
         "error.noRecording": [.zh: "找不到录音。", .en: "No recording found.", .es: "No se encontró la grabación."],
         "error.unreadable": [.zh: "无法读取录音。", .en: "Could not read the recording.", .es: "No se pudo leer la grabación."],
         "error.tooShort": [

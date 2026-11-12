@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: ghcr.io/lookmail88/melonthump-server:v1.19.0
+          image: ghcr.io/lookmail88/melonthump-server:v1.20.0
           imagePullPolicy: Always
           env:
             # Prod logs at ERROR only: request lines (DEBUG) stay
@@ -55,12 +55,12 @@ spec:
             # every client below 1.2.0 is hard-blocked to update.
             - name: MELONTHUMP_CLIENT_MIN_SUPPORTED_VERSION
               value: "1.2.0"
-            # 2.0 release pin (iron law): the v1.19.0 image has
-            # latest=2.0.0 baked in, but 2.0 is not downloadable yet.
-            # Keep latest at 1.2.0 until the App Store release lands;
-            # flipping this value to "2.0.0" is the final release step.
+            # Client latest-version pin (release iron law): flip only
+            # after the new version is downloadable in the App Store.
+            # 2.0.0 flipped 2026-11-11; 2.0.1 (recorder-crash hotfix)
+            # flipped 2026-11-12 after store propagation confirmed.
             - name: MELONTHUMP_CLIENT_LATEST_VERSION
-              value: "2.0.0"
+              value: "2.0.1"
             # 2.0 contribution storage + admin (2026-11-10): sample
             # files live on the PVC below; the admin APIs are live
             # behind the prod Cloudflare Access app (owner-only).
