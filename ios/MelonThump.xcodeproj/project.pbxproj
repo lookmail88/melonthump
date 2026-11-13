@@ -23,6 +23,7 @@
 		64663CE240C602EFF6C997AE /* TapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626E54FE85BB1B0327F46F94 /* TapView.swift */; };
 		8853339FA7DBB2137361FE66 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B418DFA2F9336186E772101F /* AudioRecorder.swift */; };
 		A201F1C0DE0000000000B001 /* RecorderReadiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = A201F1C0DE0000000000F001 /* RecorderReadiness.swift */; };
+		A211F1C0DE0000000000B001 /* RevealAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A211F1C0DE0000000000F001 /* RevealAnimation.swift */; };
 		AD6200000000000000000001 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = AD6100000000000000000001 /* GoogleMobileAds */; };
 		AD6200000000000000000002 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = AD6100000000000000000002 /* GoogleUserMessagingPlatform */; };
 		AD6300000000000000000002 /* AdsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6300000000000000000001 /* AdsManager.swift */; };
@@ -60,6 +61,7 @@
 		AD6500000000000000000001 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		B418DFA2F9336186E772101F /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		A201F1C0DE0000000000F001 /* RecorderReadiness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecorderReadiness.swift; sourceTree = "<group>"; };
+		A211F1C0DE0000000000F001 /* RevealAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealAnimation.swift; sourceTree = "<group>"; };
 		B83D4865FD0ACC461F77CD92 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		AA1100000000000000000001 /* AttestManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttestManager.swift; sourceTree = "<group>"; };
 		AA1200000000000000000001 /* StatsReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsReporter.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				B83D4865FD0ACC461F77CD92 /* APIClient.swift */,
 				B418DFA2F9336186E772101F /* AudioRecorder.swift */,
 				A201F1C0DE0000000000F001 /* RecorderReadiness.swift */,
+				A211F1C0DE0000000000F001 /* RevealAnimation.swift */,
 				626E54FE85BB1B0327F46F94 /* TapView.swift */,
 				1A2B3C4D5E6F708192A3B4C5 /* LocalAnalyzer.swift */,
 				3C4D5E6F708192A3B4C5D6E7 /* VersionGate.swift */,
@@ -223,6 +226,7 @@
 				CB97A70F0F385EE701AD74CA /* APIClient.swift in Sources */,
 				8853339FA7DBB2137361FE66 /* AudioRecorder.swift in Sources */,
 				A201F1C0DE0000000000B001 /* RecorderReadiness.swift in Sources */,
+				A211F1C0DE0000000000B001 /* RevealAnimation.swift in Sources */,
 				64663CE240C602EFF6C997AE /* TapView.swift in Sources */,
 				2B3C4D5E6F708192A3B4C5D6 /* LocalAnalyzer.swift in Sources */,
 				4D5E6F708192A3B4C5D6E7F8 /* VersionGate.swift in Sources */,
