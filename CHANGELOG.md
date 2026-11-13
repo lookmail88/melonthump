@@ -1,3 +1,16 @@
+# [1.21.0](https://github.com/lookmail88/melonthump/compare/v1.20.0...v1.21.0) (2026-11-13)
+
+
+### Bug Fixes
+
+* **ios:** start rating-prompt settle timer at reveal time ([e1a82de](https://github.com/lookmail88/melonthump/commit/e1a82de129ab1d00ddc0f3d84f7e23bcae1a68c9))
+
+
+### Features
+
+* **ios:** home melon idle sway and tap thump ([cdbe8b8](https://github.com/lookmail88/melonthump/commit/cdbe8b8cc299a78e596d59b1e546e8b201b4f051))
+* **ios:** result-reveal animation during analysis ([3764ed7](https://github.com/lookmail88/melonthump/commit/3764ed71014ed55daf88d1f4e948173235712a68))
+
 # [1.20.0](https://github.com/lookmail88/melonthump/compare/v1.19.0...v1.20.0) (2026-11-11)
 
 
