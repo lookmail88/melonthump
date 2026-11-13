@@ -683,15 +683,17 @@ struct TapView: View {
                 if let verdict = result?.verdict {
                     Task { await StatsReporter.shared.recordAnalysis(verdict: verdict) }
                 }
-                if result?.verdict == Ripeness.ripe.rawValue {
-                    scheduleRatingPrompt()
-                }
                 // 2.1 reveal: gate only the reveal (the deferred
                 // isAnalyzing = false) on the 1.2 s floor; every side
                 // effect above has already run. Errors skip this wait.
+                // The wait precedes the rating prompt so its settle timer
+                // starts at reveal time, not before it.
                 let wait = RevealTiming.remaining(
                     elapsed: Date().timeIntervalSince(analyzingSince), minimum: RevealTiming.minimum)
                 if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+                if result?.verdict == Ripeness.ripe.rawValue {
+                    scheduleRatingPrompt()
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
