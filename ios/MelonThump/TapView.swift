@@ -628,6 +628,9 @@ struct TapView: View {
             return
         }
         isAnalyzing = true
+        // 2.1 reveal: the analyzing page (RevealAnimationView) stays up at
+        // least RevealTiming.minimum on success, measured from here.
+        let analyzingSince = Date()
         errorMessage = nil
         resultRecordId = nil
         // FIX2: file into the record the photo gate passed for this take.
@@ -683,6 +686,12 @@ struct TapView: View {
                 if result?.verdict == Ripeness.ripe.rawValue {
                     scheduleRatingPrompt()
                 }
+                // 2.1 reveal: gate only the reveal (the deferred
+                // isAnalyzing = false) on the 1.2 s floor; every side
+                // effect above has already run. Errors skip this wait.
+                let wait = RevealTiming.remaining(
+                    elapsed: Date().timeIntervalSince(analyzingSince), minimum: RevealTiming.minimum)
+                if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -895,11 +904,7 @@ struct AnalyzingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Image("PleaseWaitArt")
-                .resizable()
-                .scaledToFit()
-                .cornerRadius(16)
-                .shadow(color: MelonTheme.ink.opacity(0.25), radius: 12, y: 6)
+            RevealAnimationView()
                 .padding(.top, 16)
 
             Text(l.t("an.caption"))
