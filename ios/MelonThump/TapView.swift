@@ -291,10 +291,7 @@ struct TapView: View {
                 .foregroundColor(MelonTheme.deepGreen)
                 .padding(.top, 2)
 
-            Image("HeroMelon")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 290)
+            HomeMelonView()
                 .padding(.top, 26)
 
             VStack(alignment: .leading, spacing: 4) {

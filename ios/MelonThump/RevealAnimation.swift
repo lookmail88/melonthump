@@ -43,12 +43,6 @@ struct RevealAnimationView: View {
     /// Ring scale at end of expansion (relative to melonWidth).
     static let ringEndScale: CGFloat = 1.45
 
-    private struct Pose {
-        var scaleX: CGFloat = 1
-        var scaleY: CGFloat = 1
-        var angle: Double = 0
-    }
-
     var body: some View {
         ZStack {
             if !reduceMotion {
@@ -82,30 +76,100 @@ struct RevealAnimationView: View {
         if reduceMotion {
             image
         } else {
-            image.keyframeAnimator(initialValue: Pose(), trigger: thump) { content, pose in
-                content
-                    .scaleEffect(x: pose.scaleX, y: pose.scaleY, anchor: .bottom)
-                    .rotationEffect(.degrees(pose.angle), anchor: .bottom)
-            } keyframes: { _ in
-                // Thump: squash down in 0.04 s, spring back by 0.12 s.
-                KeyframeTrack(\.scaleY) {
-                    CubicKeyframe(0.92, duration: 0.04)
-                    CubicKeyframe(1.0, duration: 0.08)
-                }
-                KeyframeTrack(\.scaleX) {
-                    CubicKeyframe(1.04, duration: 0.04)
-                    CubicKeyframe(1.0, duration: 0.08)
-                }
-                // Damped rock about the base, at rest by 1.08 s.
-                KeyframeTrack(\.angle) {
-                    LinearKeyframe(0, duration: 0.08)
-                    CubicKeyframe(-5, duration: 0.14)
-                    CubicKeyframe(4, duration: 0.2)
-                    CubicKeyframe(-2.5, duration: 0.2)
-                    CubicKeyframe(1.2, duration: 0.18)
-                    CubicKeyframe(-0.4, duration: 0.14)
-                    CubicKeyframe(0, duration: 0.14)
-                }
+            image.thump(trigger: thump)
+        }
+    }
+}
+
+// MARK: - Home melon (TASK-HOMEANIM)
+
+/// Home-screen HeroMelon: a gentle idle sway about the base, and one thump
+/// (identical to the reveal's) per tap. Purely visual: the tap triggers
+/// nothing else. With Reduce Motion on, the melon is fully static and taps
+/// do nothing.
+///
+/// Transform composition: the thump keyframes sit on the INNER image; the
+/// idle sway rotation wraps them on the OUTSIDE, so the two rotations add
+/// up instead of fighting. Both are transform-only, so layout never moves.
+struct HomeMelonView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Idle sway amplitude (degrees either side of upright) and full
+    /// left-right-left period (s).
+    static let swayDegrees: Double = 2
+    static let swayPeriod: Double = 2.4
+
+    @State private var thump = 0
+    @State private var swaying = false
+
+    var body: some View {
+        let image = Image("HeroMelon")
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: 290)
+        Group {
+            if reduceMotion {
+                image
+                    // Reset so turning Reduce Motion back off restarts the sway.
+                    .onAppear { swaying = false }
+            } else {
+                image
+                    .thump(trigger: thump)
+                    .contentShape(Rectangle())
+                    .onTapGesture { thump += 1 }
+                    // Scoped animation: the repeatForever applies only to
+                    // this rotation, never to layout changes in the same
+                    // transaction.
+                    .animation(.easeInOut(duration: Self.swayPeriod / 2)
+                                   .repeatForever(autoreverses: true)) { content in
+                        content.rotationEffect(.degrees(swaying ? Self.swayDegrees : -Self.swayDegrees),
+                                               anchor: .bottom)
+                    }
+                    .onAppear { swaying = true }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Shared thump (TASK-HOMEANIM)
+
+/// The one-shot thump pose: a quick squash about the base, then a damped
+/// rocking wobble at rest by 1.08 s. Shared by the reveal melon and the
+/// home melon so both thump identically.
+private struct ThumpPose {
+    var scaleX: CGFloat = 1
+    var scaleY: CGFloat = 1
+    var angle: Double = 0
+}
+
+extension View {
+    /// Plays one thump each time `trigger` changes. Callers handle Reduce
+    /// Motion themselves (by not applying this modifier).
+    func thump(trigger: Int) -> some View {
+        keyframeAnimator(initialValue: ThumpPose(), trigger: trigger) { content, pose in
+            content
+                .scaleEffect(x: pose.scaleX, y: pose.scaleY, anchor: .bottom)
+                .rotationEffect(.degrees(pose.angle), anchor: .bottom)
+        } keyframes: { _ in
+            // Thump: squash down in 0.04 s, spring back by 0.12 s.
+            KeyframeTrack(\.scaleY) {
+                CubicKeyframe(0.92, duration: 0.04)
+                CubicKeyframe(1.0, duration: 0.08)
+            }
+            KeyframeTrack(\.scaleX) {
+                CubicKeyframe(1.04, duration: 0.04)
+                CubicKeyframe(1.0, duration: 0.08)
+            }
+            // Damped rock about the base, at rest by 1.08 s.
+            KeyframeTrack(\.angle) {
+                LinearKeyframe(0, duration: 0.08)
+                CubicKeyframe(-5, duration: 0.14)
+                CubicKeyframe(4, duration: 0.2)
+                CubicKeyframe(-2.5, duration: 0.2)
+                CubicKeyframe(1.2, duration: 0.18)
+                CubicKeyframe(-0.4, duration: 0.14)
+                CubicKeyframe(0, duration: 0.14)
             }
         }
     }
